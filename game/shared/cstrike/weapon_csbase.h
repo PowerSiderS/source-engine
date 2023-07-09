@@ -143,6 +143,8 @@ public:
 
 		virtual bool IsRemoveable();
 
+        virtual bool IsRemoveable();
+		
 	#endif
 
 	virtual bool	Holster( CBaseCombatWeapon *pSwitchingTo );
@@ -181,7 +183,7 @@ public:
 
 	virtual void OnJump( float fImpulse );
 	virtual void OnLand( float fVelocity );
-
+	void CallWeaponIronsight();
 public:
 	#if defined( CLIENT_DLL )
 
@@ -203,7 +205,7 @@ public:
 		virtual int GetMuzzleFlashStyle( void );
 
 	#else
-
+		virtual	void	Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator );
 		virtual bool	Reload();
 		virtual void	Spawn();
 		virtual bool	KeyValue( const char *szKeyName, const char *szValue );
@@ -216,6 +218,7 @@ public:
 	virtual bool	CanDeploy( void );
 	virtual void	UpdateShieldState( void );
 	virtual bool	SendWeaponAnim( int iActivity );
+	virtual void	SendViewModelAnim (int nSequence);
 	virtual void	SecondaryAttack( void );
 	virtual void	Precache( void );
 	virtual bool	CanBeSelected( void );
