@@ -24,16 +24,16 @@ def build(bld):
 
 	includes = [
 		'.',
+		'../',
+		'../../common',
 		'../../public',
 		'../../public/tier0',
 		'../../public/tier1',
-		'../../common',
-		'../'
 	] + bld.env.INCLUDES_SDL2
 
 	defines = []
 
-	libs = ['tier0','tier1','tier2','tier3','vstdlib', 'AVCODEC', 'AVUTIL', 'AVFORMAT']
+	libs = ['tier0','tier1','tier2','tier3','vstdlib', 'AVCODEC', 'AVUTIL', 'AVFORMAT' ] #'SWSCALE', 'SDL2']
 
 	if bld.env.DEST_OS == 'win32':
 		libs += ['USER32']
