@@ -103,7 +103,7 @@ public:
 #if !defined(NO_STEAM)
 		return ( steamapicontext->SteamUser() && steamapicontext->SteamUserStats() && steamapicontext->SteamUser()->BLoggedOn() ); 
 #else
-		return false;
+		return true;
 #endif
 	}
 	float GetTimeLastUpload() { return m_flTimeLastSaved; }			// time we last uploaded to Steam
