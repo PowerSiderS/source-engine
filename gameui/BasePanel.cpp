@@ -2134,22 +2134,7 @@ void CBasePanel::RunMenuCommand(const char *command)
 	}
 	else if ( !Q_stricmp( command, "OpenAchievementsDialog" ) )
 	{
-		if ( IsPC() )
-		{
-#ifndef NO_STEAM
-			if ( !steamapicontext->SteamUser() || !steamapicontext->SteamUser()->BLoggedOn() )
-			{
-				vgui::MessageBox *pMessageBox = new vgui::MessageBox("#GameUI_Achievements_SteamRequired_Title", "#GameUI_Achievements_SteamRequired_Message", this);
-				pMessageBox->DoModal();
-				return;
-			}
-#endif
-			OnOpenAchievementsDialog();
-		}
-		else
-		{
-			OnOpenAchievementsDialog_Xbox();
-		}
+		OnOpenAchievementsDialog();
 	}
     //=============================================================================
     // HPE_BEGIN:
@@ -2158,17 +2143,7 @@ void CBasePanel::RunMenuCommand(const char *command)
 
     else if ( !Q_stricmp( command, "OpenCSAchievementsDialog" ) )
     {
-        if ( IsPC() )
-        {
-            if ( !steamapicontext->SteamUser() || !steamapicontext->SteamUser()->BLoggedOn() )
-            {
-                vgui::MessageBox *pMessageBox = new vgui::MessageBox("#GameUI_Achievements_SteamRequired_Title", "#GameUI_Achievements_SteamRequired_Message", this );
-                pMessageBox->DoModal();
-                return;
-            }
-
-			OnOpenCSAchievementsDialog();
-        }
+		OnOpenCSAchievementsDialog();
     }
     //=============================================================================
     // HPE_END
