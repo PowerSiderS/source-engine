@@ -44,7 +44,7 @@ protected:
         CNetworkArray( bool, m_bPlayerSpotted, MAX_PLAYERS+1 );
 
         CNetworkArray( string_t, m_szClan, MAX_PLAYERS+1 );
-        CNetworkArray( string_t, m_szAvatar, MAX_PLAYERS+1 );
+        CNetworkArray( int, m_nAvatarCRC, MAX_PLAYERS+1 ); // Avatar VTF CRC (uploaded like spray)
 
         CNetworkArray( int, m_iMVPs, MAX_PLAYERS + 1 );
         CNetworkArray( bool, m_bHasDefuser, MAX_PLAYERS + 1);
