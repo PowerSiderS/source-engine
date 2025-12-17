@@ -55,6 +55,7 @@
 #include "cs_gamestats.h"
 #include "gamestats.h"
 #include "holiday_gift.h"
+#include "cdll_int.h"
 #include "../../shared/cstrike/cs_achievement_constants.h"
 
 //=============================================================================
