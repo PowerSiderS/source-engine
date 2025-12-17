@@ -247,24 +247,9 @@ void CHudVoiceStatus::OnThink( void )
 #endif
                                 activeSpeaker.pAvatar->SetDrawFriend(show_friend);
                                 
-                                // Try to load VTF avatar using networked path from server (works like sprays with sv_uploadurl)
+                                // Try to load VTF avatar using networked CRC from server (works like sprays with sv_allowupload)
                                 // This works for ALL players, not just local player
-                                bool bUsedVTFAvatar = activeSpeaker.pAvatar->SetAvatarFromNetworkedPath( iPlayerIndex );
-                                
-                                // Fallback: For local player, also check cl_avatar directly (in case not yet networked)
-                                if ( !bUsedVTFAvatar )
-                                {
-                                        C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
-                                        if ( pLocalPlayer && pLocalPlayer->entindex() == iPlayerIndex )
-                                        {
-                                                extern ConVar cl_avatar;
-                                                const char *szAvatarPath = cl_avatar.GetString();
-                                                if ( szAvatarPath && szAvatarPath[0] )
-                                                {
-                                                        bUsedVTFAvatar = activeSpeaker.pAvatar->SetAvatarVTF( szAvatarPath );
-                                                }
-                                        }
-                                }
+                                bool bUsedVTFAvatar = activeSpeaker.pAvatar->SetAvatarFromNetworkedCRC( iPlayerIndex );
                                 
                                 // Final fallback: Steam avatar
                                 if ( !bUsedVTFAvatar )
