@@ -35,7 +35,7 @@ IMPLEMENT_SERVERCLASS_ST(CCSPlayerResource, DT_CSPlayerResource)
         SendPropArray3( SENDINFO_ARRAY3(m_iMVPs), SendPropInt( SENDINFO_ARRAY(m_iMVPs), COORD_INTEGER_BITS+1, SPROP_UNSIGNED ) ),
         SendPropArray3( SENDINFO_ARRAY3(m_bHasDefuser), SendPropInt( SENDINFO_ARRAY(m_bHasDefuser), 1, SPROP_UNSIGNED ) ),
         SendPropArray3( SENDINFO_ARRAY3(m_szClan), SendPropStringT( SENDINFO_ARRAY(m_szClan) ) ),
-        SendPropArray3( SENDINFO_ARRAY3(m_szAvatar), SendPropStringT( SENDINFO_ARRAY(m_szAvatar) ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_nAvatarCRC), SendPropInt( SENDINFO_ARRAY(m_nAvatarCRC), 32, SPROP_UNSIGNED ) ),
 END_SEND_TABLE()
 //=============================================================================
 // HPE_END
@@ -151,7 +151,7 @@ void CCSPlayerResource::UpdatePlayerData( void )
                         }
 
                         m_szClan.Set(i, AllocPooledString( pPlayer->GetClanTag() ) );
-                        m_szAvatar.Set(i, AllocPooledString( pPlayer->GetAvatarPath() ) );
+                        m_nAvatarCRC.Set(i, pPlayer->GetAvatarCRC() );
 
                         m_iMVPs.Set(i, pPlayer->GetNumMVPs());
 
@@ -161,7 +161,7 @@ void CCSPlayerResource::UpdatePlayerData( void )
                 else
                 {
                         m_szClan.Set( i, MAKE_STRING( "" ) );
-                        m_szAvatar.Set( i, MAKE_STRING( "" ) );
+                        m_nAvatarCRC.Set( i, 0 );
                         m_iMVPs.Set( i, 0 );
                 }
         }
@@ -338,7 +338,7 @@ void CCSPlayerResource::Spawn( void )
         {
                 m_bPlayerSpotted.Set( i, 0 );
                 m_szClan.Set( i, MAKE_STRING( "" ) );
-                m_szAvatar.Set( i, MAKE_STRING( "" ) );
+                m_nAvatarCRC.Set( i, 0 );
                 m_iMVPs.Set( i, 0 );
                 m_bHasDefuser.Set(i, false);
         }
