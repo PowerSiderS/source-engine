@@ -16,14 +16,28 @@
 #include "vtf/vtf.h"
 #include "filesystem.h"
 #include "c_cs_playerresource.h"
+#include "checksum_crc.h"
 
-// ConVar for custom VTF avatar - if empty (""), use team default avatar (CT/T)
-// Path format: "materials/avatars/myavatar" (without .vtf extension)
-ConVar cl_avatar( "cl_avatar", "", FCVAR_ARCHIVE, "Custom avatar VTF path. If empty, uses team default avatar (CT/T)." );
+// cl_avatar is defined in engine/client.cpp with FCVAR_USERINFO for proper custom file upload
+extern ConVar cl_avatar;
 
-// Cache for VTF avatar texture ID
+// Helper class to build CRC-based filename (same as engine uses for sprays)
+// Matches the format in engine/logofile_shared.h
+class CAvatarCustomFilename
+{
+public:
+        CAvatarCustomFilename( CRC32_t value ) 
+        {
+                char hex[16];
+                Q_binarytohex( (byte *)&value, sizeof( value ), hex, sizeof( hex ) );
+                Q_snprintf( m_Filename, sizeof( m_Filename ), "user_custom/%c%c/%s.dat", hex[0], hex[1], hex );
+        }
+        char m_Filename[MAX_OSPATH];
+};
+
+// Cache for VTF avatar texture ID (keyed by CRC)
 static int s_iVTFAvatarTextureID = -1;
-static char s_szVTFAvatarPath[MAX_PATH] = "";
+static CRC32_t s_nVTFAvatarCRC = 0;
 
 DECLARE_BUILD_FACTORY( CAvatarImagePanel );
 
@@ -302,11 +316,10 @@ void CAvatarImage::InitFromRGBA( int iAvatar, const byte *rgba, int width, int h
 //-----------------------------------------------------------------------------
 // Purpose: Initialize from VTF RGBA data (for VTF avatar loading)
 //-----------------------------------------------------------------------------
-void CAvatarImage::InitFromRGBA_VTF( const byte *rgba, int width, int height )
+void CAvatarImage::InitFromRGBA_VTF( const byte *rgba, int width, int height, CRC32_t crc )
 {
         // Check if we can reuse cached VTF avatar texture
-        const char *szCurrentPath = cl_avatar.GetString();
-        if ( s_iVTFAvatarTextureID != -1 && Q_strcmp( s_szVTFAvatarPath, szCurrentPath ) == 0 )
+        if ( s_iVTFAvatarTextureID != -1 && s_nVTFAvatarCRC == crc && crc != 0 )
         {
                 // Reuse cached texture
                 m_iTextureID = s_iVTFAvatarTextureID;
@@ -319,7 +332,7 @@ void CAvatarImage::InitFromRGBA_VTF( const byte *rgba, int width, int height )
                 
                 // Cache it
                 s_iVTFAvatarTextureID = m_iTextureID;
-                Q_strncpy( s_szVTFAvatarPath, szCurrentPath, sizeof(s_szVTFAvatarPath) );
+                s_nVTFAvatarCRC = crc;
         }
         
         m_bValid = true;
@@ -327,22 +340,21 @@ void CAvatarImage::InitFromRGBA_VTF( const byte *rgba, int width, int height )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: Load avatar from a VTF file path
+// Purpose: Load avatar from a VTF file using CRC-based path (like sprays)
+// The avatar VTF is uploaded via sv_allowupload and stored in user_custom/ folder
 // Returns: true if successful
-// Note: Does NOT call ClearAvatarSteamID on failure to preserve Steam state
 //-----------------------------------------------------------------------------
-bool CAvatarImage::SetAvatarVTF( const char *szVTFPath )
+bool CAvatarImage::SetAvatarFromCRC( CRC32_t crc )
 {
-        if ( !szVTFPath || !szVTFPath[0] )
+        if ( crc == 0 )
         {
-                // Empty path - will use default team avatar (set by caller via SetDefaultImage)
+                // No avatar CRC set - will use default team avatar
                 return false;
         }
         
-        // Check if already cached with same path
-        if ( s_iVTFAvatarTextureID != -1 && Q_strcmp( s_szVTFAvatarPath, szVTFPath ) == 0 )
+        // Check if already cached with same CRC
+        if ( s_iVTFAvatarTextureID != -1 && s_nVTFAvatarCRC == crc )
         {
-                // Clear Steam state only on success
                 ClearAvatarSteamID();
                 m_iTextureID = s_iVTFAvatarTextureID;
                 m_bValid = true;
@@ -350,51 +362,93 @@ bool CAvatarImage::SetAvatarVTF( const char *szVTFPath )
                 return true;
         }
         
-        // Load VTF file
-        byte *pRGBA = NULL;
-        int nWidth = 0, nHeight = 0;
+        // Build path from CRC using same format as engine spray system
+        CAvatarCustomFilename customFile( crc );
         
-        if ( !AvatarImage_LoadVTFAvatarImage( szVTFPath, &pRGBA, &nWidth, &nHeight ) )
+        // Read the custom file (it's a VTF stored as .dat)
+        CUtlBuffer buf( 0, 0, 0 );
+        if ( !g_pFullFileSystem->ReadFile( customFile.m_Filename, "GAME", buf ) )
         {
-                Warning( "CAvatarImage::SetAvatarVTF: Failed to load '%s'\n", szVTFPath );
-                // Do NOT clear Steam state on failure - allows fallback to Steam/default avatar
+                // Try download folder as well (for files downloaded from server)
+                if ( !g_pFullFileSystem->ReadFile( customFile.m_Filename, "download", buf ) )
+                {
+                        // File not found - may not have been downloaded yet
+                        DevMsg( "Avatar: CRC %08X file not found at %s\n", crc, customFile.m_Filename );
+                        return false;
+                }
+        }
+        
+        // Create and load VTF texture from buffer
+        IVTFTexture *pVTFTexture = CreateVTFTexture();
+        if ( !pVTFTexture )
+                return false;
+                
+        if ( !pVTFTexture->Unserialize( buf ) )
+        {
+                Warning( "Avatar: Failed to unserialize VTF from %s\n", customFile.m_Filename );
+                DestroyVTFTexture( pVTFTexture );
                 return false;
         }
         
-        // Clear Steam state only after successful load
+        int nWidth = pVTFTexture->Width();
+        int nHeight = pVTFTexture->Height();
+        
+        if ( nWidth <= 0 || nHeight <= 0 )
+        {
+                DestroyVTFTexture( pVTFTexture );
+                return false;
+        }
+        
+        pVTFTexture->ConvertImageFormat( IMAGE_FORMAT_RGBA8888, false );
+        
+        int nBufferSize = nWidth * nHeight * 4;
+        byte *pRGBA = new byte[nBufferSize];
+        
+        byte *pSrcData = pVTFTexture->ImageData( 0, 0, 0 );
+        if ( pSrcData )
+        {
+                Q_memcpy( pRGBA, pSrcData, nBufferSize );
+        }
+        else
+        {
+                delete[] pRGBA;
+                DestroyVTFTexture( pVTFTexture );
+                return false;
+        }
+        
+        DestroyVTFTexture( pVTFTexture );
+        
         ClearAvatarSteamID();
+        InitFromRGBA_VTF( pRGBA, nWidth, nHeight, crc );
         
-        // Initialize texture from loaded RGBA data
-        InitFromRGBA_VTF( pRGBA, nWidth, nHeight );
-        
-        // Free the allocated buffer
         delete[] pRGBA;
         
+        DevMsg( "Avatar: Loaded from CRC %08X successfully\n", crc );
         return m_bValid;
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: Load avatar for any player using their networked avatar path from server
-// This enables server-side avatar sharing (like sprays with sv_uploadurl)
+// Purpose: Load avatar for any player using their networked avatar CRC from server
+// This enables server-side avatar sharing (works like sprays with sv_allowupload)
 // Returns: true if successfully loaded VTF avatar for the player
 //-----------------------------------------------------------------------------
-bool CAvatarImage::SetAvatarFromNetworkedPath( int iPlayerIndex )
+bool CAvatarImage::SetAvatarFromNetworkedCRC( int iPlayerIndex )
 {
-        // Get the player resource to access networked avatar paths
+        // Get the player resource to access networked avatar CRCs
         C_CS_PlayerResource *pResource = dynamic_cast<C_CS_PlayerResource*>( g_PR );
         if ( !pResource )
                 return false;
         
-        // Get the networked avatar path for this player
-        const char *szAvatarPath = pResource->GetAvatarPath( iPlayerIndex );
-        if ( !szAvatarPath || !szAvatarPath[0] )
+        // Get the networked avatar CRC for this player
+        CRC32_t avatarCRC = pResource->GetAvatarCRC( iPlayerIndex );
+        if ( avatarCRC == 0 )
         {
                 // No custom avatar set for this player
                 return false;
         }
         
-        // Load the VTF avatar from the networked path
-        return SetAvatarVTF( szAvatarPath );
+        // Load the VTF avatar from the CRC-based path
+        return SetAvatarFromCRC( avatarCRC );
 }
 
 //-----------------------------------------------------------------------------
@@ -530,29 +584,36 @@ void CAvatarImagePanel::SetPlayer( C_BasePlayer *pPlayer, EAvatarSize avatarSize
 
 //-----------------------------------------------------------------------------
 // Purpose: Set the avatar by entity number
+// Uses CRC-based system like sprays - avatar VTF is uploaded via sv_allowupload (slot 2)
 //-----------------------------------------------------------------------------
 void CAvatarImagePanel::SetPlayer( int entindex, EAvatarSize avatarSize )
 {
         m_pImage->ClearAvatarSteamID();
 
-        // Check if this is the local player and cl_avatar is set
+        // Try to load avatar from networked CRC (uploaded like sprays via sv_allowupload)
+        // This works for all players - the VTF file is uploaded to server and downloaded by other clients
+        if ( m_pImage->SetAvatarFromNetworkedCRC( entindex ) )
+        {
+                return; // Successfully loaded avatar from CRC
+        }
+
+        // Fallback: For local player, also check cl_avatar directly (in case not yet networked)
         C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
         if ( pLocalPlayer && pLocalPlayer->entindex() == entindex )
         {
-                // This is the local player - check for VTF avatar
-                const char *szAvatarPath = cl_avatar.GetString();
-                if ( szAvatarPath && szAvatarPath[0] )
+                // Check if local player has avatar set via cl_avatar cvar
+                player_info_t pi;
+                if ( engine->GetPlayerInfo( entindex, &pi ) && pi.customFiles[2] != 0 )
                 {
-                        // Player has set a custom VTF avatar
-                        if ( m_pImage->SetAvatarVTF( szAvatarPath ) )
+                        // Try loading from local custom file
+                        if ( m_pImage->SetAvatarFromCRC( pi.customFiles[2] ) )
                         {
-                                return; // Successfully loaded VTF avatar
+                                return;
                         }
-                        // Fall through to default behavior if VTF load failed
                 }
-                // cl_avatar is empty ("") - will use team default (set via SetDefaultAvatar by caller)
         }
 
+        // No custom avatar - try Steam avatar
         player_info_t pi;
         if ( engine->GetPlayerInfo(entindex, &pi) )
         {
