@@ -39,7 +39,7 @@ public:
         bool                    IsPlayerSpotted( int iIndex );
 
         const char              *GetClanTag( int index );
-        const char              *GetAvatarPath( int index );
+        CRC32_t                 GetAvatarCRC( int index );
 
         int                             GetNumMVPs( int iIndex );
         bool                    HasDefuser( int iIndex );
@@ -68,7 +68,7 @@ protected:
         int             m_iPlayerClasses[ MAX_PLAYERS + 1 ];
 
         char    m_szClan[MAX_PLAYERS+1][MAX_CLAN_TAG_LENGTH];
-        char    m_szAvatar[MAX_PLAYERS+1][MAX_AVATAR_PATH_LENGTH];
+        CRC32_t m_nAvatarCRC[MAX_PLAYERS+1]; // Avatar VTF CRC (uploaded like spray)
 
         int             m_iMVPs[ MAX_PLAYERS + 1 ];      
         bool    m_bHasDefuser[ MAX_PLAYERS + 1 ];
