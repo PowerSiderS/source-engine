@@ -91,7 +91,7 @@ ConVar cl_clantag(
         "cl_clantag",
         "",
         FCVAR_ARCHIVE | FCVAR_USERINFO,
-        "Set your clan tag (max 7 characters)" );
+        "Set your clan tag (max 12 characters)" );
 //-----------------------------------------------------------------------------
 ConVar cl_autobuy(
 	"cl_autobuy",
