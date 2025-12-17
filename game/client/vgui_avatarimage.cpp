@@ -17,6 +17,7 @@
 #include "filesystem.h"
 #include "c_cs_playerresource.h"
 #include "checksum_crc.h"
+#include "qlimits.h"
 
 // cl_avatar is defined in engine/client.cpp with FCVAR_USERINFO for proper custom file upload
 extern ConVar cl_avatar;
