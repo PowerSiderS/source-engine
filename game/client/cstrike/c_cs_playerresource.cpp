@@ -33,7 +33,7 @@ IMPLEMENT_CLIENTCLASS_DT(C_CS_PlayerResource, DT_CSPlayerResource, CCSPlayerReso
         RecvPropArray3( RECVINFO_ARRAY(m_iMVPs), RecvPropInt( RECVINFO(m_iMVPs[0]))),
         RecvPropArray3( RECVINFO_ARRAY(m_bHasDefuser), RecvPropInt( RECVINFO(m_bHasDefuser[0]))),
         RecvPropArray3( RECVINFO_ARRAY(m_szClan), RecvPropString( RECVINFO(m_szClan[0]))),
-        RecvPropArray3( RECVINFO_ARRAY(m_szAvatar), RecvPropString( RECVINFO(m_szAvatar[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_nAvatarCRC), RecvPropInt( RECVINFO(m_nAvatarCRC[0]))),
 END_RECV_TABLE()
  
 //=============================================================================
@@ -189,18 +189,18 @@ const char *C_CS_PlayerResource::GetClanTag( int iIndex )
 }
 
 //-----------------------------------------------------------------------------
-const char *C_CS_PlayerResource::GetAvatarPath( int iIndex )
+CRC32_t C_CS_PlayerResource::GetAvatarCRC( int iIndex )
 {
         if ( iIndex < 1 || iIndex > MAX_PLAYERS )
         {
                 Assert( false );
-                return "";
+                return 0;
         }
 
         if ( !IsConnected( iIndex ) )
-                return "";
+                return 0;
 
-        return m_szAvatar[iIndex];
+        return m_nAvatarCRC[iIndex];
 }
 
 //-----------------------------------------------------------------------------
