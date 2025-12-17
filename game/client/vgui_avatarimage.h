@@ -143,16 +143,16 @@ public:
         virtual vgui::HTexture GetID();
         virtual void SetRotation( int iRotation ) { return; }
 
-        // Load avatar from a VTF file path (for Android/non-Steam use)
-        bool SetAvatarVTF( const char *szVTFPath );
+        // Load avatar from a VTF file using CRC-based path (works like sprays with sv_allowupload)
+        bool SetAvatarFromCRC( CRC32_t crc );
         
-        // Load avatar for any player using their networked avatar path from server
-        // This is used for server-side avatar sharing (like sprays with sv_uploadurl)
-        bool SetAvatarFromNetworkedPath( int iPlayerIndex );
+        // Load avatar for any player using their networked avatar CRC from server
+        // This is used for server-side avatar sharing (works like sprays with sv_allowupload)
+        bool SetAvatarFromNetworkedCRC( int iPlayerIndex );
 
 protected:
         void InitFromRGBA( int iAvatar, const byte *rgba, int width, int height );
-        void InitFromRGBA_VTF( const byte *rgba, int width, int height );
+        void InitFromRGBA_VTF( const byte *rgba, int width, int height, CRC32_t crc = 0 );
 
 private:
         void LoadAvatarImage();
