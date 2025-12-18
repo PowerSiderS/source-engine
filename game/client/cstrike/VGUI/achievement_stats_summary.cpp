@@ -38,7 +38,7 @@ CAchievementAndStatsSummary::CAchievementAndStatsSummary(vgui::Panel *parent) : 
     //SetBounds(0, 0, 640, 384);
     SetBounds(0, 0, 900, 780);
     SetMinimumSize( 640, 780 );
-    SetSizeable( false );
+    SetSizeable( true );
 
     SetTitle("#GameUI_CreateAchievementsAndStats", true);
     SetOKButtonText("#GameUI_Close");
