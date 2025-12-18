@@ -5,7 +5,7 @@
 // $NoKeywords: $
 //
 //=============================================================================//
- //====== Copyright © 1996-2003, Valve Corporation, All rights reserved. =======
+ //====== Copyright Â© 1996-2003, Valve Corporation, All rights reserved. =======
 //
 // Purpose: 
 //
@@ -18,7 +18,7 @@
 #include "clientmode_csnormal.h"
 #include "cs_gamerules.h"
 #include "hud_numericdisplay.h"
-
+#include "cs_hud_color.h"
 
 class CHudArmor : public CHudElement, public CHudNumericDisplay
 {
@@ -97,6 +97,8 @@ bool CHudArmor::ShouldDraw()
 
 void CHudArmor::Paint()
 {
+	Color hudColor = GetHudColor();
+	
 	// Update the time.
 	C_CSPlayer *pPlayer = C_CSPlayer::GetLocalCSPlayer();
 	if ( pPlayer )
@@ -105,17 +107,18 @@ void CHudArmor::Paint()
 		{
 			if( m_pArmor_HelmetIcon )
 			{
-				m_pArmor_HelmetIcon->DrawSelf( icon_xpos, icon_ypos, icon_wide, icon_tall, GetFgColor() );
+				m_pArmor_HelmetIcon->DrawSelf( icon_xpos, icon_ypos, icon_wide, icon_tall, hudColor );
 			}
 		}
 		else
 		{
 			if( m_pArmorIcon )
 			{
-				m_pArmorIcon->DrawSelf( icon_xpos, icon_ypos, icon_wide, icon_tall, GetFgColor() );
+				m_pArmorIcon->DrawSelf( icon_xpos, icon_ypos, icon_wide, icon_tall, hudColor );
 			}
 		}
-
+		
+		SetFgColor( hudColor );
 		SetDisplayValue( (int)pPlayer->ArmorValue() );
 		SetShouldDisplayValue( true );
 		BaseClass::Paint();
