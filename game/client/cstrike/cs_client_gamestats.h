@@ -103,6 +103,8 @@ public:
 	void		ResetAllStats( void );
 	void		ResetMatchStats();
 	void		UploadRoundData( void );
+	void	SaveStatsToFile( void );
+	void	LoadStatsFromFile( void );
 
 	const StatsCollection_t&	GetLifetimeStats() { return m_lifetimeStats; }
 	const StatsCollection_t&	GetMatchStats() { return m_matchStats; }
