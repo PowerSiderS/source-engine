@@ -253,7 +253,7 @@ void CHudWeaponSelection::Paint()
                                 DrawBox(xpos, ypos, largeBoxWide, largeBoxTall, selectedColor, m_flSelectionAlphaOverride, bFirstItem ? i + 1 : -1);
 
                                 // draw icon
-                                Color col = GetFgColor();
+                                Color col = GetHudColor();
                                 // icons use old system, drawing in screen space
                                 if ( pWeapon->GetSpriteActive() )
                                 {
@@ -271,7 +271,7 @@ void CHudWeaponSelection::Paint()
                                 }
 
                                 // draw text
-                                col = m_TextColor;
+                                col = GetHudColor();
                                 const FileWeaponInfo_t &weaponInfo = pWeapon->GetWpnData();
 
                                 if (pWeapon == pSelectedWeapon)
