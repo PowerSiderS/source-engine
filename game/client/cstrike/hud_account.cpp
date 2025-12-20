@@ -22,6 +22,7 @@ public:
         virtual bool ShouldDraw();
         virtual int     GetPlayerAccount( void );
         virtual vgui::AnimationController *GetAnimationController( void );
+        virtual void Paint();
 };
 
 DECLARE_HUDELEMENT( CHudAccount );
@@ -44,6 +45,13 @@ bool CHudAccount::ShouldDraw()
         {
                 return false;
         }
+}
+
+void CHudAccount::Paint()
+{
+        Color hudColor = GetHudColor();
+        SetFgColor( hudColor );
+        BaseClass::Paint();
 }
 
 // How much money does the player have
