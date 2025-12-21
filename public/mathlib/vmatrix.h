@@ -1807,30 +1807,26 @@ inline void MatrixBuildScale( VMatrix &dst, const Vector& scale )
 	MatrixBuildScale( dst, scale.x, scale.y, scale.z );
 }
 
-// AndraMidoxXx: instead of computing tan(fov * π / 180) every time,
-// we pass in tan(fov / 2) directly (in radians). This avoids two expensive
-// trigonometric calls per matrix build. Since fov usually doesn't change
-// every frame, tanHalfFovX and tanHalfFovY can be precomputed once per frame.
-//
-// This can improve performance by up to ~30–50% for this function,
-// especially when building many projection matrices per frame.
 inline void MatrixBuildPerspective(VMatrix &dst, float fovX, float fovY, float zNear, float zFar)
 {
-    float width  = 2.0f * zNear * tan(fovX * (M_PI / 180.0f) * 0.5f);
-    float height = 2.0f * zNear * tan(fovY * (M_PI / 180.0f) * 0.5f);
+    const float temp = 0.00872664626f; // (M_PI/180.0f)*0.5f
+	const float width = 2.0f * zNear * tan( fovX * temp );
+	const float height = 2.0f * zNear * tan( fovY * temp );
+	const float invWidth = ( width != 0.0f ) ? ( 1.0f / width ) : 0.0f;
+	const float invHeight = ( height != 0.0f ) ? ( 1.0f / height ) : 0.0f;
 
-    float a = 2.0f * zNear / width;
-    float b = 2.0f * zNear / height;
-    float c = -zFar / (zNear - zFar);
-    float d = zNear * zFar / (zNear - zFar);
 
-    // Immediately construct the final matrix,
-    dst.Init(
-        -a * 0.5f,   0.0f,        0.0f,   0.5f,     // X: negate + scale + shift
-         0.0f,      -b * 0.5f,    0.0f,   0.5f,     // Y: negate + scale + shift
-         0.0f,       0.0f,        c,      d,        // Z: perspective depth
-         0.0f,       0.0f,        1.0f,   0.0f      // W: perspective divide
-    );
+	// Final matrix matches the previous result of multiply chain:
+	// [ -zn/width, 0, 0.5, 0 ]
+	// [ 0, -zn/height, 0.5, 0 ]
+	// [ 0, 0, zFactor, zOffset ]
+	// [ 0, 0, 1, 0 ]
+	dst.Init(
+		-zNear * invWidth, 0.0f, 0.5f, 0.0f,
+		0.0f, -zNear * invHeight, 0.5f, 0.0f,
+		0.0f, 0.0f, -zFar / ( zNear - zFar ), ( zNear * zFar ) / ( zNear - zFar ),
+		0.0f, 0.0f, 1.0f, 0.0f
+	);
 }
 
 static inline void CalculateAABBForNormalizedFrustum_Helper( float x, float y, float z, const VMatrix &volumeToWorld, Vector &mins, Vector &maxs )
