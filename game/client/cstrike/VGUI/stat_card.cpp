@@ -22,8 +22,8 @@
 #include "cs_shareddefs.h"
 #include "filesystem.h"
 
-// cl_avatar cvar defined in engine/client.cpp
-extern ConVar cl_avatar;
+// cl_avatar cvar defined in engine/client.cpp - use ConVarRef for cross-DLL access
+static ConVarRef cl_avatar( "cl_avatar" );
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -127,16 +127,14 @@ void StatCard::UpdateInfo()
                 bool bAvatarSet = false;
                 
                 // Check if cl_avatar cvar is set with a custom avatar path
-                const char* avatarPath = cl_avatar.GetString();
-                if ( avatarPath && avatarPath[0] != '\0' )
+                if ( cl_avatar.IsValid() )
                 {
-                        // Custom avatar is set - try to load it via the avatar panel
-                        // The CAvatarImagePanel will handle loading from the CRC-based system
-                        C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
-                        if ( pLocalPlayer )
+                        const char* avatarPath = cl_avatar.GetString();
+                        if ( avatarPath && avatarPath[0] != '\0' )
                         {
-                                m_pAvatar->SetPlayer( pLocalPlayer->entindex(), k_EAvatarSize64x64 );
-                                bAvatarSet = true;
+                                // Custom avatar is set - try to load it directly from the VTF file
+                                // This works even when not connected to a server
+                                bAvatarSet = m_pAvatar->SetAvatarFromVTFFile( avatarPath );
                         }
                 }
                 
