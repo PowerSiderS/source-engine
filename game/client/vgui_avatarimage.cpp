@@ -55,9 +55,17 @@ bool AvatarImage_LoadVTFAvatarImage( const char *szFilePath, byte **ppRGBA, int 
     *pWidth = 0;
     *pHeight = 0;
 
-    // Build full path with .vtf extension
+    // Build full path - only add .vtf extension if not already present
     char szFullPath[MAX_PATH];
-    Q_snprintf( szFullPath, sizeof(szFullPath), "%s.vtf", szFilePath );
+    int nLen = Q_strlen( szFilePath );
+    if ( nLen > 4 && Q_stricmp( szFilePath + nLen - 4, ".vtf" ) == 0 )
+    {
+        Q_strncpy( szFullPath, szFilePath, sizeof(szFullPath) );
+    }
+    else
+    {
+        Q_snprintf( szFullPath, sizeof(szFullPath), "%s.vtf", szFilePath );
+    }
 
     // Read the VTF file in binary mode (critical for VTF files)
     CUtlBuffer buf( 0, 0, 0 ); // Binary mode - no text translation
@@ -453,6 +461,33 @@ bool CAvatarImage::SetAvatarFromNetworkedCRC( int iPlayerIndex )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: Load avatar directly from a VTF file path
+// This is used for the local player when not connected to a server
+// Returns: true if successfully loaded the VTF avatar
+//-----------------------------------------------------------------------------
+bool CAvatarImage::SetAvatarFromVTFFile( const char *szFilePath )
+{
+        if ( !szFilePath || !szFilePath[0] )
+                return false;
+
+        byte *pRGBA = NULL;
+        int nWidth = 0, nHeight = 0;
+
+        if ( !AvatarImage_LoadVTFAvatarImage( szFilePath, &pRGBA, &nWidth, &nHeight ) )
+        {
+                return false;
+        }
+
+        ClearAvatarSteamID();
+        InitFromRGBA_VTF( pRGBA, nWidth, nHeight, 0 );
+
+        delete[] pRGBA;
+
+        DevMsg( "Avatar: Loaded from file %s successfully\n", szFilePath );
+        return m_bValid;
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: Draw the image and optional friend icon
 //-----------------------------------------------------------------------------
 void CAvatarImage::Paint( void )
@@ -660,6 +695,11 @@ void CAvatarImagePanel::ClearAvatar()
 void CAvatarImagePanel::SetDefaultAvatar( vgui::IImage* pDefaultAvatar )
 {
         m_pImage->SetDefaultImage(pDefaultAvatar);
+}
+
+bool CAvatarImagePanel::SetAvatarFromVTFFile( const char *szFilePath )
+{
+        return m_pImage->SetAvatarFromVTFFile( szFilePath );
 }
 
 void CAvatarImagePanel::SetAvatarSize( int width, int height )
