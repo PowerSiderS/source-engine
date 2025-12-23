@@ -150,6 +150,9 @@ public:
         // This is used for server-side avatar sharing (works like sprays with sv_allowupload)
         bool SetAvatarFromNetworkedCRC( int iPlayerIndex );
 
+        // Load avatar directly from a VTF file path (for local player when not in game)
+        bool SetAvatarFromVTFFile( const char *szFilePath );
+
 protected:
         void InitFromRGBA( int iAvatar, const byte *rgba, int width, int height );
         void InitFromRGBA_VTF( const byte *rgba, int width, int height, CRC32_t crc = 0 );
@@ -236,6 +239,9 @@ public:
 
         // specify a fallback image to use
         void SetDefaultAvatar(vgui::IImage* pDefaultAvatar);
+
+        // Load avatar directly from a VTF file path (for local player when not in game)
+        bool SetAvatarFromVTFFile( const char *szFilePath );
 
         virtual void OnSizeChanged(int newWide, int newTall);
 
