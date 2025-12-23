@@ -393,6 +393,9 @@ IMPLEMENT_SERVERCLASS_ST( CCSPlayer, DT_CSPlayer )
         SendPropBool( SENDINFO( m_bHasShield ) ),
         SendPropBool( SENDINFO( m_bShieldDrawn ) ),
 #endif
+        SendPropBool( SENDINFO( m_bIsLookingAtWeapon ) ),
+        SendPropBool( SENDINFO( m_bIsHoldingLookAtWeapon ) ),
+        SendPropInt( SENDINFO( m_nInspectParity ), 3, SPROP_UNSIGNED ),
         SendPropBool( SENDINFO( m_bHasHelmet ) ),
         SendPropFloat   (SENDINFO(m_flFlashDuration), 0, SPROP_NOSCALE ),
         SendPropFloat( SENDINFO(m_flFlashMaxAlpha), 0, SPROP_NOSCALE ),
@@ -850,6 +853,11 @@ void CCSPlayer::Spawn()
         SetFOV( this, 0 );
 
         m_bIsDefusing = false;
+
+        // Weapon inspection
+        m_bIsLookingAtWeapon = false;
+        m_bIsHoldingLookAtWeapon = false;
+        m_flLookWeaponEndTime = 0.0f;
 
         //=============================================================================
         // HPE_BEGIN
@@ -1648,6 +1656,13 @@ void CCSPlayer::UpdateMouseoverHints()
 void CCSPlayer::PostThink()
 {
         BaseClass::PostThink();
+
+        // Weapon inspect timer check
+        if ( IsLookingAtWeapon() )
+        {
+                if ( gpGlobals->curtime >= m_flLookWeaponEndTime )
+                        StopLookingAtWeapon();
+        }
 
         UpdateAddonBits();
 
@@ -4673,6 +4688,23 @@ bool CCSPlayer::ClientCommand( const CCommand &args )
                         mp->AddToVIPQueue( this );
                 }
                 */
+                return true;
+        }
+        else if ( FStrEq( pcmd, "+lookatweapon" ) )
+        {
+                m_bIsHoldingLookAtWeapon = true;
+
+                if ( ShouldRunRateLimitedCommand( args ) )
+                {
+                        LookAtHeldWeapon();
+                }
+
+                return true;
+        }
+        else if ( FStrEq( pcmd, "-lookatweapon" ) )
+        {
+                m_bIsHoldingLookAtWeapon = false;
+
                 return true;
         }
 
@@ -8287,6 +8319,46 @@ void UTIL_AwardMoneyToTeam( int iAmount, int iTeam, CBaseEntity *pIgnore )
                         continue;
 
                 pPlayer->AddAccount( iAmount );
+        }
+}
+
+
+void CCSPlayer::LookAtHeldWeapon( void )
+{
+        int nSequence = ACTIVITY_NOT_AVAILABLE;
+
+        // Need a weapon
+        CWeaponCSBase *pActiveWeapon = GetActiveCSWeapon();
+        if ( !pActiveWeapon )
+                return;
+
+        // Can't inspect while reloading
+        if ( pActiveWeapon->m_bInReload )
+                return;
+
+        CBaseViewModel *pViewModel = GetViewModel();
+        if ( pViewModel )
+        {
+                nSequence = pViewModel->SelectWeightedSequence( ACT_VM_IDLE_LOWERED );
+
+                if ( nSequence == ACT_INVALID )
+                        nSequence = pViewModel->LookupSequence( "lookat01" );
+
+                if ( nSequence == ACT_INVALID )
+                        nSequence = pViewModel->LookupSequence( "inspect" );
+
+                if ( nSequence == ACT_INVALID )
+                        nSequence = pViewModel->SelectWeightedSequence( ACT_VM_FIDGET );
+
+                if ( nSequence != ACTIVITY_NOT_AVAILABLE )
+                {
+                        m_flLookWeaponEndTime = gpGlobals->curtime + pViewModel->SequenceDuration( nSequence );
+                        m_bIsLookingAtWeapon = true;
+                        m_nInspectParity = ( m_nInspectParity + 1 ) & 7; // 3-bit counter wraps at 8
+
+                        pViewModel->SetCycle( 0 );
+                        pViewModel->ResetSequence( nSequence );
+                }
         }
 }
 
