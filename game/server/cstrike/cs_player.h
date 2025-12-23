@@ -862,7 +862,20 @@ private:
         CNetworkVar( bool, m_bHasShield );
         CNetworkVar( bool, m_bShieldDrawn );
 #endif
-        
+
+        // Weapon inspection
+        CNetworkVar( bool, m_bIsLookingAtWeapon );
+        CNetworkVar( bool, m_bIsHoldingLookAtWeapon );
+        CNetworkVar( int, m_nInspectParity );
+        float m_flLookWeaponEndTime;
+
+public:
+        virtual bool IsLookingAtWeapon( void ) const { return m_bIsLookingAtWeapon; }
+        virtual bool IsHoldingLookAtWeapon( void ) const { return m_bIsHoldingLookAtWeapon; }
+        virtual void StopLookingAtWeapon( void ) { m_bIsLookingAtWeapon = false; m_bIsHoldingLookAtWeapon = false; }
+        void LookAtHeldWeapon( void );
+
+private:
         // This is a combination of the ADDON_ flags in cs_shareddefs.h.
         CNetworkVar( int, m_iAddonBits );
 
