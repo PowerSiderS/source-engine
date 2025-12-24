@@ -61,16 +61,12 @@ public:
 //Contains the player name that we hurt or that hurt us,
 //and the total damage
 //=======================================
+class CCSPlayer;
+
 class CDamageRecord
 {
 public:
-        CDamageRecord( const char *name, int iDamage, int iCounter )
-        {
-                Q_strncpy( m_szPlayerName, name, sizeof(m_szPlayerName) );
-                m_iDamage = iDamage;
-                m_iNumHits = 1;
-                m_iLastBulletUpdate = iCounter;
-        }
+        CDamageRecord( CCSPlayer *pPlayerDamager, CCSPlayer *pPlayerRecipient, int iDamage, int iCounter );
 
         void AddDamage( int iDamage, int iCounter )
         {
@@ -82,12 +78,24 @@ public:
                 m_iLastBulletUpdate = iCounter;
         }
 
-        char *GetPlayerName( void ) { return m_szPlayerName; }
+        bool IsDamageRecordStillValidForDamagerAndRecipient( CCSPlayer *pPlayerDamager, CCSPlayer *pPlayerRecipient );
+
+        CCSPlayer* GetPlayerDamagerPtr( void );
+        CCSPlayer* GetPlayerRecipientPtr( void );
+
+        char *GetPlayerDamagerName( void ) { return m_szPlayerDamagerName; }
+        char *GetPlayerRecipientName( void ) { return m_szPlayerRecipientName; }
+        char *GetPlayerName( void ) { return m_szPlayerDamagerName; }
         int GetDamage( void ) { return m_iDamage; }
         int GetNumHits( void ) { return m_iNumHits; }
 
 private:
-        char m_szPlayerName[MAX_PLAYER_NAME_LENGTH];
+        CHandle<CCSPlayer> m_PlayerDamager;
+        CHandle<CCSPlayer> m_PlayerRecipient;
+
+        char m_szPlayerDamagerName[MAX_PLAYER_NAME_LENGTH];
+        char m_szPlayerRecipientName[MAX_PLAYER_NAME_LENGTH];
+
         int m_iDamage;          //how much damage was done
         int m_iNumHits;         //how many hits
         int     m_iLastBulletUpdate; // update counter
@@ -888,8 +896,9 @@ public:
 
         static void     StartNewBulletGroup();  // global function
 
-        void RecordDamageTaken( const char *szDamageDealer, int iDamageTaken );
-        void RecordDamageGiven( const char *szDamageTaker, int iDamageGiven );
+        void RecordDamageTaken( CCSPlayer *pDamageDealer, int iDamageTaken );
+        void RecordDamageGiven( CCSPlayer *pDamageTaker, int iDamageGiven );
+        CUtlLinkedList< CDamageRecord *, int >& GetDamageList() { return m_DamageTakenList; }
 
         void ResetDamageCounters();     //Reset all lists
 
