@@ -1,0 +1,108 @@
+# Git Attributes Configuration
+# This file ensures consistent line endings and proper diff display across platforms
+# So GitHub only shows actual changes, not "entire file modified"
+
+# ==================== AUTO CRLF & NORMALIZATION ====================
+# Normalize all text files to LF (Unix line endings)
+* text=auto eol=lf
+
+# ==================== SOURCE CODE ====================
+# C++ Source Files
+*.cpp text eol=lf diff=cpp
+*.h text eol=lf diff=cpp
+*.hpp text eol=lf diff=cpp
+*.c text eol=lf diff=cpp
+*.cc text eol=lf diff=cpp
+*.cxx text eol=lf diff=cpp
+
+# Python Scripts
+*.py text eol=lf diff=python
+
+# Batch & Shell Scripts
+*.bat text eol=crlf
+*.sh text eol=lf diff=bash
+*.bash text eol=lf diff=bash
+
+# ==================== BUILD & CONFIG ====================
+# Build System Files
+*.waf text eol=lf
+*.py text eol=lf
+CMakeLists.txt text eol=lf
+Makefile text eol=lf
+*.mak text eol=lf
+*.mk text eol=lf
+
+# Project & Solution Files
+*.vcxproj text eol=crlf
+*.sln text eol=crlf
+*.project text eol=lf
+
+# Config Files
+*.json text eol=lf diff=json
+*.yaml text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.cfg text eol=lf
+*.conf text eol=lf
+
+# ==================== VGUI & RESOURCE FILES ====================
+*.res text eol=lf
+*.vdf text eol=lf
+*.vmt text eol=lf
+*.vtf binary
+*.vvd binary
+*.mdl binary
+*.phy binary
+*.ani binary
+
+# ==================== SHADER FILES ====================
+*.hlsl text eol=lf diff=cpp
+*.fxc binary
+*.vsh text eol=lf
+*.psh text eol=lf
+
+# ==================== GAME CONTENT ====================
+*.vpk binary
+*.bik binary
+
+# Audio
+*.wav binary
+*.mp3 binary
+*.flac binary
+*.ogg binary
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.tga binary
+*.dds binary
+
+# ==================== DOCUMENTATION ====================
+*.md text eol=lf
+*.txt text eol=lf
+*.rst text eol=lf
+*.rdoc text eol=lf
+README text eol=lf
+LICENSE text eol=lf
+COPYING text eol=lf
+
+# ==================== ARCHIVES & COMPRESSION ====================
+*.zip binary
+*.7z binary
+*.tar binary
+*.gz binary
+*.rar binary
+
+# ==================== VERSION CONTROL ====================
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+# ==================== MISC ====================
+.DS_Store binary
+Thumbs.db binary
+*.swp binary
+*.swo binary
+*~ binary
