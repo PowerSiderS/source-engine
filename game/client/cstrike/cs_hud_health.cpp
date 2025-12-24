@@ -16,7 +16,6 @@
 #include "view.h"
 
 #include "iclientmode.h"
-#include "cs_hud_color.h"
 
 #define PAIN_NAME "sprites/%d_pain.vmt"
 
@@ -30,6 +29,7 @@ using namespace vgui;
 #include "hudelement.h"
 #include "hud_numericdisplay.h"
 #include "cs_gamerules.h"
+#include "cs_hud_color.h"
 
 #include "convar.h"
 
@@ -166,7 +166,6 @@ void CHudHealth::OnThink()
 
 void CHudHealth::Paint( void )
 {
-        // Get custom color from HUD color system (supports rainbow mode)
         Color hudColor = GetHudColor();
         
         if( m_pHealthIcon )
@@ -174,6 +173,8 @@ void CHudHealth::Paint( void )
                 m_pHealthIcon->DrawSelf( icon_xpos, icon_ypos, icon_wide, icon_tall, hudColor );
         }
 
+        SetFgColor( hudColor );
+        
         //draw the health icon
         BaseClass::Paint();
 }
