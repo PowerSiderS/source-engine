@@ -34,10 +34,15 @@ This project is using waf buildsystem. If you have waf-related questions look ht
 - Fixed achievement system (working without steam now)
 - Avatar Image Now Working By VTF (Like Sprays) (Client-side && Server-side) `cl_avatar`
 - ClanTag System Working by CVar `cl_clantag`
-
-# Goals (CS:S Android)
+- ViewBobbing CS:GO With CVars
+- Inspection Feature (Buggy in Online, idk why)
+- Name Display in Avatar & And some stats save currently
+- Assist System (Currently Broken)
 - Add Inspect Work For CS:GO Skins (Can Spam Inspect button xD)
-- Fix Achievement System Bugs (Avatar , Name Not Displaying in menu & Achievement Not Saving player stats
+
+# Credits (Some Code Ports)
+- AndraMidoxXx (cherrybtw) [ClientMod Android]
+- PiMoNFeead [CS:SO Outdated]
 
 # Current tasks
 - Rewrite materialsystem for OpenGL render
