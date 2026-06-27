@@ -904,10 +904,17 @@ void CTouchControls::SetFlags(const char *name, int flags)
 
 void CTouchControls::RemoveButton( const char *name )
 {
-	for( int i = 0; i < btns.Count(); i++ )
+	for( int i = btns.Head(); btns.IsValidIndex(i); )
 	{
-		if( Q_strncmp( btns[i]->name, name, sizeof(btns[i]->name)) == 0 )
-			btns.Free(i);
+		int next = btns.Next(i);
+		CTouchButton *btn = btns[i];
+		if( Q_strncmp( btn->name, name, sizeof(btn->name) ) == 0 )
+		{
+			delete btn;
+			btns.Remove(i);
+			return;
+		}
+		i = next;
 	}
 }
 
