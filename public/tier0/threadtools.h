@@ -235,6 +235,8 @@ inline void ThreadPause()
 	__db16cyc();
 #elif defined( COMPILER_GCC ) && (defined( __i386__ ) || defined( __x86_64__ ))
 	__asm __volatile( "pause" );
+#elif defined( COMPILER_GCC ) && defined(__aarch64__) || defined(__arm__)
+    __builtin_arm_yield();
 #elif defined( POSIX )
         sched_yield();
 #elif defined ( COMPILER_MSVC64 )
