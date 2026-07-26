@@ -1874,7 +1874,7 @@ inline int CeilPow2( int in )
 		retval <<= 1;
 	return retval;
 }
-int FloorPow2( int in )
+inline int FloorPow2( int in )
 {
 	int retval = 1;
 	while( retval < in )
