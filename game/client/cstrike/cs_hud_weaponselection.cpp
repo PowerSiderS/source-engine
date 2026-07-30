@@ -800,7 +800,15 @@ void CHudWeaponSelection::SelectWeaponSlot( int iSlot )
 	{
 		slotPos = pActiveWeapon->GetPosition() + 1;
 	}
-
+	else if ( hud_fastswitch.GetInt() == 2 && iSlot == 3 )
+	{
+		C_BaseCombatWeapon *pCurrentWeapon = pPlayer->GetActiveWeapon();
+		if ( pCurrentWeapon && pCurrentWeapon->GetSlot() == iSlot )
+		{
+			slotPos = pCurrentWeapon->GetPosition() + 1;
+		}
+	}
+	
 	// find the weapon in this slot
 	pActiveWeapon = GetNextActivePos( iSlot, slotPos );
 	if ( !pActiveWeapon )
@@ -831,6 +839,10 @@ void CHudWeaponSelection::SelectWeaponSlot( int iSlot )
 		if( hud_fastswitch.GetInt() > 0 && bMultipleWeaponsInSlot == false )
 		{
 			// only one active item in bucket, so change directly to weapon
+			SelectWeapon();
+		}
+		else if( hud_fastswitch.GetInt() == 2 && iSlot == 3)
+		{
 			SelectWeapon();
 		}
 		else if ( !IsInSelectionMode() )
