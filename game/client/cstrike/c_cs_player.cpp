@@ -76,7 +76,7 @@ extern ConVar	spec_freeze_distance_max;
 ConVar cl_left_hand_ik( "cl_left_hand_ik", "0", 0, "Attach player's left hand to rifle with IK." );
 
 ConVar cl_ragdoll_physics_enable( "cl_ragdoll_physics_enable", "1", 0, "Enable/disable ragdoll physics." );
-
+ConVar cl_ragdoll_gravity( "cl_ragdoll_gravity", "0", 0, "0 = normal gravity on ragdolls, 1 = zero gravity ragdolls." );
 ConVar cl_minmodels( "cl_minmodels", "0", 0, "Uses one player model for each team." );
 ConVar cl_min_ct( "cl_min_ct", "1", 0, "Controls which CT model is used when cl_minmodels is set.", true, 1, true, 4 );
 ConVar cl_min_t( "cl_min_t", "1", 0, "Controls which Terrorist model is used when cl_minmodels is set.", true, 1, true, 4 );
@@ -509,6 +509,19 @@ void C_CSRagdoll::CreateCSRagdoll()
 
 		InitAsClientRagdoll( boneDelta0, boneDelta1, currentBones, boneDt );
 		m_flRagdollSinkStart = -1;
+		
+		// If zero-gravity ragdolls are enabled, disable gravity on every bone.
+		if ( cl_ragdoll_gravity.GetInt() == 1 )
+		{
+			for ( int i = 0; i < m_pRagdoll->RagdollBoneCount(); i++ )
+			{
+				IPhysicsObject *pObject = m_pRagdoll->GetElement( i );
+				if ( pObject )
+				{
+					pObject->EnableGravity( false );
+				}
+			}
+		}
 	}
 	else
 	{
