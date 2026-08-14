@@ -80,6 +80,13 @@ ConVar cl_ragdoll_gravity( "cl_ragdoll_gravity", "0", 0, "0 = normal gravity on 
 ConVar cl_minmodels( "cl_minmodels", "0", 0, "Uses one player model for each team." );
 ConVar cl_min_ct( "cl_min_ct", "1", 0, "Controls which CT model is used when cl_minmodels is set.", true, 1, true, 4 );
 ConVar cl_min_t( "cl_min_t", "1", 0, "Controls which Terrorist model is used when cl_minmodels is set.", true, 1, true, 4 );
+
+// Loadout Gloves & Sleeves ConVars
+ConVar loadout_gloves_t("loadout_gloves_t", "", FCVAR_ARCHIVE, "Gloves model path for Terrorist team");
+ConVar loadout_gloves_ct("loadout_gloves_ct", "", FCVAR_ARCHIVE, "Gloves model path for CT team");
+ConVar loadout_sleeves_t("loadout_sleeves_t", "", FCVAR_ARCHIVE, "Sleeves model path for Terrorist team");
+ConVar loadout_sleeves_ct("loadout_sleeves_ct", "", FCVAR_ARCHIVE, "Sleeves model path for CT team");
+
 const float CycleLatchTolerance = 0.15;	// amount we can diverge from the server's cycle before we're corrected
 
 extern ConVar mp_playerid_delay;
@@ -833,6 +840,9 @@ C_CSPlayer::C_CSPlayer() :
 	view->SetScreenOverlayMaterial( NULL );
 
     m_bPlayingFreezeCamSound = false;
+    
+    // Loadout Gloves & Sleeves initialization
+    m_iLastTeamNumber = TEAM_UNASSIGNED;
 }
 
 
@@ -1228,6 +1238,37 @@ void C_CSPlayer::RemoveAddonModels()
 	UpdateAddonModels();
 }
 
+// Loadout Gloves & Sleeves System
+void C_CSPlayer::UpdateLoadoutGlovesAndSleeves()
+{
+	if ( !IsLocalPlayer() )
+		return;
+
+	int teamNum = GetTeamNumber();
+	if ( teamNum < TEAM_TERRORIST || teamNum > TEAM_CT )
+		return;
+
+	const char* pGlovePath = nullptr;
+	const char* pSleevePath = nullptr;
+
+	if ( teamNum == TEAM_TERRORIST )
+	{
+		pGlovePath = loadout_gloves_t.GetString();
+		pSleevePath = loadout_sleeves_t.GetString();
+	}
+	else if ( teamNum == TEAM_CT )
+	{
+		pGlovePath = loadout_gloves_ct.GetString();
+		pSleevePath = loadout_sleeves_ct.GetString();
+	}
+
+	// ملاحظة: سيتم تطبيق هذه النماذج على الـ ViewModel
+	// يمكن استدعاء هذه الدالة عند التبديل بين الفرق أو عند تغيير الـ ConVars
+	DevMsg( "[Loadout] Team %d - Gloves: %s, Sleeves: %s\n", teamNum, 
+		pGlovePath ? pGlovePath : "none", 
+		pSleevePath ? pSleevePath : "none" );
+}
+
 
 void C_CSPlayer::NotifyShouldTransmit( ShouldTransmitState_t state )
 {
@@ -1409,6 +1450,13 @@ void C_CSPlayer::PostDataUpdate( DataUpdateType_t updateType )
 	SetNetworkAngles( GetLocalAngles() );
 
 	BaseClass::PostDataUpdate( updateType );
+	
+	// تحديث القفازات والأكمام عند تغيير بيانات اللاعب (مثل الفريق)
+	if ( updateType == DATA_UPDATE_CREATED || GetTeamNumber() != m_iLastTeamNumber )
+	{
+		m_iLastTeamNumber = GetTeamNumber();
+		UpdateLoadoutGlovesAndSleeves();
+	}
 }
 
 //-----------------------------------------------------------------------------
