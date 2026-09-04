@@ -19,6 +19,7 @@
 #include "bitbuf.h"
 #include "checksum_md5.h"
 #include "touch.h"
+#include "in_gyro.h"
 #include "hltvcamera.h"
 #if defined( REPLAY_ENABLED )
 #include "replay/replaycamera.h"
@@ -1139,6 +1140,13 @@ void CInput::CreateMove ( int sequence_number, float input_sample_frametime, boo
 
 		// Allow mice and other controllers to add their inputs
 		ControllerMove( input_sample_frametime, cmd );
+		
+        // Allow mice and other controllers to add their inputs
+        ControllerMove( input_sample_frametime, cmd );
+                
+        // Apply Gyroscope Input
+        Gyro_ApplyMove( input_sample_frametime );
+                
 #ifdef SIXENSE
 		g_pSixenseInput->SixenseFrame( input_sample_frametime, cmd ); 
 
@@ -1674,6 +1682,19 @@ void CInput::Init_All (void)
 		
 	// Initialize third person camera controls.
 	Init_Camera();
+
+    // Initialize inputs
+    if ( IsPC() )
+    {
+    	Init_Mouse ();
+        Init_Keyboard();
+    }
+        
+   // Initialize gyroscope support
+   Gyro_Init();
+        
+   // Initialize third person camera controls.
+   Init_Camera();
 }
 
 /*

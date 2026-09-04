@@ -365,6 +365,7 @@ $Project
 		$File	"in_camera.cpp"
 		$File	"in_joystick.cpp"
 		$File	"in_main.cpp"
+		$File	"in_gyro.cpp"
 		$File	"initializer.cpp"
 		$File	"interpolatedvar.cpp"
 		$File	"IsNPCProxy.cpp"
