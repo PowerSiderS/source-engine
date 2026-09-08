@@ -62,6 +62,9 @@
 #include "xbox/xbox_win32stubs.h"
 #endif
 
+#include "sv_plugin.h"
+#include "custom_steamid.h"
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -578,15 +581,20 @@ IClient *CBaseServer::ConnectClient ( netadr_t &adr, int protocol, int challenge
 	}
 
 	// Set up client structure.
-	if ( authProtocol == PROTOCOL_HASHEDCDKEY )
+	Q_strncpy ( client->m_GUID, client->GetNetworkIDString(), SIGNED_GUID_LEN );
+	client->m_GUID[SIGNED_GUID_LEN] = '\0';
+
+	char authMsg[ 256 ];
+	V_snprintf( authMsg, sizeof(authMsg), "\"%s<%i><%s><>\" STEAM USERID validated\n", client->GetClientName(), client->GetUserID(), client->GetNetworkIDString() );
+	DevMsg( "%s", authMsg );
+
+	if ( g_pServerPluginHandler )
 	{
-		// use hased CD key as player GUID
-		Q_strncpy ( client->m_GUID, hashedCDkey, SIGNED_GUID_LEN );
-		client->m_GUID[SIGNED_GUID_LEN] = '\0';
+		g_pServerPluginHandler->NetworkIDValidated( client->GetClientName(), client->GetNetworkIDString() );
 	}
-	else if ( authProtocol == PROTOCOL_STEAM )
+	if ( serverGameClients )
 	{
-		// StartSteamValidation() above initialized the clients networkid
+		serverGameClients->NetworkIDValidated( client->GetClientName(), client->GetNetworkIDString() );
 	}
 
 	if ( netchan && !netchan->IsLoopback() )
@@ -1472,7 +1480,16 @@ bool CBaseServer::CheckChallengeType( CBaseClient * client, int nNewUserID, neta
 // 			return true;
 // 		}
 
-		client->SetSteamID( CSteamID() ); // set an invalid SteamID
+		CSteamID steamID;
+		if ( pchLogonCookie && pchLogonCookie[0] )
+		{
+			steamID = GenerateSteamIDFromUUID( pchLogonCookie );
+		}
+		else
+		{
+			steamID = GenerateSteamIDFromAddress( adr );
+		}
+		client->SetSteamID( steamID );
 
 		// Convert raw certificate back into data
 /*		if ( cbCookie <= 0 || cbCookie >= STEAM_KEYSIZE )
@@ -1515,11 +1532,16 @@ bool CBaseServer::CheckChallengeType( CBaseClient * client, int nNewUserID, neta
 	}
 	else
 	{
-		if ( !Steam3Server().NotifyLocalClientConnect( client ) ) // the userID isn't alloc'd yet so we need to fill it in manually
+		CSteamID steamID;
+		if ( pchLogonCookie && pchLogonCookie[0] )
 		{
-			RejectConnection( adr, clientChallenge, "#GameUI_ServerRejectGS" );
-			return false;
+			steamID = GenerateSteamIDFromUUID( pchLogonCookie );
 		}
+		else
+		{
+			steamID = GenerateSteamIDFromAddress( adr );
+		}
+		client->SetSteamID( steamID );
 	}
 
 	return true;

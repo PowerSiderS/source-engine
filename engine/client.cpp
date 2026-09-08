@@ -50,6 +50,7 @@
 
 #include "tier0/platform.h"
 #include "tier0/systeminformation.h"
+#include "custom_steamid.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -173,6 +174,9 @@ const char *CClientState::GetCDKeyHash( void )
 	}
 
 	return "12345678901234567890123456789012";
+
+        return GetDeviceUUID();
+
 }
 
 void CClientState::SendClientInfo( void )
@@ -189,6 +193,9 @@ void CClientState::SendClientInfo( void )
 	info.m_nFriendsID = Steam3Client().SteamUser() ? Steam3Client().SteamUser()->GetSteamID().GetAccountID() : 0;
 #else
 	info.m_nFriendsID = 0;
+        info.m_nFriendsID = Steam3Client().SteamUser() ? Steam3Client().SteamUser()->GetSteamID().GetAccountID() : GetLocalDeviceSteamID().GetAccountID();
+#else
+        info.m_nFriendsID = GetLocalDeviceSteamID().GetAccountID();
 #endif
 	Q_strncpy( info.m_FriendsName, m_FriendsName, sizeof(info.m_FriendsName) );
 

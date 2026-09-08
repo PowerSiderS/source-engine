@@ -76,6 +76,8 @@ extern IXboxSystem *g_pXboxSystem;
 #endif
 
 
+#include "custom_steamid.h"
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -409,6 +411,20 @@ void Host_Client_Printf(const char *fmt, ...)
 			return; \
 		} \
 	}
+
+CON_COMMAND( myid, "Display current client SteamID." )
+{
+	CSteamID id = GetLocalDeviceSteamID();
+	if ( id.IsValid() )
+	{
+		uint32 accId = id.GetAccountID();
+		ConMsg( "STEAM_0:%u:%u\n", accId % 2, accId / 2 );
+	}
+	else
+	{
+		ConMsg( "STEAM_ID_PENDING\n" );
+	}
+}
 
 //-----------------------------------------------------------------------------
 // Host_Status_f

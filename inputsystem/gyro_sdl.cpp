@@ -7,6 +7,10 @@
 #include "SDL.h"
 #include "SDL_sensor.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
+
 // NOTE: This has to be the last file included!
 #include "tier0/memdbgon.h"
 

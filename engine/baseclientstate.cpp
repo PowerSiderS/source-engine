@@ -531,16 +531,11 @@ void CBaseClientState::SendConnectPacket (int challengeNr, int authProtocol, uin
 
 	switch ( authProtocol )
 	{
-		// Fall through, bogus protocol type, use CD key hash.
-		case PROTOCOL_HASHEDCDKEY:	CDKey = GetCDKeyHash();
-									msg.WriteString( CDKey );		// cdkey
-									break;
-
-		case PROTOCOL_STEAM:		if ( !PrepareSteamConnectResponse( unGSSteamID, bGSSecure, adr, msg ) )
-									{
-										return;
-									}
-									break;
+		case PROTOCOL_HASHEDCDKEY:
+		case PROTOCOL_STEAM:
+			CDKey = GetCDKeyHash();
+			msg.WriteString( CDKey );
+			break;
 
 		default: 					Host_Error( "Unexepected authentication protocol %i!\n", authProtocol );
 									return;
