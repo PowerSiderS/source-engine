@@ -1640,7 +1640,15 @@ const char *GetUserIDString( const USERID_t& id )
 			}
 			else
 			{
-				V_sprintf_safe( idstr, "%s", id.steamid.Render() );
+				if ( id.steamid.GetEAccountType() == k_EAccountTypeIndividual )
+				{
+					uint32 accId = id.steamid.GetAccountID();
+					V_snprintf( idstr, sizeof(idstr), "STEAM_0:%u:%u", accId % 2, accId / 2 );
+				}
+				else
+				{
+					V_sprintf_safe( idstr, "%s", id.steamid.Render() );
+				}
 			}
 		}
 		break;		
