@@ -749,10 +749,25 @@ bool CSourceAppSystemGroup::Create()
 	}
 #endif // defined( _WIN32 ) && defined( STAGING_ONLY )
 
-	// Load up the appropriate shader DLL
-	// This has to be done before connection.
+#if defined( ANDROID )
+	char const* pDLLName = "shaderapigl" DLL_EXT_STRING;
+	if ( CommandLine()->FindParm( "-dx9" ) || CommandLine()->FindParm( "-togl" ) )
+	{
+		pDLLName = "shaderapidx9" DLL_EXT_STRING;
+	}
+#else
 	char const* pDLLName = "shaderapidx9" DLL_EXT_STRING;
-	if ( CommandLine()->FindParm( "-noshaderapi" ) )
+	if ( CommandLine()->FindParm( "-gl" ) || CommandLine()->FindParm( "-gles" ) )
+	{
+		pDLLName = "shaderapigl" DLL_EXT_STRING;
+	}
+#endif
+	const char *pCustomShader = CommandLine()->ParmValue( "-shaderapi" );
+	if ( pCustomShader )
+	{
+		pDLLName = pCustomShader;
+	}
+	else if ( CommandLine()->FindParm( "-noshaderapi" ) )
 	{
 		pDLLName = "shaderapiempty" DLL_EXT_STRING;
 	}

@@ -1939,6 +1939,12 @@ void CStudioRenderContext::EndFrame( void )
 void CStudioRenderContext::UpdateConfig( const StudioRenderConfig_t& config )
 {
 	memcpy( &m_RC.m_Config, &config, sizeof( StudioRenderConfig_t ) );
+	// Backends without bone matrix support must animate and light vertices on the CPU.
+	if ( g_pMaterialSystemHardwareConfig->MaxVertexShaderBlendMatrices() == 0 )
+	{
+		m_RC.m_Config.bSoftwareSkin = true;
+		m_RC.m_Config.bSoftwareLighting = true;
+	}
 }
 
 void CStudioRenderContext::GetCurrentConfig( StudioRenderConfig_t& config )
