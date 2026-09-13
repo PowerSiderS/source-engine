@@ -1773,7 +1773,11 @@ void CBasePanel::PerformLayout()
 #if defined( ANDROID )
         int consoleHeight = MAX( 32, tall / 16 );
         int consoleMargin = MAX( 8, consoleHeight / 4 );
-        m_pTouchConsoleButton->SetBounds( wide - consoleHeight * 3 - consoleMargin,
+        // Leave the left touch-navigation rail clear while keeping the button
+        // in the lower-left menu area.  The rail is roughly two button heights
+        // wide on the Android layout.
+        int consoleX = consoleHeight * 2 + consoleMargin;
+        m_pTouchConsoleButton->SetBounds( consoleX,
                 tall - consoleHeight - consoleMargin, consoleHeight * 3, consoleHeight );
 #endif
 
