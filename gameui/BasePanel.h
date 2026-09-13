@@ -12,6 +12,7 @@
 #endif
 
 #include "vgui_controls/Panel.h"
+#include "vgui_controls/Button.h"
 #include "vgui_controls/PHandle.h"
 #include "vgui_controls/MenuItem.h"
 #include "vgui_controls/MessageDialog.h"
@@ -358,6 +359,20 @@ private:
 	int m_iGameMenuInset;
 	
 	vgui::VPANEL	m_hMainMenuOverridePanel;
+
+        // menu logo
+        CMainMenuGameLogo *m_pGameLogo;
+        
+        // menu buttons
+        CUtlVector< CBackgroundMenuButton * >m_pGameMenuButtons;
+        CGameMenu *m_pGameMenu;
+#if defined( ANDROID )
+        vgui::Button *m_pTouchConsoleButton;
+#endif
+        bool m_bPlatformMenuInitialized;
+        int m_iGameMenuInset;
+        
+        vgui::VPANEL    m_hMainMenuOverridePanel;
 
 	struct coord {
 		int x;

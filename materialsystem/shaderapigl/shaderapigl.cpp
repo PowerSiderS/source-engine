@@ -2077,6 +2077,10 @@ static GLuint s_hGLProgram = 0;
 static GLint s_uMVP = -1;
 static GLint s_uColor = -1;
 static GLint s_uTexture = -1;
+static GLint s_uTexture2 = -1;
+static GLint s_uWorldTransition = -1;
+static GLint s_uMaterialAlpha = -1;
+static GLint s_uTransitionTransform = -1;
 static GLint s_uLightmap = -1;
 static GLint s_uUseTexture = -1;
 static GLint s_uFlipTextureV = -1;
@@ -2135,6 +2139,10 @@ static void EnsureGLProgram()
 		"varying vec2 v_texcoord;\n"
 		"varying vec2 v_lightcoord;\n"
 		"uniform sampler2D u_texture;\n"
+		"uniform sampler2D u_texture2;\n"
+		"uniform int u_world_transition;\n"
+		"uniform float u_material_alpha;\n"
+		"uniform vec4 u_transition_transform[2];\n"
 		"uniform sampler2D u_lightmap;\n"
 		"uniform int u_use_texture;\n"
 		"uniform int u_flip_texture_v;\n"
@@ -2145,13 +2153,21 @@ static void EnsureGLProgram()
 		"uniform vec3 u_shadow_color;\n"
 		"void main() {\n"
 		"    vec2 uv = vec2(v_texcoord.x, (u_flip_texture_v != 0) ? 1.0 - v_texcoord.y : v_texcoord.y);\n"
+		"    if (u_world_transition != 0) {\n"
+		"        vec4 tc = vec4(v_texcoord, 0.0, 1.0);\n"
+		"        uv = vec2(dot(tc, u_transition_transform[0]), dot(tc, u_transition_transform[1]));\n"
+		"    }\n"
 		"    vec4 texel = (u_use_texture != 0) ? texture2D(u_texture, uv) : vec4(1.0);\n"
 		"    if (u_shadow != 0) {\n"
 		"        float coverage = (u_use_texture != 0) ? clamp(texel.a - v_color.a, 0.0, 1.0) : 0.0;\n"
 		"        gl_FragColor = vec4(mix(vec3(1.0), u_shadow_color, coverage), 1.0);\n"
 		"        return;\n"
 		"    }\n"
+		"    if (u_world_transition != 0) {\n"
+		"        texel = mix(texel, texture2D(u_texture2, uv), clamp(v_color.a, 0.0, 1.0));\n"
+		"    }\n"
 		"    vec4 col = texel * v_color;\n"
+		"    if (u_world_transition != 0) col.a = texel.a * u_material_alpha;\n"
 		"    if (u_use_lightmap != 0) {\n"
 		"        vec4 light = texture2D(u_lightmap, v_lightcoord);\n"
 		"        col.rgb *= light.rgb * 2.0;\n"
@@ -2210,6 +2226,10 @@ static void EnsureGLProgram()
 	s_uMVP = glGetUniformLocation( s_hGLProgram, "u_mvp" );
 	s_uColor = glGetUniformLocation( s_hGLProgram, "u_color" );
 	s_uTexture = glGetUniformLocation( s_hGLProgram, "u_texture" );
+	s_uTexture2 = glGetUniformLocation( s_hGLProgram, "u_texture2" );
+	s_uWorldTransition = glGetUniformLocation( s_hGLProgram, "u_world_transition" );
+	s_uMaterialAlpha = glGetUniformLocation( s_hGLProgram, "u_material_alpha" );
+	s_uTransitionTransform = glGetUniformLocation( s_hGLProgram, "u_transition_transform[0]" );
 	s_uLightmap = glGetUniformLocation( s_hGLProgram, "u_lightmap" );
 	s_uUseTexture = glGetUniformLocation( s_hGLProgram, "u_use_texture" );
 	s_uFlipTextureV = glGetUniformLocation( s_hGLProgram, "u_flip_texture_v" );
@@ -2315,8 +2335,46 @@ static void DrawMeshInternal( CMeshGL *pVB, CMeshGL *pIB, MaterialPrimitiveType_
 	const char *pShaderName = pMat ? pMat->GetShaderName() : NULL;
 	bool bShadow = pShaderName && ( !Q_stricmp( pShaderName, "Shadow" ) ||
 		!Q_stricmp( pShaderName, "Shadow_DX8" ) || !Q_stricmp( pShaderName, "Shadow_DX6" ) );
+	bool bWorldTransition = !bIs2D && pShaderName &&
+		( !Q_stricmp( pShaderName, "WorldVertexTransition" ) ||
+		  !Q_stricmp( pShaderName, "WorldVertexTransition_DX8" ) ||
+		  !Q_stricmp( pShaderName, "WorldVertexTransition_DX6" ) );
+	bool bSecondTexture = false;
+	if ( bWorldTransition )
+	{
+		bool found = false;
+		IMaterialVar *pSecond = pMat->FindVar( "$basetexture2", &found, false );
+		if ( found && pSecond && pSecond->GetType() == MATERIAL_VAR_TYPE_TEXTURE )
+		{
+			ITexture *pTexture = pSecond->GetTextureValue();
+			if ( pTexture )
+			{
+				bool frameFound = false;
+				IMaterialVar *pFrame = pMat->FindVar( "$frame2", &frameFound, false );
+				static_cast<ITextureInternal*>( pTexture )->Bind( SHADER_SAMPLER2,
+					frameFound && pFrame ? pFrame->GetIntValue() : 0 );
+				bSecondTexture = true;
+			}
+		}
+		glActiveTexture( GL_TEXTURE0 );
+	}
+	glUniform1i( s_uTexture2, 2 );
+	glUniform1i( s_uWorldTransition, bSecondTexture ? 1 : 0 );
+	if ( bSecondTexture )
+	{
+		// Source WorldVertexTransition uses the base transform for both layers.
+		VMatrix transform;
+		transform.Identity();
+		bool found = false;
+		IMaterialVar *pTransform = pMat->FindVar( "$basetexturetransform", &found, false );
+		if ( found && pTransform && pTransform->GetType() == MATERIAL_VAR_TYPE_MATRIX )
+			transform = pTransform->GetMatrixValue();
+		glUniform4fv( s_uTransitionTransform, 2, transform.Base() );
+	}
 	float materialAlpha = GetGLMaterialAlpha( pMat, bIs2D, bShadow );
-	curColor.w *= materialAlpha;
+	// Displacement vertex alpha is the layer weight, not surface opacity.
+	if ( !bSecondTexture ) curColor.w *= materialAlpha;
+	glUniform1f( s_uMaterialAlpha, materialAlpha );
 	if ( s_uColor >= 0 )
 		glUniform4f( s_uColor, curColor.x, curColor.y, curColor.z, curColor.w );
 	glUniform1i( s_uShadow, bShadow ? 1 : 0 );

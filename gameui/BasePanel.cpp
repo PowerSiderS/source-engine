@@ -846,6 +846,17 @@ CBasePanel::CBasePanel() : Panel(NULL, "BaseGameUIPanel")
 	m_pGameLogo = NULL;
 	m_hMainMenuOverridePanel = NULL;
 
+        m_pGameMenu = NULL;
+#if defined( ANDROID )
+        // Keep the console reachable when a custom GameMenu resource uses icons.
+        m_pTouchConsoleButton = new vgui::Button( this, "TouchConsoleButton",
+                g_pVGuiLocalize->Find( "#GameUI_Console" ) ? "#GameUI_Console" : "Console",
+                this, "OpenConsole" );
+        m_pTouchConsoleButton->SetZPos( 100 );
+#endif
+        m_pGameLogo = NULL;
+        m_hMainMenuOverridePanel = NULL;
+
 	if ( SteamClient() )
 	{
 		HSteamPipe steamPipe = SteamClient()->CreateSteamPipe();
@@ -1758,6 +1769,17 @@ void CBasePanel::PerformLayout()
 	// Get the size of the menu
 	int menuWide, menuTall;
 	m_pGameMenu->GetSize( menuWide, menuTall );
+
+#if defined( ANDROID )
+        int consoleHeight = MAX( 32, tall / 16 );
+        int consoleMargin = MAX( 8, consoleHeight / 4 );
+        m_pTouchConsoleButton->SetBounds( wide - consoleHeight * 3 - consoleMargin,
+                tall - consoleHeight - consoleMargin, consoleHeight * 3, consoleHeight );
+#endif
+
+        // Get the size of the menu
+        int menuWide, menuTall;
+        m_pGameMenu->GetSize( menuWide, menuTall );
 
 	int idealMenuY = m_iGameMenuPos.y;
 	if ( idealMenuY + menuTall + m_iGameMenuInset > tall )
