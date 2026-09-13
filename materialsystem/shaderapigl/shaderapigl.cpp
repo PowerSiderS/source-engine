@@ -1338,37 +1338,14 @@ public:
 	}
 
 	// Methods related to stencil
-	void SetStencilEnable(bool onoff)
-	{
-	}
-
-	void SetStencilFailOperation(StencilOperation_t op)
-	{
-	}
-
-	void SetStencilZFailOperation(StencilOperation_t op)
-	{
-	}
-
-	void SetStencilPassOperation(StencilOperation_t op)
-	{
-	}
-
-	void SetStencilCompareFunction(StencilComparisonFunction_t cmpfn)
-	{
-	}
-
-	void SetStencilReferenceValue(int ref)
-	{
-	}
-
-	void SetStencilTestMask(uint32 msk)
-	{
-	}
-
-	void SetStencilWriteMask(uint32 msk)
-	{
-	}
+	void SetStencilEnable(bool onoff);
+	void SetStencilFailOperation(StencilOperation_t op);
+	void SetStencilZFailOperation(StencilOperation_t op);
+	void SetStencilPassOperation(StencilOperation_t op);
+	void SetStencilCompareFunction(StencilComparisonFunction_t cmpfn);
+	void SetStencilReferenceValue(int ref);
+	void SetStencilTestMask(uint32 msk);
+	void SetStencilWriteMask(uint32 msk);
 
 	void ClearStencilBufferRectangle( int xmin, int ymin, int xmax, int ymax,int value)
 	{
@@ -1537,6 +1514,15 @@ private:
 	VertexFormat_t m_BoundVertexFormat[4];
 	IIndexBuffer *m_pBoundIndexBuffer;
 	int m_nBoundIndexOffset;
+	StencilOperation_t m_StencilFailOperation;
+	StencilOperation_t m_StencilZFailOperation;
+	StencilOperation_t m_StencilPassOperation;
+	StencilComparisonFunction_t m_StencilCompareFunction;
+	int m_nStencilReferenceValue;
+	uint32 m_nStencilTestMask;
+
+	void ApplyStencilFunc();
+	void ApplyStencilOperations();
 
 	void EnableAlphaToCoverage() {} ;
 	void DisableAlphaToCoverage() {} ;
@@ -2902,6 +2888,12 @@ CShaderAPIGL::CShaderAPIGL()  : m_Mesh( true )
 	}
 	m_pBoundIndexBuffer = NULL;
 	m_nBoundIndexOffset = 0;
+	m_StencilFailOperation = STENCILOPERATION_KEEP;
+	m_StencilZFailOperation = STENCILOPERATION_KEEP;
+	m_StencilPassOperation = STENCILOPERATION_KEEP;
+	m_StencilCompareFunction = STENCILCOMPARISONFUNCTION_ALWAYS;
+	m_nStencilReferenceValue = 0;
+	m_nStencilTestMask = 0xFFFFFFFF;
 }
 
 CShaderAPIGL::~CShaderAPIGL()
@@ -3507,6 +3499,95 @@ void CShaderAPIGL::CullMode( MaterialCullMode_t cullMode )
 
 void CShaderAPIGL::ForceDepthFuncEquals( bool bEnable )
 {
+}
+
+static GLenum GLStencilOperation( StencilOperation_t op )
+{
+	switch ( op )
+	{
+	case STENCILOPERATION_ZERO: return GL_ZERO;
+	case STENCILOPERATION_REPLACE: return GL_REPLACE;
+	case STENCILOPERATION_INCRSAT: return GL_INCR;
+	case STENCILOPERATION_DECRSAT: return GL_DECR;
+	case STENCILOPERATION_INVERT: return GL_INVERT;
+	case STENCILOPERATION_INCR: return GL_INCR_WRAP;
+	case STENCILOPERATION_DECR: return GL_DECR_WRAP;
+	case STENCILOPERATION_KEEP:
+	default: return GL_KEEP;
+	}
+}
+
+static GLenum GLStencilCompareFunction( StencilComparisonFunction_t compare )
+{
+	switch ( compare )
+	{
+	case STENCILCOMPARISONFUNCTION_NEVER: return GL_NEVER;
+	case STENCILCOMPARISONFUNCTION_LESS: return GL_LESS;
+	case STENCILCOMPARISONFUNCTION_EQUAL: return GL_EQUAL;
+	case STENCILCOMPARISONFUNCTION_LESSEQUAL: return GL_LEQUAL;
+	case STENCILCOMPARISONFUNCTION_GREATER: return GL_GREATER;
+	case STENCILCOMPARISONFUNCTION_NOTEQUAL: return GL_NOTEQUAL;
+	case STENCILCOMPARISONFUNCTION_GREATEREQUAL: return GL_GEQUAL;
+	case STENCILCOMPARISONFUNCTION_ALWAYS:
+	default: return GL_ALWAYS;
+	}
+}
+
+void CShaderAPIGL::ApplyStencilFunc()
+{
+	glStencilFunc( GLStencilCompareFunction( m_StencilCompareFunction ), m_nStencilReferenceValue, m_nStencilTestMask );
+}
+
+void CShaderAPIGL::ApplyStencilOperations()
+{
+	glStencilOp( GLStencilOperation( m_StencilFailOperation ), GLStencilOperation( m_StencilZFailOperation ), GLStencilOperation( m_StencilPassOperation ) );
+}
+
+void CShaderAPIGL::SetStencilEnable( bool onoff )
+{
+	if ( onoff ) glEnable( GL_STENCIL_TEST );
+	else glDisable( GL_STENCIL_TEST );
+}
+
+void CShaderAPIGL::SetStencilFailOperation( StencilOperation_t op )
+{
+	m_StencilFailOperation = op;
+	ApplyStencilOperations();
+}
+
+void CShaderAPIGL::SetStencilZFailOperation( StencilOperation_t op )
+{
+	m_StencilZFailOperation = op;
+	ApplyStencilOperations();
+}
+
+void CShaderAPIGL::SetStencilPassOperation( StencilOperation_t op )
+{
+	m_StencilPassOperation = op;
+	ApplyStencilOperations();
+}
+
+void CShaderAPIGL::SetStencilCompareFunction( StencilComparisonFunction_t cmpfn )
+{
+	m_StencilCompareFunction = cmpfn;
+	ApplyStencilFunc();
+}
+
+void CShaderAPIGL::SetStencilReferenceValue( int ref )
+{
+	m_nStencilReferenceValue = ref;
+	ApplyStencilFunc();
+}
+
+void CShaderAPIGL::SetStencilTestMask( uint32 msk )
+{
+	m_nStencilTestMask = msk;
+	ApplyStencilFunc();
+}
+
+void CShaderAPIGL::SetStencilWriteMask( uint32 msk )
+{
+	glStencilMask( msk );
 }
 
 // Forces Z buffering on or off
@@ -4378,6 +4459,7 @@ void CShaderAPIGL::ClearBuffers( bool bClearColor, bool bClearDepth, bool bClear
 	}
 	if ( bClearStencil )
 	{
+		glClearStencil( 0 );
 		glStencilMask( 0xFF );
 		mask |= GL_STENCIL_BUFFER_BIT;
 	}
