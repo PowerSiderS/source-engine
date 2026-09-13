@@ -153,7 +153,11 @@ public:
 
 	virtual unsigned ComputeMemoryUsed() { return m_nVertexAllocSize + m_nIndexAllocSize; }
 
-	virtual void SetVertexFormat( VertexFormat_t format ) { m_VertexFormat = format; }
+	virtual void SetVertexFormat( VertexFormat_t format )
+	{
+		if ( m_VertexFormat != format ) m_bVBOValid = false;
+		m_VertexFormat = format;
+	}
 	virtual VertexFormat_t GetVertexFormat() const { return m_VertexFormat; }
 
 	virtual IMesh *GetMesh()
@@ -2086,16 +2090,19 @@ static GLint s_aPosition = -1;
 static GLint s_aColor = -1;
 static GLint s_aTexCoord = -1;
 static GLint s_aLightCoord = -1;
-static GLuint s_hVBO = 0;
-static GLuint s_hIBO = 0;
-
-static void EnsureBuffers()
+// Each mesh retains its own upload across material batches and other mesh draws.
+static GLuint UploadGLMeshBuffer( GLenum target, GLuint &buffer, bool &valid,
+	int bytes, const void *data, bool dynamic )
 {
-	if ( s_hVBO == 0 )
+	if ( bytes <= 0 || !data ) return 0;
+	if ( !valid || !buffer )
 	{
-		glGenBuffers( 1, &s_hVBO );
-		glGenBuffers( 1, &s_hIBO );
+		if ( !buffer ) glGenBuffers( 1, &buffer );
+		glBindBuffer( target, buffer );
+		glBufferData( target, bytes, data, dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW );
+		valid = true;
 	}
+	return buffer;
 }
 
 static void EnsureGLProgram()
@@ -2386,81 +2393,19 @@ static void DrawMeshInternal( CMeshGL *pVB, CMeshGL *pIB, MaterialPrimitiveType_
 		desc.m_ActualVertexSize = 32;
 	}
 
-	GLuint curVBO = 0;
+	int vertexBytes = pVB->m_nVertexCount * desc.m_ActualVertexSize;
+	if ( pVB->m_nVertexAllocSize > 0 && vertexBytes > pVB->m_nVertexAllocSize )
+		vertexBytes = pVB->m_nVertexAllocSize;
+	GLuint curVBO = UploadGLMeshBuffer( GL_ARRAY_BUFFER, pVB->m_hVBO, pVB->m_bVBOValid,
+		vertexBytes, pVB->m_pVertexMemory, pVB->m_bIsDynamic );
 	GLuint curIBO = 0;
-
-	if ( !pVB->m_bIsDynamic )
+	if ( pIB )
 	{
-		if ( !pVB->m_bVBOValid || pVB->m_hVBO == 0 )
-		{
-			if ( pVB->m_hVBO == 0 ) glGenBuffers( 1, &pVB->m_hVBO );
-			int nVertexBufferSize = pVB->m_nVertexCount * desc.m_ActualVertexSize;
-			if ( pVB->m_nVertexAllocSize > 0 && nVertexBufferSize > pVB->m_nVertexAllocSize )
-			{
-				nVertexBufferSize = pVB->m_nVertexAllocSize;
-			}
-			if ( nVertexBufferSize > 0 && pVB->m_pVertexMemory )
-			{
-				glBindBuffer( GL_ARRAY_BUFFER, pVB->m_hVBO );
-				glBufferData( GL_ARRAY_BUFFER, nVertexBufferSize, pVB->m_pVertexMemory, GL_STATIC_DRAW );
-			}
-			pVB->m_bVBOValid = true;
-		}
-		curVBO = pVB->m_hVBO;
-	}
-	else
-	{
-		EnsureBuffers();
-		curVBO = s_hVBO;
-
-		int nVertexBufferSize = pVB->m_nVertexCount * desc.m_ActualVertexSize;
-		if ( pVB->m_nVertexAllocSize > 0 && nVertexBufferSize > pVB->m_nVertexAllocSize )
-		{
-			nVertexBufferSize = pVB->m_nVertexAllocSize;
-		}
-		if ( nVertexBufferSize > 0 && pVB->m_pVertexMemory )
-		{
-			glBindBuffer( GL_ARRAY_BUFFER, s_hVBO );
-			glBufferData( GL_ARRAY_BUFFER, nVertexBufferSize, pVB->m_pVertexMemory, GL_DYNAMIC_DRAW );
-		}
-	}
-
-	if ( pIB && pIB->m_nIndexCount > 0 && pIB->m_pIndexMemory )
-	{
-		if ( !pIB->m_bIsDynamic )
-		{
-			if ( !pIB->m_bIBOValid || pIB->m_hIBO == 0 )
-			{
-				if ( pIB->m_hIBO == 0 ) glGenBuffers( 1, &pIB->m_hIBO );
-				int maxIndices = pIB->m_nIndexCount;
-				if ( pIB->m_nIndexAllocSize > 0 && maxIndices * (int)sizeof(unsigned short) > pIB->m_nIndexAllocSize )
-				{
-					maxIndices = pIB->m_nIndexAllocSize / sizeof(unsigned short);
-				}
-				if ( maxIndices > 0 )
-				{
-					glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, pIB->m_hIBO );
-					glBufferData( GL_ELEMENT_ARRAY_BUFFER, maxIndices * sizeof(unsigned short), pIB->m_pIndexMemory, GL_STATIC_DRAW );
-				}
-				pIB->m_bIBOValid = true;
-			}
-			curIBO = pIB->m_hIBO;
-		}
-		else
-		{
-			EnsureBuffers();
-			curIBO = s_hIBO;
-			int uploadCount = pIB->m_nIndexCount;
-			if ( pIB->m_nIndexAllocSize > 0 && uploadCount * (int)sizeof(unsigned short) > pIB->m_nIndexAllocSize )
-			{
-				uploadCount = pIB->m_nIndexAllocSize / sizeof(unsigned short);
-			}
-			if ( uploadCount > 0 )
-			{
-				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, s_hIBO );
-				glBufferData( GL_ELEMENT_ARRAY_BUFFER, uploadCount * sizeof(unsigned short), pIB->m_pIndexMemory, GL_DYNAMIC_DRAW );
-			}
-		}
+		int indexBytes = pIB->m_nIndexCount * (int)sizeof(unsigned short);
+		if ( pIB->m_nIndexAllocSize > 0 && indexBytes > pIB->m_nIndexAllocSize )
+			indexBytes = pIB->m_nIndexAllocSize;
+		curIBO = UploadGLMeshBuffer( GL_ELEMENT_ARRAY_BUFFER, pIB->m_hIBO, pIB->m_bIBOValid,
+			indexBytes, pIB->m_pIndexMemory, pIB->m_bIsDynamic );
 	}
 
 	if ( curVBO != 0 )
