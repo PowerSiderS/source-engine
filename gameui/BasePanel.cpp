@@ -208,6 +208,10 @@ public:
 	ImageButton(Panel *parent, const char *imageName) : Panel(parent)
 	{
 		m_szUrl = NULL;
+        ImageButton(Panel *parent, const char *imageName) : Panel(parent)
+        {
+                m_szUrl = NULL;
+                m_szCommand = NULL;
 
 		m_textureID = vgui::surface()->CreateNewTextureID();
 		vgui::surface()->DrawSetTextureFile( m_textureID, imageName, true, false);
@@ -244,6 +248,7 @@ public:
 #ifdef ANDROID
 		if( m_szUrl ) SDL_OpenURL( m_szUrl );
 #endif
+                if( m_szCommand ) GetParent()->OnCommand( m_szCommand );
 
 		input()->SetMouseCapture(NULL);
 	}
@@ -258,6 +263,17 @@ public:
 		int nw, nh;
 		surface()->GetScreenSize(nw, nh);
 		int scaled_w = scheme()->GetProportionalScaledValue(m_iOldW);
+
+        void SetCommand( const char *command )
+        {
+                m_szCommand = command;
+        }
+
+        virtual void OnScreenSizeChanged( int nOldWidth, int nOldHeight )
+        {
+                int nw, nh;
+                surface()->GetScreenSize(nw, nh);
+                int scaled_w = scheme()->GetProportionalScaledValue(m_iOldW);
 
 		Panel::SetPos(nw-scheme()->GetProportionalScaledValue(m_iOldX)-scaled_w, m_iOldY);
 		Panel::SetSize(scaled_w, scheme()->GetProportionalScaledValue(m_iOldH));
@@ -283,6 +299,12 @@ private:
 	bool m_bSelected;
 	int m_textureID;
 	const char *m_szUrl;
+
+        bool m_bSelected;
+        int m_textureID;
+        const char *m_szUrl;
+        const char *m_szCommand;
+
 };
 
 void AddUrlButton(vgui::Panel *parent, const char *imgName, const char *url )
@@ -848,10 +870,10 @@ CBasePanel::CBasePanel() : Panel(NULL, "BaseGameUIPanel")
 
         m_pGameMenu = NULL;
 #if defined( ANDROID )
-        // Keep the console reachable when a custom GameMenu resource uses icons.
-        m_pTouchConsoleButton = new vgui::Button( this, "TouchConsoleButton",
-                g_pVGuiLocalize->Find( "#GameUI_Console" ) ? "#GameUI_Console" : "Console",
-                this, "OpenConsole" );
+        // Reuse the same icon panel style as the Android touch navigation.
+        ImageButton *pTouchConsoleButton = new ImageButton( this, "vgui/touch/showconsole" );
+        pTouchConsoleButton->SetCommand( "OpenConsole" );
+        m_pTouchConsoleButton = pTouchConsoleButton;
         m_pTouchConsoleButton->SetZPos( 100 );
 #endif
         m_pGameLogo = NULL;
@@ -1771,14 +1793,11 @@ void CBasePanel::PerformLayout()
 	m_pGameMenu->GetSize( menuWide, menuTall );
 
 #if defined( ANDROID )
-        int consoleHeight = MAX( 32, tall / 16 );
-        int consoleMargin = MAX( 8, consoleHeight / 4 );
-        // Leave the left touch-navigation rail clear while keeping the button
-        // in the lower-left menu area.  The rail is roughly two button heights
-        // wide on the Android layout.
-        int consoleX = consoleHeight * 2 + consoleMargin;
-        m_pTouchConsoleButton->SetBounds( consoleX,
-                tall - consoleHeight - consoleMargin, consoleHeight * 3, consoleHeight );
+        int consoleSize = MAX( 48, tall / 16 );
+        int consoleMargin = MAX( 8, consoleSize / 4 );
+        // Keep the square icon below the left touch-navigation rail.
+        m_pTouchConsoleButton->SetBounds( consoleMargin,
+                tall - consoleSize - consoleMargin, consoleSize, consoleSize );
 #endif
 
         // Get the size of the menu
