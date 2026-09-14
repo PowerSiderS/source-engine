@@ -1132,6 +1132,18 @@ void CViewRender::Render( vrect_t *rect )
 
 	    static ConVarRef sv_restrict_aspect_ratio_fov( "sv_restrict_aspect_ratio_fov" );
 	    float aspectRatio = engine->GetScreenAspectRatio() * 0.75f;	 // / (4/3)
+		int androidWidth = 0, androidHeight = 0;
+#ifdef ANDROID
+		static ConVarRef renderWidth( "mat_android_render_width" );
+		static ConVarRef renderHeight( "mat_android_render_height" );
+		if ( eEye == STEREO_EYE_MONO && !engine->IsWindowedMode() && renderWidth.IsValid() && renderHeight.IsValid() )
+		{
+			androidWidth = renderWidth.GetInt();
+			androidHeight = renderHeight.GetInt();
+			if ( androidWidth > 0 && androidHeight > 0 )
+				aspectRatio = (float)androidWidth / androidHeight * 0.75f;
+		}
+#endif
 	    float limitedAspectRatio = aspectRatio;
 	    if ( ( sv_restrict_aspect_ratio_fov.GetInt() > 0 && engine->IsWindowedMode() && gpGlobals->maxClients > 1 ) ||
 		    sv_restrict_aspect_ratio_fov.GetInt() == 2 )
@@ -1174,6 +1186,15 @@ void CViewRender::Render( vrect_t *rect )
 #endif
 			    float engineAspectRatio = engine->GetScreenAspectRatio();
 			    view.m_flAspectRatio	= ( engineAspectRatio > 0.0f ) ? engineAspectRatio : ( (float)view.width / (float)view.height );
+				if ( androidWidth > 0 && androidHeight > 0 )
+				{
+					// Render only the scene at the requested aspect/resolution. The
+					// existing pre-HUD upscale pass restores the full display viewport.
+					float fit = MIN( 1.0f, MIN( (float)vr.width / androidWidth, (float)vr.height / androidHeight ) );
+					view.width = MAX( 1, (int)(androidWidth * fit * flViewportScale) );
+					view.height = MAX( 1, (int)(androidHeight * fit * flViewportScale) );
+					view.m_flAspectRatio = (float)androidWidth / androidHeight;
+				}
 			}
 			break;
 
@@ -1360,4 +1381,3 @@ CON_COMMAND( getpos, "dump position and angles to the console" )
 	Warning( "%s %f %f %f;", pCommand1, vecOrigin.x, vecOrigin.y, vecOrigin.z );
 	Warning( "%s %f %f %f\n", pCommand2, angles.x, angles.y, angles.z );
 }
-

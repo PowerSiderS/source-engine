@@ -2392,6 +2392,11 @@ void CVideoMode_MaterialSystem::Shutdown()
 //-----------------------------------------------------------------------------
 // Sets the video mode
 //-----------------------------------------------------------------------------
+#if defined( ANDROID ) && defined( USE_SDL )
+static ConVar mat_android_render_width( "mat_android_render_width", "0", FCVAR_ARCHIVE, "Android 3D render width; UI stays at display resolution." );
+static ConVar mat_android_render_height( "mat_android_render_height", "0", FCVAR_ARCHIVE, "Android 3D render height; UI stays at display resolution." );
+#endif
+
 bool CVideoMode_MaterialSystem::SetMode( int nWidth, int nHeight, bool bWindowed )
 {
     // Necessary for mode selection to work
@@ -2402,6 +2407,28 @@ bool CVideoMode_MaterialSystem::SetMode( int nWidth, int nHeight, bool bWindowed
     MaterialSystem_Config_t config = *g_pMaterialSystemConfig;
     config.m_VideoMode.m_Width = pMode->width;
     config.m_VideoMode.m_Height = pMode->height;
+#if defined( ANDROID ) && defined( USE_SDL )
+    if ( !bWindowed && g_pLauncherMgr )
+    {
+        uint displayWidth = 0, displayHeight = 0, refreshRate = 0;
+        g_pLauncherMgr->GetNativeDisplayInfo( -1, displayWidth, displayHeight, refreshRate );
+        if ( displayWidth && displayHeight )
+        {
+            if ( m_bSetModeOnce || mat_android_render_width.GetInt() <= 0 || mat_android_render_height.GetInt() <= 0 )
+            {
+                mat_android_render_width.SetValue( config.m_VideoMode.m_Width );
+                mat_android_render_height.SetValue( config.m_VideoMode.m_Height );
+            }
+            config.m_VideoMode.m_Width = displayWidth;
+            config.m_VideoMode.m_Height = displayHeight;
+        }
+    }
+    else
+    {
+        mat_android_render_width.SetValue( 0 );
+        mat_android_render_height.SetValue( 0 );
+    }
+#endif
 
 	// make sure VR mode is up to date
 	config.SetFlag( MATSYS_VIDCFG_FLAGS_VR_MODE, UseVR() || ShouldForceVRActive() );
@@ -2445,6 +2472,13 @@ bool CVideoMode_MaterialSystem::SetMode( int nWidth, int nHeight, bool bWindowed
 		
         if ( !materials->SetMode( (void*)game->GetMainDeviceWindow(), config ) )
             return false;
+
+#if defined( ANDROID ) && defined( USE_SDL )
+        // Startup chose a scene mode before SetMode separated display and scene.
+        // Publish the display size before the initial HUD/layout is created.
+        ResetCurrentModeForNewResolution( config.m_VideoMode.m_Width, config.m_VideoMode.m_Height, bWindowed );
+        AdjustWindow( GetModeWidth(), GetModeHeight(), GetModeBPP(), bWindowed );
+#endif
 
         m_bSetModeOnce = true;
 

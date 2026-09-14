@@ -2141,7 +2141,13 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 
 	}
 
-	if ( mat_viewportupscale.GetBool() && mat_viewportscale.GetFloat() < 1.0f ) 
+	bool upscaleScene = mat_viewportupscale.GetBool() && mat_viewportscale.GetFloat() < 1.0f;
+#ifdef ANDROID
+	// Android resolution changes affect the scene, never the HUD/touch layout.
+	upscaleScene = upscaleScene || (view.m_eStereoEye == STEREO_EYE_MONO &&
+		(view.width != view.m_nUnscaledWidth || view.height != view.m_nUnscaledHeight));
+#endif
+	if ( upscaleScene )
 	{
 		CMatRenderContextPtr pRenderContext( materials );
 
@@ -5052,6 +5058,21 @@ void CFreezeFrameView::Draw( void )
 		nTexWidth *= 2;
 		break;
 	}
+
+#ifdef ANDROID
+	if ( m_eStereoEye == STEREO_EYE_MONO )
+	{
+		// Capture writes only the scene rectangle into a display-sized texture.
+		// Sample that rectangle; the shared pre-HUD pass upscales it once.
+		ITexture *pCapture = GetFullscreenTexture();
+		nTexX0 = x;
+		nTexY0 = y;
+		nTexX1 = x + width;
+		nTexY1 = y + height;
+		nTexWidth = pCapture->GetActualWidth();
+		nTexHeight = pCapture->GetActualHeight();
+	}
+#endif
 
 	pRenderContext->DrawScreenSpaceRectangle( m_pFreezeFrame, x, y, width, height,
 		nTexX0, nTexY0, nTexX1-1, nTexY1-1, nTexWidth, nTexHeight );

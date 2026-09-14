@@ -338,6 +338,9 @@ public:
 
 	bool m_IsTranslucent;
 	bool m_IsAlphaTested;
+	ShaderAlphaFunc_t m_AlphaFunc;
+	float m_AlphaRef;
+	PolygonOffsetMode_t m_PolyOffset;
 	bool m_bIsDepthWriteEnabled;
 	bool m_bDepthTestEnabled;
 	ShaderBlendFactor_t m_SrcBlend, m_DstBlend;
@@ -351,6 +354,23 @@ public:
 //-----------------------------------------------------------------------------
 // The DX8 implementation of the shader device
 //-----------------------------------------------------------------------------
+static int s_RenderWidth = 0, s_RenderHeight = 0;
+static float s_DisplayGamma = 1.0f, s_DisplayScale = 1.0f, s_DisplayBias = 0.0f;
+static GLuint GetGLBackbuffer();
+static void PresentGLBackbuffer();
+static void SetGLMode( const ShaderDeviceInfo_t &info )
+{
+	s_RenderWidth = MAX( 0, info.m_DisplayMode.m_nWidth );
+	s_RenderHeight = MAX( 0, info.m_DisplayMode.m_nHeight );
+#if defined( USE_SDL )
+	if ( g_pLauncherMgr && s_RenderWidth && s_RenderHeight )
+	{
+		uint w = s_RenderWidth, h = s_RenderHeight;
+		g_pLauncherMgr->RenderedSize( w, h, true );
+	}
+#endif
+}
+
 class CShaderDeviceGL : public IShaderDevice
 {
 public:
@@ -366,6 +386,7 @@ public:
 	virtual bool IsAAEnabled() const { return false; }
 	virtual void Present( )
 	{
+		PresentGLBackbuffer();
 #if defined( USE_SDL )
 		SDL_Window *pWin = SDL_GL_GetCurrentWindow();
 		if ( pWin && SDL_GL_GetCurrentContext() )
@@ -431,7 +452,19 @@ public:
 	virtual void DestroyIndexBuffer( IIndexBuffer *pIndexBuffer );
 	virtual IVertexBuffer *GetDynamicVertexBuffer( int streamID, VertexFormat_t vertexFormat, bool bBuffered );
 	virtual IIndexBuffer *GetDynamicIndexBuffer( MaterialIndexFormat_t fmt, bool bBuffered );
-	virtual void SetHardwareGammaRamp( float fGamma, float fGammaTVRangeMin, float fGammaTVRangeMax, float fGammaTVExponent, bool bTVEnabled ) {}
+	virtual void SetHardwareGammaRamp( float fGamma, float fGammaTVRangeMin, float fGammaTVRangeMax, float fGammaTVExponent, bool bTVEnabled )
+	{
+		// Match the existing PC gamma ramp; Android has no window gamma ramp.
+		s_DisplayGamma = clamp( fGamma, 1.0f, 4.0f ) / 2.2f;
+		s_DisplayScale = 1.0f;
+		s_DisplayBias = 0.0f;
+		if ( bTVEnabled )
+		{
+			s_DisplayGamma *= 2.2f / MAX( fGammaTVExponent, 0.1f );
+			s_DisplayScale = ( fGammaTVRangeMax - fGammaTVRangeMin ) / 255.0f;
+			s_DisplayBias = fGammaTVRangeMin / 255.0f;
+		}
+	}
 	virtual void EnableNonInteractiveMode( MaterialNonInteractiveMode_t mode, ShaderNonInteractiveInfo_t *pInfo ) {}
 	virtual void RefreshFrontBufferNonInteractive( ) {}
 	virtual void HandleThreadEvent( uint32 threadEvent ) {}
@@ -688,11 +721,13 @@ public:
 	// Sets the mode...
 	bool SetMode( void* hwnd, int nAdapter, const ShaderDeviceInfo_t &info )
 	{
+		SetGLMode( info );
 		return true;
 	}
 
 	void ChangeVideoMode( const ShaderDeviceInfo_t &info )
 	{
+		SetGLMode( info );
 	}
 
 	// Called when the dx support level has changed
@@ -1499,6 +1534,9 @@ private:
 		bool m_bColorWrite;
 		bool m_bAlphaWrite;
 		bool m_bDepthTest;
+		ShaderAlphaFunc_t m_AlphaFunc;
+		float m_AlphaRef;
+		PolygonOffsetMode_t m_PolyOffset;
 		ShaderBlendFactor_t m_SrcBlend, m_DstBlend;
 		VertexFormat_t m_VertexUsage;
 	};
@@ -1639,6 +1677,7 @@ bool CShaderDeviceMgrGL::SetAdapter( int nAdapter, int nFlags )
 // FIXME: Is this a public interface? Might only need to be private to shaderapi
 CreateInterfaceFn CShaderDeviceMgrGL::SetMode( void *hWnd, int nAdapter, const ShaderDeviceInfo_t& mode )
 {
+	SetGLMode( mode );
 	return ShaderInterfaceFactory;
 }
 
@@ -1665,9 +1704,13 @@ void CShaderDeviceMgrGL::GetAdapterInfo( int adapter, MaterialAdapterInfo_t& inf
 }
 
 // Returns the number of modes
+static const int s_GLRenderModes[][2] = {
+	{ 800, 600 }, { 1024, 768 }, { 1280, 960 },
+	{ 960, 540 }, { 1280, 720 }, { 1920, 1080 }
+};
 int	 CShaderDeviceMgrGL::GetModeCount( int nAdapter ) const
 {
-	return 1;
+	return 1 + ARRAYSIZE( s_GLRenderModes );
 }
 
 // Returns mode information..
@@ -1676,7 +1719,12 @@ void CShaderDeviceMgrGL::GetModeInfo( ShaderDisplayMode_t *pInfo, int nAdapter, 
 	if ( pInfo )
 	{
 		int w = 1280, h = 720;
-		g_ShaderDeviceGL.GetBackBufferDimensions( w, h );
+		g_ShaderDeviceGL.GetWindowSize( w, h );
+		if ( nMode > 0 && nMode <= (int)ARRAYSIZE(s_GLRenderModes) )
+		{
+			w = s_GLRenderModes[nMode - 1][0];
+			h = s_GLRenderModes[nMode - 1][1];
+		}
 		pInfo->m_nWidth = w;
 		pInfo->m_nHeight = h;
 		pInfo->m_Format = IMAGE_FORMAT_RGB888;
@@ -1688,6 +1736,7 @@ void CShaderDeviceMgrGL::GetModeInfo( ShaderDisplayMode_t *pInfo, int nAdapter, 
 void CShaderDeviceMgrGL::GetCurrentModeInfo( ShaderDisplayMode_t* pInfo, int nAdapter ) const
 {
 	GetModeInfo( pInfo, nAdapter, 0 );
+	if ( pInfo ) g_ShaderDeviceGL.GetBackBufferDimensions( pInfo->m_nWidth, pInfo->m_nHeight );
 }
 
 
@@ -1698,11 +1747,25 @@ void CShaderDeviceMgrGL::GetCurrentModeInfo( ShaderDisplayMode_t* pInfo, int nAd
 //-----------------------------------------------------------------------------
 void CShaderDeviceGL::GetWindowSize( int &width, int &height ) const
 {
+#if defined( USE_SDL )
+	if ( g_pLauncherMgr )
+	{
+		uint w = 0, h = 0;
+		g_pLauncherMgr->DisplayedSize( w, h );
+		if ( w && h ) { width = w; height = h; return; }
+	}
+#endif
 	GetBackBufferDimensions( width, height );
 }
 
 void CShaderDeviceGL::GetBackBufferDimensions( int& width, int& height ) const
 {
+	if ( s_RenderWidth > 0 && s_RenderHeight > 0 )
+	{
+		width = s_RenderWidth;
+		height = s_RenderHeight;
+		return;
+	}
 #if defined( USE_SDL )
 	if ( g_pLauncherMgr )
 	{
@@ -2089,6 +2152,10 @@ static GLint s_uShadowColor = -1;
 static void GetGLTargetSize( int &width, int &height );
 static GLint s_uUseLightmap = -1;
 static GLint s_uAlphaTest = -1;
+static GLint s_uAlphaFunc = -1;
+static GLint s_uAlphaRef = -1;
+static GLint s_uBaseTransform = -1;
+static GLint s_uTransformBase = -1;
 static GLint s_uTranslucent = -1;
 static GLint s_aPosition = -1;
 static GLint s_aColor = -1;
@@ -2148,11 +2215,20 @@ static void EnsureGLProgram()
 		"uniform int u_flip_texture_v;\n"
 		"uniform int u_use_lightmap;\n"
 		"uniform int u_alphatest;\n"
+		"uniform int u_alpha_func;\n"
+		"uniform float u_alpha_ref;\n"
+		"uniform int u_transform_base;\n"
+		"uniform vec4 u_base_transform[2];\n"
 		"uniform int u_translucent;\n"
 		"uniform int u_shadow;\n"
 		"uniform vec3 u_shadow_color;\n"
 		"void main() {\n"
 		"    vec2 uv = vec2(v_texcoord.x, (u_flip_texture_v != 0) ? 1.0 - v_texcoord.y : v_texcoord.y);\n"
+		"    if (u_transform_base != 0) {\n"
+		"        vec4 tc = vec4(v_texcoord, 0.0, 1.0);\n"
+		"        uv = vec2(dot(tc, u_base_transform[0]), dot(tc, u_base_transform[1]));\n"
+		"        if (u_flip_texture_v != 0) uv.y = 1.0 - uv.y;\n"
+		"    }\n"
 		"    if (u_world_transition != 0) {\n"
 		"        vec4 tc = vec4(v_texcoord, 0.0, 1.0);\n"
 		"        uv = vec2(dot(tc, u_transition_transform[0]), dot(tc, u_transition_transform[1]));\n"
@@ -2173,7 +2249,14 @@ static void EnsureGLProgram()
 		"        col.rgb *= light.rgb * 2.0;\n"
 		"    }\n"
 		"    if (u_alphatest != 0) {\n"
-		"        if (col.a < 0.3) discard;\n"
+		"        bool pass = (u_alpha_func == 7) ||\n"
+		"            (u_alpha_func == 1 && col.a < u_alpha_ref) ||\n"
+		"            (u_alpha_func == 2 && col.a == u_alpha_ref) ||\n"
+		"            (u_alpha_func == 3 && col.a <= u_alpha_ref) ||\n"
+		"            (u_alpha_func == 4 && col.a > u_alpha_ref) ||\n"
+		"            (u_alpha_func == 5 && col.a != u_alpha_ref) ||\n"
+		"            (u_alpha_func == 6 && col.a >= u_alpha_ref);\n"
+		"        if (!pass) discard;\n"
 		"    } else if (u_translucent == 0) {\n"
 		"        col.a = 1.0;\n"
 		"    }\n"
@@ -2235,6 +2318,10 @@ static void EnsureGLProgram()
 	s_uFlipTextureV = glGetUniformLocation( s_hGLProgram, "u_flip_texture_v" );
 	s_uUseLightmap = glGetUniformLocation( s_hGLProgram, "u_use_lightmap" );
 	s_uAlphaTest = glGetUniformLocation( s_hGLProgram, "u_alphatest" );
+	s_uAlphaFunc = glGetUniformLocation( s_hGLProgram, "u_alpha_func" );
+	s_uAlphaRef = glGetUniformLocation( s_hGLProgram, "u_alpha_ref" );
+	s_uBaseTransform = glGetUniformLocation( s_hGLProgram, "u_base_transform[0]" );
+	s_uTransformBase = glGetUniformLocation( s_hGLProgram, "u_transform_base" );
 	s_uTranslucent = glGetUniformLocation( s_hGLProgram, "u_translucent" );
 	s_uShadow = glGetUniformLocation( s_hGLProgram, "u_shadow" );
 	s_uShadowColor = glGetUniformLocation( s_hGLProgram, "u_shadow_color" );
@@ -2263,7 +2350,10 @@ static bool BindGLMaterialTexture( IMaterial *pMaterial, bool *pFlipV = NULL )
 		if ( !found || !pVar || pVar->GetType() != MATERIAL_VAR_TYPE_TEXTURE ) continue;
 		ITexture *pTexture = pVar->GetTextureValue();
 		if ( !pTexture ) continue;
-		static_cast<ITextureInternal*>( pTexture )->Bind( SHADER_SAMPLER0 );
+		bool frameFound = false;
+		IMaterialVar *pFrame = pMaterial->FindVar( "$frame", &frameFound, false );
+		static_cast<ITextureInternal*>( pTexture )->Bind( SHADER_SAMPLER0,
+			frameFound && pFrame ? pFrame->GetIntValue() : 0 );
 		if ( pFlipV ) *pFlipV = pTexture->IsRenderTarget();
 		return true;
 	}
@@ -2372,6 +2462,20 @@ static void DrawMeshInternal( CMeshGL *pVB, CMeshGL *pIB, MaterialPrimitiveType_
 		glUniform4fv( s_uTransitionTransform, 2, transform.Base() );
 	}
 	float materialAlpha = GetGLMaterialAlpha( pMat, bIs2D, bShadow );
+	if ( pMat && !bIs2D && !bShadow )
+	{
+		float r, g, b;
+		pMat->GetColorModulation( &r, &g, &b );
+		curColor.x *= r;
+		curColor.y *= g;
+		curColor.z *= b;
+	}
+	bool transformFound = false;
+	IMaterialVar *pBaseTransform = pMat && !bShadow && !bSecondTexture
+		? pMat->FindVar( "$basetexturetransform", &transformFound, false ) : NULL;
+	bool transformBase = transformFound && pBaseTransform && pBaseTransform->GetType() == MATERIAL_VAR_TYPE_MATRIX;
+	glUniform1i( s_uTransformBase, transformBase ? 1 : 0 );
+	if ( transformBase ) glUniform4fv( s_uBaseTransform, 2, pBaseTransform->GetMatrixValue().Base() );
 	// Displacement vertex alpha is the layer weight, not surface opacity.
 	if ( !bSecondTexture ) curColor.w *= materialAlpha;
 	glUniform1f( s_uMaterialAlpha, materialAlpha );
@@ -2429,6 +2533,9 @@ static void DrawMeshInternal( CMeshGL *pVB, CMeshGL *pIB, MaterialPrimitiveType_
 	bool bTranslucent = pMat ? pMat->IsTranslucent() : false;
 	bool bAdditive = pMat ? pMat->GetMaterialVarFlag( MATERIAL_VAR_ADDITIVE ) : false;
 	bool bIgnoreZ = pMat ? pMat->GetMaterialVarFlag( MATERIAL_VAR_IGNOREZ ) : false;
+	glUniform1i( s_uAlphaFunc, SHADER_ALPHAFUNC_GEQUAL );
+	glUniform1f( s_uAlphaRef, 0.5f );
+	glDisable( GL_POLYGON_OFFSET_FILL );
 
 	if ( s_uAlphaTest >= 0 )
 	{
@@ -2651,6 +2758,9 @@ IMaterial* CMeshGL::GetMaterial()
 //-----------------------------------------------------------------------------
 CShaderShadowGL::CShaderShadowGL()
 {
+	m_AlphaFunc = SHADER_ALPHAFUNC_GEQUAL;
+	m_AlphaRef = 0.5f;
+	m_PolyOffset = SHADER_POLYOFFSET_DISABLE;
 	m_IsTranslucent = false;
 	m_IsAlphaTested = false;
 	m_bIsDepthWriteEnabled = true;
@@ -2670,6 +2780,9 @@ CShaderShadowGL::~CShaderShadowGL()
 // Sets the default *shadow* state
 void CShaderShadowGL::SetDefaultState()
 {
+	m_AlphaFunc = SHADER_ALPHAFUNC_GEQUAL;
+	m_AlphaRef = 0.5f;
+	m_PolyOffset = SHADER_POLYOFFSET_DISABLE;
 	m_IsTranslucent = false;
 	m_IsAlphaTested = false;
 	m_bIsDepthWriteEnabled = true;
@@ -2699,6 +2812,7 @@ void CShaderShadowGL::EnableDepthTest( bool bEnable )
 
 void CShaderShadowGL::EnablePolyOffset( PolygonOffsetMode_t nOffsetMode )
 {
+	m_PolyOffset = nOffsetMode;
 }
 
 // Suppresses/activates color writing
@@ -2751,6 +2865,8 @@ void CShaderShadowGL::EnableAlphaTest( bool bEnable )
 
 void CShaderShadowGL::AlphaFunc( ShaderAlphaFunc_t alphaFunc, float alphaRef /* [0-1] */ )
 {
+	m_AlphaFunc = alphaFunc;
+	m_AlphaRef = clamp( alphaRef, 0.0f, 1.0f );
 }
 
 
@@ -2964,6 +3080,17 @@ static void ApplyGLBlendState( bool enabled, ShaderBlendFactor_t src, ShaderBlen
 	else glDisable( GL_BLEND );
 }
 
+static void ApplyGLPolygonOffset( PolygonOffsetMode_t mode )
+{
+	if ( mode == SHADER_POLYOFFSET_DISABLE )
+		glDisable( GL_POLYGON_OFFSET_FILL );
+	else
+	{
+		glEnable( GL_POLYGON_OFFSET_FILL );
+		glPolygonOffset( -1.0f, -1.0f );
+	}
+}
+
 void CShaderAPIGL::ApplyMaterialWriteMasks( IMaterial *pMaterial, bool bAlphaModulation ) const
 {
 	if ( !pMaterial ) return;
@@ -2975,6 +3102,10 @@ void CShaderAPIGL::ApplyMaterialWriteMasks( IMaterial *pMaterial, bool bAlphaMod
 	int id = (int)pState->m_pSnapshots[modulation].m_Snapshot[0];
 	if ( id < 0 || id >= m_Snapshots.Count() ) return;
 	const SnapshotRecord_t &rec = m_Snapshots[id];
+	glUniform1i( s_uAlphaTest, (rec.m_Flags & ALPHATESTED) ? 1 : 0 );
+	glUniform1i( s_uAlphaFunc, rec.m_AlphaFunc );
+	glUniform1f( s_uAlphaRef, rec.m_AlphaRef );
+	ApplyGLPolygonOffset( rec.m_PolyOffset );
 	bool blend = ( rec.m_Flags & TRANSLUCENT ) != 0;
 	ApplyGLBlendState( blend, rec.m_SrcBlend, rec.m_DstBlend );
 	glUniform1i( s_uTranslucent, blend ? 1 : 0 );
@@ -3345,6 +3476,9 @@ void CShaderAPIGL::SetDefaultState()
 StateSnapshot_t	 CShaderAPIGL::TakeSnapshot( )
 {
 	SnapshotRecord_t rec;
+	rec.m_AlphaFunc = g_ShaderShadowGL.m_AlphaFunc;
+	rec.m_AlphaRef = g_ShaderShadowGL.m_AlphaRef;
+	rec.m_PolyOffset = g_ShaderShadowGL.m_PolyOffset;
 	rec.m_bDepthTest = g_ShaderShadowGL.m_bDepthTestEnabled;
 	rec.m_SrcBlend = g_ShaderShadowGL.m_SrcBlend;
 	rec.m_DstBlend = g_ShaderShadowGL.m_DstBlend;
@@ -4014,12 +4148,12 @@ void CShaderAPIGL::InvalidateDelayedShaderConstants( void )
 
 float CShaderAPIGL::GammaToLinear_HardwareSpecific( float fGamma ) const
 {
-	return 0.0f;
+	return SrgbGammaToLinear( fGamma );
 }
 
 float CShaderAPIGL::LinearToGamma_HardwareSpecific( float fLinear ) const
 {
-	return 0.0f;
+	return SrgbLinearToGamma( fLinear );
 }
 
 void CShaderAPIGL::SetLinearToGammaConversionTextures( ShaderAPITextureHandle_t hSRGBWriteEnabledTexture, ShaderAPITextureHandle_t hIdentityTexture )
@@ -4085,6 +4219,118 @@ static GLuint GetGLFramebuffer( GLTextureRecord_t *pTexture )
 	return pTexture->framebuffer;
 }
 
+// A logical backbuffer decouples rendering resolution from the Android surface.
+// Keep presentation correction here so it is applied once, never to lightmaps/RTs.
+static GLTextureRecord_t s_Backbuffer = {};
+
+static GLuint GetGLBackbuffer()
+{
+	int w, h;
+	g_ShaderDeviceGL.GetBackBufferDimensions( w, h );
+	if ( s_Backbuffer.texture && s_Backbuffer.width == w && s_Backbuffer.height == h )
+		return s_Backbuffer.framebuffer;
+	GLint texture, renderbuffer, read, draw;
+	glGetIntegerv( GL_TEXTURE_BINDING_2D, &texture );
+	glGetIntegerv( GL_RENDERBUFFER_BINDING, &renderbuffer );
+	glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &read );
+	glGetIntegerv( GL_DRAW_FRAMEBUFFER_BINDING, &draw );
+	GLuint old = s_Backbuffer.framebuffer;
+	if ( s_Backbuffer.texture )
+	{
+		glDeleteFramebuffers( 1, &s_Backbuffer.framebuffer );
+		glDeleteRenderbuffers( 1, &s_Backbuffer.depthbuffer );
+		glDeleteTextures( 1, &s_Backbuffer.texture );
+	}
+	memset( &s_Backbuffer, 0, sizeof(s_Backbuffer) );
+	s_Backbuffer.width = w;
+	s_Backbuffer.height = h;
+	glGenTextures( 1, &s_Backbuffer.texture );
+	glBindTexture( GL_TEXTURE_2D, s_Backbuffer.texture );
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+	GetGLFramebuffer( &s_Backbuffer );
+	glBindTexture( GL_TEXTURE_2D, texture );
+	glBindRenderbuffer( GL_RENDERBUFFER, renderbuffer );
+	glBindFramebuffer( GL_READ_FRAMEBUFFER, old && read == (GLint)old ? s_Backbuffer.framebuffer : read );
+	glBindFramebuffer( GL_DRAW_FRAMEBUFFER, old && draw == (GLint)old ? s_Backbuffer.framebuffer : draw );
+	return s_Backbuffer.framebuffer;
+}
+
+static void PresentGLBackbuffer()
+{
+	if ( !s_Backbuffer.texture ) return;
+	int w = s_Backbuffer.width, h = s_Backbuffer.height;
+#if defined( USE_SDL )
+	SDL_Window *window = SDL_GL_GetCurrentWindow();
+	if ( window ) SDL_GL_GetDrawableSize( window, &w, &h );
+#endif
+	if ( w <= 0 || h <= 0 ) return;
+	GLint read, draw;
+	glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &read );
+	glGetIntegerv( GL_DRAW_FRAMEBUFFER_BINDING, &draw );
+	GLboolean scissor = glIsEnabled( GL_SCISSOR_TEST );
+	glDisable( GL_SCISSOR_TEST );
+	glBindFramebuffer( GL_READ_FRAMEBUFFER, s_Backbuffer.framebuffer );
+	glBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 );
+	if ( fabsf(s_DisplayGamma - 1.0f) < 0.0001f && s_DisplayScale == 1.0f && s_DisplayBias == 0.0f )
+	{
+		glBlitFramebuffer( 0, 0, s_Backbuffer.width, s_Backbuffer.height,
+			0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	}
+	else
+	{
+		static GLuint program = 0, vao = 0, buffer = 0;
+		GLint previousProgram, previousVAO, previousBuffer, active, texture, viewport[4];
+		GLboolean mask[4];
+		glGetIntegerv( GL_CURRENT_PROGRAM, &previousProgram );
+		glGetIntegerv( GL_VERTEX_ARRAY_BINDING, &previousVAO );
+		glGetIntegerv( GL_ARRAY_BUFFER_BINDING, &previousBuffer );
+		glGetIntegerv( GL_ACTIVE_TEXTURE, &active );
+		glActiveTexture( GL_TEXTURE0 );
+		glGetIntegerv( GL_TEXTURE_BINDING_2D, &texture );
+		glGetIntegerv( GL_VIEWPORT, viewport );
+		glGetBooleanv( GL_COLOR_WRITEMASK, mask );
+		const GLenum caps[] = { GL_DEPTH_TEST, GL_STENCIL_TEST, GL_BLEND, GL_CULL_FACE };
+		GLboolean enabled[4];
+		for ( int i=0; i<4; ++i ) { enabled[i] = glIsEnabled(caps[i]); glDisable(caps[i]); }
+		if ( !program )
+		{
+			const char *vs = "attribute vec2 p; varying vec2 uv; void main(){uv=p*0.5+0.5;gl_Position=vec4(p,0.0,1.0);}";
+			const char *fs = "precision mediump float; varying vec2 uv; uniform sampler2D scene; uniform vec3 correction; void main(){vec4 c=texture2D(scene,uv);gl_FragColor=vec4(clamp(pow(max(c.rgb,vec3(0.0)),vec3(correction.x))*correction.y+correction.z,0.0,1.0),c.a);}";
+			GLuint v=glCreateShader(GL_VERTEX_SHADER), f=glCreateShader(GL_FRAGMENT_SHADER);
+			glShaderSource(v,1,&vs,NULL); glCompileShader(v);
+			glShaderSource(f,1,&fs,NULL); glCompileShader(f);
+			program=glCreateProgram(); glAttachShader(program,v); glAttachShader(program,f);
+			glBindAttribLocation(program,0,"p"); glLinkProgram(program);
+			GLint linked=0; glGetProgramiv(program,GL_LINK_STATUS,&linked);
+			if (!linked) Error("[GL] Presentation shader link failed\n");
+			glDeleteShader(v); glDeleteShader(f);
+			glGenVertexArrays(1,&vao); glBindVertexArray(vao);
+			glGenBuffers(1,&buffer); glBindBuffer(GL_ARRAY_BUFFER,buffer);
+			const float triangle[]={-1,-1,3,-1,-1,3};
+			glBufferData(GL_ARRAY_BUFFER,sizeof(triangle),triangle,GL_STATIC_DRAW);
+			glEnableVertexAttribArray(0); glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,0);
+		}
+		glBindVertexArray(vao); glUseProgram(program);
+		glBindTexture(GL_TEXTURE_2D,s_Backbuffer.texture);
+		glUniform1i(glGetUniformLocation(program,"scene"),0);
+		glUniform3f(glGetUniformLocation(program,"correction"),s_DisplayGamma,s_DisplayScale,s_DisplayBias);
+		glViewport(0,0,w,h); glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
+		glDrawArrays(GL_TRIANGLES,0,3);
+		glColorMask(mask[0],mask[1],mask[2],mask[3]);
+		glViewport(viewport[0],viewport[1],viewport[2],viewport[3]);
+		for (int i=0;i<4;++i) if(enabled[i]) glEnable(caps[i]);
+		glBindTexture(GL_TEXTURE_2D,texture); glActiveTexture(active);
+		glUseProgram(previousProgram); glBindVertexArray(previousVAO); glBindBuffer(GL_ARRAY_BUFFER,previousBuffer);
+	}
+	if ( scissor ) glEnable( GL_SCISSOR_TEST );
+	glBindFramebuffer( GL_READ_FRAMEBUFFER, read );
+	glBindFramebuffer( GL_DRAW_FRAMEBUFFER, draw );
+}
+
 void CShaderAPIGL::SetRenderTarget( ShaderAPITextureHandle_t color, ShaderAPITextureHandle_t depth )
 {
 	SetRenderTargetEx( 0, color, depth );
@@ -4095,7 +4341,7 @@ void CShaderAPIGL::SetRenderTargetEx( int id, ShaderAPITextureHandle_t color, Sh
 	if ( id != 0 ) return;
 	if ( color == (ShaderAPITextureHandle_t)SHADER_RENDERTARGET_BACKBUFFER )
 	{
-		glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+		glBindFramebuffer( GL_FRAMEBUFFER, GetGLBackbuffer() );
 		return;
 	}
 	GLTextureRecord_t *pTexture = FindGLTexture( (GLuint)color );
@@ -4603,6 +4849,7 @@ CMeshBuilder* CShaderAPIGL::GetVertexModifyBuilder()
 // Use this to begin and end the frame
 void CShaderAPIGL::BeginFrame()
 {
+	glBindFramebuffer( GL_FRAMEBUFFER, GetGLBackbuffer() );
 }
 
 void CShaderAPIGL::EndFrame()

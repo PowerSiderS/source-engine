@@ -151,6 +151,11 @@ public:
 	virtual void PaintBackground( void );
 	void SetRightAlignedText( bool state );
 
+        virtual void ApplySchemeSettings( vgui::IScheme *pScheme );
+        virtual void PaintBackground( void );
+        virtual void Paint( void );
+        void SetRightAlignedText( bool state );
+
 private:
 	bool		m_bRightAligned;
 };
@@ -365,9 +370,6 @@ private:
         // menu buttons
         CUtlVector< CBackgroundMenuButton * >m_pGameMenuButtons;
         CGameMenu *m_pGameMenu;
-#if defined( ANDROID )
-        vgui::Panel *m_pTouchConsoleButton;
-#endif
         bool m_bPlatformMenuInitialized;
         int m_iGameMenuInset;
         

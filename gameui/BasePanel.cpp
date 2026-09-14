@@ -202,6 +202,29 @@ void CGameMenuItem::SetRightAlignedText(bool state)
 	m_bRightAligned = state;
 }
 
+void CGameMenuItem::Paint()
+{
+#if defined( ANDROID )
+        if ( !Q_stricmp( GetName(), "NativeConsole" ) )
+        {
+                // Match the existing menu's glyph size, colors and row layout.
+                int size = MIN( surface()->GetFontTall( GetFont() ), GetTall() );
+                size = MIN( size, GetWide() );
+                int x, insetY;
+                GetTextInset( x, insetY );
+                int y = ( GetTall() - size ) / 2;
+                surface()->DrawSetColor( GetButtonFgColor() );
+                surface()->DrawOutlinedRect( x, y, x + size, y + size );
+                surface()->DrawLine( x + size / 4, y + size / 3, x + size / 2, y + size / 2 );
+                surface()->DrawLine( x + size / 2, y + size / 2, x + size / 4, y + size * 2 / 3 );
+                surface()->DrawFilledRect( x + size / 2, y + size * 3 / 4,
+                        x + size * 3 / 4, y + size * 3 / 4 + MAX( 1, size / 12 ) );
+                return;
+        }
+#endif
+        BaseClass::Paint();
+}
+
 class ImageButton : public vgui::Panel
 {
 public:
@@ -211,7 +234,6 @@ public:
         ImageButton(Panel *parent, const char *imageName) : Panel(parent)
         {
                 m_szUrl = NULL;
-                m_szCommand = NULL;
 
 		m_textureID = vgui::surface()->CreateNewTextureID();
 		vgui::surface()->DrawSetTextureFile( m_textureID, imageName, true, false);
@@ -248,7 +270,6 @@ public:
 #ifdef ANDROID
 		if( m_szUrl ) SDL_OpenURL( m_szUrl );
 #endif
-                if( m_szCommand ) GetParent()->OnCommand( m_szCommand );
 
 		input()->SetMouseCapture(NULL);
 	}
@@ -263,11 +284,6 @@ public:
 		int nw, nh;
 		surface()->GetScreenSize(nw, nh);
 		int scaled_w = scheme()->GetProportionalScaledValue(m_iOldW);
-
-        void SetCommand( const char *command )
-        {
-                m_szCommand = command;
-        }
 
         virtual void OnScreenSizeChanged( int nOldWidth, int nOldHeight )
         {
@@ -303,6 +319,7 @@ private:
         bool m_bSelected;
         int m_textureID;
         const char *m_szUrl;
+
         const char *m_szCommand;
 
 };
@@ -869,13 +886,6 @@ CBasePanel::CBasePanel() : Panel(NULL, "BaseGameUIPanel")
 	m_hMainMenuOverridePanel = NULL;
 
         m_pGameMenu = NULL;
-#if defined( ANDROID )
-        // Reuse the same icon panel style as the Android touch navigation.
-        ImageButton *pTouchConsoleButton = new ImageButton( this, "vgui/touch/showconsole" );
-        pTouchConsoleButton->SetCommand( "OpenConsole" );
-        m_pTouchConsoleButton = pTouchConsoleButton;
-        m_pTouchConsoleButton->SetZPos( 100 );
-#endif
         m_pGameLogo = NULL;
         m_hMainMenuOverridePanel = NULL;
 
@@ -1640,6 +1650,15 @@ CGameMenu *CBasePanel::RecursiveLoadGameMenu(KeyValues *datafile)
 	else
 		menu->AddMenuItem("Console", "CONSOLE", "OpenConsole", this);
 
+#if !defined( ANDROID )
+        wchar_t *pString = g_pVGuiLocalize->Find( "#GameUI_Console" );
+
+        if( pString )
+                menu->AddMenuItem("Console", V_wcsupr(pString), "OpenConsole", this);
+        else
+                menu->AddMenuItem("Console", "CONSOLE", "OpenConsole", this);
+#endif
+
 	bool bFoundServerBrowser = false;
 
 	for (KeyValues *dat = datafile->GetFirstSubKey(); dat != NULL; dat = dat->GetNextKey())
@@ -1670,6 +1689,18 @@ CGameMenu *CBasePanel::RecursiveLoadGameMenu(KeyValues *datafile)
 	}
 
 	return menu;
+
+#if defined( ANDROID )
+                if ( cmd && !Q_stricmp( cmd, "OpenConsole" ) )
+                        continue; // Append exactly one native console icon below.
+#endif
+                menu->AddMenuItem(name, label, cmd, this, dat);
+        }
+
+#if defined( ANDROID )
+        menu->AddMenuItem( "NativeConsole", " ", "OpenConsole", this );
+#endif
+        return menu;
 }
 
 //-----------------------------------------------------------------------------
@@ -1791,14 +1822,6 @@ void CBasePanel::PerformLayout()
 	// Get the size of the menu
 	int menuWide, menuTall;
 	m_pGameMenu->GetSize( menuWide, menuTall );
-
-#if defined( ANDROID )
-        int consoleSize = MAX( 48, tall / 16 );
-        int consoleMargin = MAX( 8, consoleSize / 4 );
-        // Keep the square icon below the left touch-navigation rail.
-        m_pTouchConsoleButton->SetBounds( consoleMargin,
-                tall - consoleSize - consoleMargin, consoleSize, consoleSize );
-#endif
 
         // Get the size of the menu
         int menuWide, menuTall;
