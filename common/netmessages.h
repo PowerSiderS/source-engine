@@ -90,6 +90,8 @@ protected:
 	INetChannel			*m_NetChannel;	// netchannel this message is from/for
 };
 
+extern int GetActiveClientProtocol();
+
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // bidirectional net messages:
@@ -196,13 +198,13 @@ class CLC_ClientInfo : public CNetMessage
 {
 	DECLARE_CLC_MESSAGE( ClientInfo );
 
+	CLC_ClientInfo() { m_bIsReplay = false; }
+
 public:
 	CRC32_t			m_nSendTableCRC;
 	int				m_nServerCount;
 	bool			m_bIsHLTV;
-#if defined( REPLAY_ENABLED )
 	bool			m_bIsReplay;
-#endif
 	uint32			m_nFriendsID;
 	char			m_FriendsName[MAX_PLAYER_NAME_LENGTH];
 	CRC32_t			m_nCustomFiles[MAX_CUSTOM_FILES];
@@ -381,6 +383,8 @@ class SVC_ServerInfo : public CNetMessage
 {
 	DECLARE_SVC_MESSAGE( ServerInfo );
 
+	SVC_ServerInfo() { m_bIsReplay = false; }
+
 	int	GetGroup() const { return INetChannelInfo::SIGNON; }
 
 public:	// member vars are public for faster handling
@@ -388,9 +392,7 @@ public:	// member vars are public for faster handling
 	int			m_nServerCount;	// number of changelevels since server start
 	bool		m_bIsDedicated;  // dedicated server ?	
 	bool		m_bIsHLTV;		// HLTV server ?
-#if defined( REPLAY_ENABLED )
 	bool		m_bIsReplay;	// Replay server ?
-#endif
 	char		m_cOS;			// L = linux, W = Win32
 	CRC32_t		m_nMapCRC;		// server map CRC (only used by older demos)
 	MD5Value_t	m_nMapMD5;		// server map MD5

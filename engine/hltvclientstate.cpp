@@ -48,6 +48,8 @@ static void HLTV_Callback_InstanceBaseline( void *object, INetworkStringTable *s
 extern CUtlLinkedList< CRecvDecoder *, unsigned short > g_RecvDecoders;
 
 extern	ConVar tv_autorecord;
+extern	ConVar cl_sendtable_crc_override;
+extern	int GetActiveClientProtocol();
 static	ConVar tv_autoretry( "tv_autoretry", "1", 0, "Relay proxies retry connection after network timeout" );
 static	ConVar tv_timeout( "tv_timeout", "30", 0, "SourceTV connection timeout in seconds." );
 		ConVar tv_snapshotrate("tv_snapshotrate", "16", 0, "Snapshots broadcasted per second" );
@@ -263,13 +265,23 @@ bool CHLTVClientState::SetSignonState ( int state, int count )
 void CHLTVClientState::SendClientInfo( void )
 {
 	CLC_ClientInfo info;
+	info.SetNetChannel( m_NetChannel );
 	
-	info.m_nSendTableCRC = SendTable_GetCRC();
+	int nProto = m_NetChannel ? m_NetChannel->GetProtocolVersion() : GetActiveClientProtocol();
+	CRC32_t nSendTableCRC = SendTable_GetCRC();
+	if ( cl_sendtable_crc_override.GetInt() != 0 )
+	{
+		nSendTableCRC = (CRC32_t)cl_sendtable_crc_override.GetInt();
+	}
+	else if ( nProto == 24 )
+	{
+		nSendTableCRC = (CRC32_t)108050409;
+	}
+
+	info.m_nSendTableCRC = nSendTableCRC;
 	info.m_nServerCount = m_nServerCount;
 	info.m_bIsHLTV = true;
-#if defined( REPLAY_ENABLED )
 	info.m_bIsReplay = false;
-#endif
 	info.m_nFriendsID = 0;
 	info.m_FriendsName[0] = 0;
 
@@ -404,7 +416,15 @@ bool CHLTVClientState::ProcessClassInfo( SVC_ClassInfo *msg )
 	DataTable_CreateClientTablesFromServerTables();
 
 	// Now create all of the server classes locally, too
-	DataTable_CreateClientClassInfosFromServerClasses( this );
+	int nProto = m_NetChannel ? m_NetChannel->GetProtocolVersion() : GetActiveClientProtocol();
+	if ( nProto == 24 || msg->m_nNumServerClasses == 197 || m_nServerClasses == 197 )
+	{
+		DataTable_CreateClientClassInfosForPCProtocol24( this );
+	}
+	else
+	{
+		DataTable_CreateClientClassInfosFromServerClasses( this );
+	}
 
 	LinkClasses();	// link server and client classes
 

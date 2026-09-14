@@ -124,8 +124,16 @@ bool CLC_ClientInfo::WriteToBuffer( bf_write &buffer )
 		}
 	}
 		
+	int nProtocol = ( m_NetChannel != NULL ) ? m_NetChannel->GetProtocolVersion() : GetActiveClientProtocol();
+	if ( nProtocol == 24 )
+	{
+		buffer.WriteOneBit( m_bIsReplay ? 1 : 0 );
+	}
 #if defined( REPLAY_ENABLED )
-	buffer.WriteOneBit( m_bIsReplay?1:0 );
+	else
+	{
+		buffer.WriteOneBit( m_bIsReplay ? 1 : 0 );
+	}
 #endif
 
 	return !buffer.IsOverflowed();
@@ -153,9 +161,21 @@ bool CLC_ClientInfo::ReadFromBuffer( bf_read &buffer )
 		}
 	}
 
+	int nProtocol = ( m_NetChannel != NULL ) ? m_NetChannel->GetProtocolVersion() : GetActiveClientProtocol();
+	if ( nProtocol == 24 )
+	{
+		m_bIsReplay = buffer.ReadOneBit() != 0;
+	}
 #if defined( REPLAY_ENABLED )
-	m_bIsReplay = buffer.ReadOneBit()!=0;
+	else
+	{
+		m_bIsReplay = buffer.ReadOneBit() != 0;
+	}
 #endif
+	else
+	{
+		m_bIsReplay = false;
+	}
 
 	return !buffer.IsOverflowed();
 }
@@ -723,8 +743,15 @@ bool SVC_ServerInfo::WriteToBuffer( bf_write &buffer )
 	buffer.WriteString( m_szSkyName );
 	buffer.WriteString( m_szHostName );
 
+	if ( m_nProtocol == 24 )
+	{
+		buffer.WriteOneBit( m_bIsReplay ? 1 : 0 );
+	}
 #if defined( REPLAY_ENABLED )
-	buffer.WriteOneBit( m_bIsReplay?1:0);
+	else
+	{
+		buffer.WriteOneBit( m_bIsReplay ? 1 : 0 );
+	}
 #endif
 
 	return !buffer.IsOverflowed();
@@ -765,17 +792,20 @@ bool SVC_ServerInfo::ReadFromBuffer( bf_read &buffer )
 	buffer.ReadString( m_szSkyNameBuffer, sizeof(m_szSkyNameBuffer) );
 	buffer.ReadString( m_szHostNameBuffer, sizeof(m_szHostNameBuffer) );
 
+	if ( m_nProtocol == 24 || ( m_NetChannel && m_NetChannel->GetProtocolVersion() == 24 ) || ( GetActiveClientProtocol() == 24 ) )
+	{
+		m_bIsReplay = buffer.ReadOneBit() != 0;
+	}
 #if defined( REPLAY_ENABLED )
-	// Only attempt to read the 'replay' bit if the net channel's protocol
-	// version is greater or equal than the protocol version for replay's release.
-	// INetChannel::GetProtocolVersion() will return PROTOCOL_VERSION for
-	// a regular net channel, or the network protocol version from the demo
-	// file, if we're playing back a demo.
-	if ( m_NetChannel->GetProtocolVersion() >= PROTOCOL_VERSION_REPLAY )
+	else if ( m_NetChannel && m_NetChannel->GetProtocolVersion() >= PROTOCOL_VERSION_REPLAY )
 	{
 		m_bIsReplay = buffer.ReadOneBit() != 0;
 	}
 #endif
+	else
+	{
+		m_bIsReplay = false;
+	}
 
 	return !buffer.IsOverflowed();
 }

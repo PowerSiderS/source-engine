@@ -33,6 +33,25 @@ IMPLEMENT_CLIENTCLASS_DT(C_CS_PlayerResource, DT_CSPlayerResource, CCSPlayerReso
 	RecvPropArray3( RECVINFO_ARRAY(m_iMVPs), RecvPropInt( RECVINFO(m_iMVPs[0]))),
 	RecvPropArray3( RECVINFO_ARRAY(m_bHasDefuser), RecvPropInt( RECVINFO(m_bHasDefuser[0]))),
 	RecvPropArray3( RECVINFO_ARRAY(m_szClan), RecvPropString( RECVINFO(m_szClan[0]))),
+        RecvPropInt( RECVINFO( m_iPlayerC4 ) ),
+        RecvPropInt( RECVINFO( m_iPlayerVIP ) ),
+        RecvPropVector( RECVINFO(m_vecC4) ),
+        RecvPropArray3( RECVINFO_ARRAY(m_bHostageAlive), RecvPropInt( RECVINFO(m_bHostageAlive[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_isHostageFollowingSomeone), RecvPropInt( RECVINFO(m_isHostageFollowingSomeone[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_iHostageEntityIDs), RecvPropInt( RECVINFO(m_iHostageEntityIDs[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_iHostageX), RecvPropInt( RECVINFO(m_iHostageX[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_iHostageY), RecvPropInt( RECVINFO(m_iHostageY[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_iHostageZ), RecvPropInt( RECVINFO(m_iHostageZ[0]))),
+        RecvPropVector( RECVINFO(m_bombsiteCenterA) ),
+        RecvPropVector( RECVINFO(m_bombsiteCenterB) ),
+        RecvPropArray3( RECVINFO_ARRAY(m_hostageRescueX), RecvPropInt( RECVINFO(m_hostageRescueX[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_hostageRescueY), RecvPropInt( RECVINFO(m_hostageRescueY[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_hostageRescueZ), RecvPropInt( RECVINFO(m_hostageRescueZ[0]))),
+        RecvPropInt( RECVINFO( m_bBombSpotted ) ),
+        RecvPropArray3( RECVINFO_ARRAY(m_bPlayerSpotted), RecvPropInt( RECVINFO(m_bPlayerSpotted[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_iMVPs), RecvPropInt( RECVINFO(m_iMVPs[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_bHasDefuser), RecvPropInt( RECVINFO(m_bHasDefuser[0]))),
+        RecvPropArray3( RECVINFO_ARRAY(m_szClan), RecvPropString( RECVINFO(m_szClan[0])))
 END_RECV_TABLE()
  
 //=============================================================================

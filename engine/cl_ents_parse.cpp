@@ -343,6 +343,9 @@ void CL_CopyNewEntity(
 	}
 
 	int start_bit = u.m_pBuf->GetNumBitsRead();
+	const char *pNetName = ( iClass >= 0 && iClass < cl.m_nServerClasses && cl.m_pServerClasses[iClass].m_pClientClass ) ? cl.m_pServerClasses[iClass].m_pClientClass->m_pNetworkName : "unknown";
+	Msg( "[ENT] EnterPVS: ent=%d, classID=%d (%s), serial=%d, bitsBefore=%d\n",
+		u.m_nNewEntity, iClass, pNetName, iSerialNum, start_bit );
 
 	DataUpdateType_t updateType = bNew ? DATA_UPDATE_CREATED : DATA_UPDATE_DATATABLE_CHANGED;
 	ent->PreDataUpdate( updateType );
@@ -403,6 +406,8 @@ void CL_CopyNewEntity(
 	}
 
 	CL_AddPostDataUpdateCall( u, u.m_nNewEntity, updateType );
+	Msg( "[ENT] EnterPVS done: ent=%d, bitsRead=%d, totalBitsRead=%d\n",
+		u.m_nNewEntity, u.m_pBuf->GetNumBitsRead() - start_bit, u.m_pBuf->GetNumBitsRead() );
 
 	// If ent doesn't think it's in PVS, signal that it is
 	Assert( u.m_pTo->last_entity <= u.m_nNewEntity );
@@ -459,6 +464,8 @@ void CL_CopyExistingEntity( CEntityReadInfo &u )
 	int start_bit = u.m_pBuf->GetNumBitsRead();
 
 	IClientNetworkable *pEnt = entitylist->GetClientNetworkable( u.m_nNewEntity );
+	Msg( "[ENT] CopyExistingEntity: ent=%d, pEnt=%p, fromFrame=%p, bitsBefore=%d\n",
+		u.m_nNewEntity, pEnt, u.m_pFrom, start_bit );
 	if ( !pEnt )
 	{
 		Host_Error( "CL_CopyExistingEntity: missing client entity %d.\n", u.m_nNewEntity );
@@ -658,8 +665,13 @@ bool CL_ProcessPacketEntities ( SVC_PacketEntities *entmsg )
 	u.m_nBaseline = entmsg->m_nBaseline;
 	u.m_bUpdateBaselines = entmsg->m_bUpdateBaseline;
 	
+	Msg( "[NET] CL_ProcessPacketEntities: isDelta=%d, deltaFrom=%d, updatedEntries=%d, dataBits=%d, bUpdateBL=%d, BL=%d\n",
+		entmsg->m_bIsDelta, entmsg->m_nDeltaFrom, entmsg->m_nUpdatedEntries, entmsg->m_DataIn.GetNumBitsLeft(), entmsg->m_bUpdateBaseline, entmsg->m_nBaseline );
+
 	// update the entities
 	cl.ReadPacketEntities( u );
+
+	Msg( "[NET] CL_ProcessPacketEntities done: remainingBits=%d\n", u.m_pBuf->GetNumBitsLeft() );
 
 	ClientDLL_FrameStageNotify( FRAME_NET_UPDATE_POSTDATAUPDATE_START );
 

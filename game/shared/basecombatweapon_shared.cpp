@@ -2767,6 +2767,7 @@ BEGIN_NETWORK_TABLE_NOBASE( CBaseCombatWeapon, DT_LocalWeaponData )
 	SendPropInt( SENDINFO(m_iSecondaryAmmoType ), 8 ),
 
 	SendPropInt( SENDINFO( m_nViewModelIndex ), VIEWMODEL_INDEX_BITS, SPROP_UNSIGNED ),
+	SendPropModelIndex( SENDINFO( m_nCustomViewmodelModelIndex ) ),
 
 	SendPropInt( SENDINFO( m_bFlipViewModel ) ),
 
@@ -2781,6 +2782,7 @@ BEGIN_NETWORK_TABLE_NOBASE( CBaseCombatWeapon, DT_LocalWeaponData )
 	RecvPropInt( RECVINFO(m_iSecondaryAmmoType )),
 
 	RecvPropInt( RECVINFO( m_nViewModelIndex ) ),
+	RecvPropInt( RECVINFO( m_nCustomViewmodelModelIndex ) ),
 
 	RecvPropBool( RECVINFO( m_bFlipViewModel ) ),
 

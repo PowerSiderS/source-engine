@@ -400,17 +400,31 @@ bool CClientState::ProcessServerInfo( SVC_ServerInfo *msg )
 
 bool CClientState::ProcessClassInfo( SVC_ClassInfo *msg )
 {
+	Msg( "[NET] ProcessClassInfo: createOnClient=%d, count=%d, currentServerClasses=%d, bits=%d\n",
+		msg->m_bCreateOnClient, msg->m_Classes.Count(), m_nServerClasses, m_nServerClassBits );
 	if ( msg->m_bCreateOnClient )
 	{
 #ifndef _XBOX
 		if ( !demoplayer->IsPlayingBack() )
 #endif
 		{
-			// Create all of the send tables locally
-			DataTable_CreateClientTablesFromServerTables();
+			int nProto = m_NetChannel ? m_NetChannel->GetProtocolVersion() : GetActiveClientProtocol();
+			if ( nProto == 24 )
+			{
+				if ( m_nServerClasses != 197 || !DataTable_CreateClientTablesForPCProtocol24() )
+				{
+					Host_EndGame( true, "Unsupported PC24 receive schema.\n" );
+					return false;
+				}
+				DataTable_CreateClientClassInfosForPCProtocol24( this );
+			}
+			else
+			{
+				DataTable_CreateClientTablesFromServerTables();
+				DataTable_CreateClientClassInfosFromServerClasses( this );
+			}
 
-			// Now create all of the server classes locally, too
-			DataTable_CreateClientClassInfosFromServerClasses( this );
+			Msg( "[NET] ProcessClassInfo: after local creation, serverClasses=%d, bits=%d\n", m_nServerClasses, m_nServerClassBits );
 
 			// store the current data tables in demo file to make sure
 			// they are the same during playback 
@@ -423,7 +437,8 @@ bool CClientState::ProcessClassInfo( SVC_ClassInfo *msg )
 	}
 	else
 	{
-		CBaseClientState::ProcessClassInfo( msg );
+		if ( !CBaseClientState::ProcessClassInfo( msg ) )
+			return false;
 	}
 	
 #ifdef DEDICATED
@@ -431,6 +446,10 @@ bool CClientState::ProcessClassInfo( SVC_ClassInfo *msg )
 #else
 	bool bAllowMismatches = ( demoplayer && demoplayer->IsPlayingBack() );
 #endif // DEDICATED
+	// Missing PC properties are consumed using the PC schema without writing
+	// into the client object. Type/array mismatches still fail decoder creation.
+	const bool bPC24 = m_NetChannel && m_NetChannel->GetProtocolVersion() == 24;
+	bAllowMismatches = bAllowMismatches || bPC24;
 
 	if ( !RecvTable_CreateDecoders( serverGameDLL->GetStandardSendProxies(), bAllowMismatches ) ) // create receive table decoders
 	{
@@ -442,7 +461,8 @@ bool CClientState::ProcessClassInfo( SVC_ClassInfo *msg )
 	if ( !demoplayer->IsPlayingBack() )
 #endif
 	{
-		CLocalNetworkBackdoor::InitFastCopy();
+		if ( !bPC24 )
+			CLocalNetworkBackdoor::InitFastCopy();
 	}
 
 	return true;
@@ -831,6 +851,9 @@ bool CClientState::ProcessEntityMessage(SVC_EntityMessage *msg)
 
 bool CClientState::ProcessPacketEntities( SVC_PacketEntities *msg )
 {
+	Msg( "[NET] ProcessPacketEntities: isDelta=%d, deltaFrom=%d, max=%d, changed=%d, length=%d, updateBL=%d, BL=%d, state=%d, deltaTick=%d\n",
+		msg->m_bIsDelta, msg->m_nDeltaFrom, msg->m_nMaxEntries, msg->m_nUpdatedEntries, msg->m_nLength, msg->m_bUpdateBaseline, msg->m_nBaseline, m_nSignonState, m_nDeltaTick );
+
 	if ( !msg->m_bIsDelta )
 	{
 		// Delta too old or is initial message

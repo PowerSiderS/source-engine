@@ -1205,9 +1205,19 @@ DWORD __declspec(dllimport) __stdcall GetEnvironmentVariableA( const char *, cha
 
 CON_COMMAND( version, "Print version info string." )
 {
+	extern ConVar cl_version_override;
 	ConMsg( "Build Label:          %8d   # Uniquely identifies each build\n", GetSteamInfIDVersionInfo().ServerVersion );
 	ConMsg( "Network PatchVersion: %8s   # Determines client and server compatibility\n", GetSteamInfIDVersionInfo().szVersionString );
+	if ( cl_version_override.GetString()[0] != '\0' )
+	{
+		ConMsg( "Version Override:     %8s   # Active client connect override\n", cl_version_override.GetString() );
+	}
+	extern ConVar cl_protocol_override;
 	ConMsg( "Protocol version:     %8d   # High level network protocol version\n", PROTOCOL_VERSION );
+	if ( cl_protocol_override.GetInt() > 0 )
+	{
+		ConMsg( "Protocol Override:    %8d   # Active client protocol override\n", cl_protocol_override.GetInt() );
+	}
 
 	if ( sv.IsDedicated() || serverGameDLL )
 	{

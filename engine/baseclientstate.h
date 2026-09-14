@@ -252,5 +252,6 @@ inline void CBaseClientState::SetClientAndServerTickCount( int tick )
 	m_ClockDriftMgr.m_nServerTick = m_ClockDriftMgr.m_nClientTick = tick;
 }
 
+int GetActiveClientProtocol();
 
 #endif // BASECLIENTSTATE_H

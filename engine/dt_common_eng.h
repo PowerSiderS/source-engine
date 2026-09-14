@@ -17,6 +17,8 @@ class ServerClass;
 //  data
 void DataTable_CreateClientTablesFromServerTables();
 void DataTable_CreateClientClassInfosFromServerClasses( CBaseClientState *pState );
+void DataTable_CreateClientClassInfosForPCProtocol24( CBaseClientState *pState );
+bool DataTable_CreateClientTablesForPCProtocol24();
 
 void DataTable_ClearWriteFlags( ServerClass *pClasses );
 bool DataTable_LoadDataTablesFromBuffer( bf_read *pBuf, int nDemoProtocol );

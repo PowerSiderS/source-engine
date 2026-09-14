@@ -35,6 +35,25 @@ IMPLEMENT_SERVERCLASS_ST(CCSPlayerResource, DT_CSPlayerResource)
 	SendPropArray3( SENDINFO_ARRAY3(m_iMVPs), SendPropInt( SENDINFO_ARRAY(m_iMVPs), COORD_INTEGER_BITS+1, SPROP_UNSIGNED ) ),
 	SendPropArray3( SENDINFO_ARRAY3(m_bHasDefuser), SendPropInt( SENDINFO_ARRAY(m_bHasDefuser), 1, SPROP_UNSIGNED ) ),
 	SendPropArray3( SENDINFO_ARRAY3(m_szClan), SendPropStringT( SENDINFO_ARRAY(m_szClan) ) ),
+        SendPropInt( SENDINFO( m_iPlayerC4 ), 8, SPROP_UNSIGNED ),
+        SendPropInt( SENDINFO( m_iPlayerVIP ), 8, SPROP_UNSIGNED ),
+        SendPropVector( SENDINFO(m_vecC4), -1, SPROP_COORD),
+        SendPropArray3( SENDINFO_ARRAY3(m_bHostageAlive), SendPropInt( SENDINFO_ARRAY(m_bHostageAlive), 1, SPROP_UNSIGNED ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_isHostageFollowingSomeone), SendPropInt( SENDINFO_ARRAY(m_isHostageFollowingSomeone), 1, SPROP_UNSIGNED ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_iHostageEntityIDs), SendPropInt( SENDINFO_ARRAY(m_iHostageEntityIDs), -1, SPROP_UNSIGNED ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_iHostageY), SendPropInt( SENDINFO_ARRAY(m_iHostageY), COORD_INTEGER_BITS+1, 0 ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_iHostageX), SendPropInt( SENDINFO_ARRAY(m_iHostageX), COORD_INTEGER_BITS+1, 0 ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_iHostageZ), SendPropInt( SENDINFO_ARRAY(m_iHostageZ), COORD_INTEGER_BITS+1, 0 ) ),
+        SendPropVector( SENDINFO(m_bombsiteCenterA), -1, SPROP_COORD),
+        SendPropVector( SENDINFO(m_bombsiteCenterB), -1, SPROP_COORD),
+        SendPropArray3( SENDINFO_ARRAY3(m_hostageRescueX), SendPropInt( SENDINFO_ARRAY(m_hostageRescueX), COORD_INTEGER_BITS+1, 0 ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_hostageRescueY), SendPropInt( SENDINFO_ARRAY(m_hostageRescueY), COORD_INTEGER_BITS+1, 0 ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_hostageRescueZ), SendPropInt( SENDINFO_ARRAY(m_hostageRescueZ), COORD_INTEGER_BITS+1, 0 ) ),
+        SendPropBool( SENDINFO( m_bBombSpotted ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_bPlayerSpotted), SendPropInt( SENDINFO_ARRAY(m_bPlayerSpotted), 1, SPROP_UNSIGNED ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_iMVPs), SendPropInt( SENDINFO_ARRAY(m_iMVPs), COORD_INTEGER_BITS+1, SPROP_UNSIGNED ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_bHasDefuser), SendPropInt( SENDINFO_ARRAY(m_bHasDefuser), 1, SPROP_UNSIGNED ) ),
+        SendPropArray3( SENDINFO_ARRAY3(m_szClan), SendPropStringT( SENDINFO_ARRAY(m_szClan) ) )
 END_SEND_TABLE()
 //=============================================================================
 // HPE_END

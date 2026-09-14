@@ -2523,6 +2523,8 @@ bool CNetChan::SendNetMsg( INetMessage &msg, bool bForceReliable, bool bVoice )
 	if ( remote_address.GetType() == NA_NULL )
 		return true;
 
+	msg.SetNetChannel( this );
+
 	bf_write *pStream = &m_StreamUnreliable;
 	
 	if ( msg.IsReliable() || bForceReliable )
@@ -3120,6 +3122,11 @@ int CNetChan::GetProtocolVersion()
 		"This is probably not being initialized somewhere"
 	);
 	return m_nProtocolVersion;
+}
+
+void CNetChan::SetProtocolVersion( int nProtocolVersion )
+{
+	m_nProtocolVersion = nProtocolVersion;
 }
 
 int CNetChan::IncrementSplitPacketSequence()

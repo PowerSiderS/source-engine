@@ -199,6 +199,7 @@ public:	// INetChannel interface
 	virtual int	GetMaxRoutablePayloadSize();
 
 	virtual int		GetProtocolVersion();
+	void			SetProtocolVersion( int nProtocolVersion );
 
 	int			IncrementSplitPacketSequence();
 

@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include "cl_main.h"
 #include "net.h"
+#include "net_chan.h"
 #include "dt_recv_eng.h"
 #include "ents_shared.h"
 #include "net_synctags.h"
@@ -42,6 +43,8 @@
 #include "replay_internal.h"
 #include "replayserver.h"
 #endif
+#include "custom_steamid.h"
+#include "revemu/revemu_ticket.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -178,6 +181,10 @@ ConVar	password	( "password", "", FCVAR_ARCHIVE | FCVAR_SERVER_CANNOT_QUERY | FC
 ConVar  cl_interpolate( "cl_interpolate", "1.0", FCVAR_USERINFO | FCVAR_DEVELOPMENTONLY | FCVAR_NOT_CONNECTED, "Interpolate entities on the client." );
 ConVar  cl_clanid( "cl_clanid", "0", FCVAR_ARCHIVE | FCVAR_USERINFO | FCVAR_HIDDEN, "Current clan ID for name decoration", CL_ClanIdChanged );
 ConVar  cl_show_connectionless_packet_warnings( "cl_show_connectionless_packet_warnings", "0", FCVAR_NONE, "Show console messages about ignored connectionless packets on the client." );
+ConVar  cl_protocol_override( "cl_protocol_override", "0", FCVAR_ARCHIVE, "Override network protocol version (0=default 25, 24=PC CS:S servers)." );
+ConVar  cl_version_override( "cl_version_override", "", FCVAR_ARCHIVE, "Override PatchVersion string sent to game server in connect packet (e.g. 10897846 for PC servers)." );
+ConVar  cl_connect_auth_mode( "cl_connect_auth_mode", "4", FCVAR_ARCHIVE, "Connect packet auth format: 0=default CDKey string, 1=binary SteamID ticket, 2=RevEmu2013 ticket, 3=SC2009 ticket, 4=auto (RevEmu2013 if proto 24, CDKey if proto 25)." );
+ConVar  cl_sendtable_crc_override( "cl_sendtable_crc_override", "0", FCVAR_ARCHIVE, "Override SendTable CRC sent in CLC_ClientInfo (0=auto: 108050409 for proto 24 PC servers, local CRC for proto 25)." );
 
 // ---------------------------------------------------------------------------------------- //
 // C_ServerClassInfo implementation.
@@ -274,6 +281,13 @@ static inline void CL_ParseDeltaHeader( CEntityReadInfo &u )
 			u.m_UpdateFlags |= FHDR_DELETE;
 		}
 	}
+
+	Msg( "[ENT] DeltaHdr: newEnt=%d, flags=0x%x (enter=%d leave=%d del=%d), bitsRead=%d\n",
+		u.m_nNewEntity, u.m_UpdateFlags,
+		(u.m_UpdateFlags & FHDR_ENTERPVS)?1:0,
+		(u.m_UpdateFlags & FHDR_LEAVEPVS)?1:0,
+		(u.m_UpdateFlags & FHDR_DELETE)?1:0,
+		u.m_pBuf->GetNumBitsRead() );
 	// Output the bitstream...
 #ifdef DEBUG_NETWORKING
 	int lastbit = u.m_pBuf->GetNumBitsRead();
@@ -486,6 +500,21 @@ bool CBaseClientState::SetSignonState ( int state, int count )
 	return true;
 }
 
+static int  s_nAutoDetectedProtocol = 0;
+static char s_szAutoDetectedVersion[32] = { 0 };
+static int  s_nAutoDetectedAuthMode = -1;
+static bool s_bRetriedWithPCMode = false;
+static bool s_bRetriedWithSC2009 = false;
+
+int GetActiveClientProtocol()
+{
+	if ( s_nAutoDetectedProtocol > 0 )
+		return s_nAutoDetectedProtocol;
+	if ( cl_protocol_override.GetInt() > 0 )
+		return cl_protocol_override.GetInt();
+	return PROTOCOL_VERSION;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: called by CL_Connect and CL_CheckResend
 // If we are in ca_connecting state and we have gotten a challenge
@@ -519,22 +548,136 @@ void CBaseClientState::SendConnectPacket (int challengeNr, int authProtocol, uin
 	bf_write	msg( msg_buffer, sizeof(msg_buffer) );
 
 	msg.WriteLong( CONNECTIONLESS_HEADER );
+
+	int nProtocolToSend = PROTOCOL_VERSION;
+	const char *pszVersionToSend = GetSteamInfIDVersionInfo().szVersionString;
+	int authMode = 0;
+
+	if ( cl_protocol_override.GetInt() > 0 )
+	{
+		nProtocolToSend = cl_protocol_override.GetInt();
+		if ( nProtocolToSend == 24 )
+		{
+			pszVersionToSend = "10897846";
+			authMode = 2; // RevEmu2013
+		}
+	}
+	else if ( s_nAutoDetectedProtocol > 0 )
+	{
+		nProtocolToSend = s_nAutoDetectedProtocol;
+		if ( s_szAutoDetectedVersion[0] != '\0' )
+			pszVersionToSend = s_szAutoDetectedVersion;
+		else if ( nProtocolToSend == 24 )
+			pszVersionToSend = "10897846";
+
+		if ( s_nAutoDetectedAuthMode >= 0 )
+			authMode = s_nAutoDetectedAuthMode;
+		else if ( nProtocolToSend == 24 )
+			authMode = 2;
+	}
+	else
+	{
+		bool bIsPCServer = ( unGSSteamID != 0 ) || ( !adr.IsReservedAdr() && !adr.IsLocalhost() && !adr.IsLoopback() );
+		if ( bIsPCServer )
+		{
+			nProtocolToSend = 24;
+			pszVersionToSend = "10897846";
+			authMode = 2; // RevEmu2013
+			s_nAutoDetectedProtocol = 24;
+			Q_strncpy( s_szAutoDetectedVersion, "10897846", sizeof(s_szAutoDetectedVersion) );
+			s_nAutoDetectedAuthMode = 2;
+		}
+		else
+		{
+			nProtocolToSend = PROTOCOL_VERSION;
+			pszVersionToSend = GetSteamInfIDVersionInfo().szVersionString;
+			authMode = 0;
+			s_nAutoDetectedProtocol = PROTOCOL_VERSION;
+			s_nAutoDetectedAuthMode = 0;
+		}
+	}
+
+	s_nAutoDetectedProtocol = nProtocolToSend;
+
+	if ( cl_version_override.GetString()[0] != '\0' )
+	{
+		pszVersionToSend = cl_version_override.GetString();
+	}
+
+	if ( cl_connect_auth_mode.GetInt() != 4 )
+	{
+		authMode = cl_connect_auth_mode.GetInt();
+	}
+
 	msg.WriteByte( C2S_CONNECT );
-	msg.WriteLong( PROTOCOL_VERSION );
+	msg.WriteLong( nProtocolToSend );
 	msg.WriteLong( authProtocol );
 	msg.WriteLong( challengeNr );
 	msg.WriteLong( m_retryChallenge );
 	msg.WriteString( GetClientName() );	// Name
 	msg.WriteString( password.GetString() );		// password
-	msg.WriteString( GetSteamInfIDVersionInfo().szVersionString );	// product version
-//	msg.WriteByte( ( g_pServerPluginHandler->GetNumLoadedPlugins() > 0 ) ? 1 : 0 ); // have any client-side server plug-ins been loaded?
+	msg.WriteString( pszVersionToSend );	// product version
+
+	ConMsg( "[NET] Connect -> %s (protocol=%d [base=%d], auth=%d, version='%s', auth_mode=%d)\n",
+		adr.ToString(), nProtocolToSend, PROTOCOL_VERSION, authProtocol, pszVersionToSend, authMode );
 
 	switch ( authProtocol )
 	{
 		case PROTOCOL_HASHEDCDKEY:
-		case PROTOCOL_STEAM:
 			CDKey = GetCDKeyHash();
 			msg.WriteString( CDKey );
+			break;
+
+		case PROTOCOL_STEAM:
+			if ( authMode == 1 )
+			{
+				ALIGN4 char ticketBuf[512] = { 0 };
+				CSteamID steamID = GetLocalDeviceSteamID();
+				uint64 id64 = steamID.ConvertToUint64();
+				memcpy( ticketBuf, &id64, sizeof(id64) );
+				int ticketLen = (int)sizeof(id64);
+				msg.WriteShort( ticketLen );
+				msg.WriteBytes( ticketBuf, ticketLen );
+			}
+			else if ( authMode == 2 )
+			{
+				ALIGN4 char ticketBuf[512] = { 0 };
+				const char *uuid = GetDeviceUUID();
+				uint64 steamID64 = 0;
+				int ticketLen = RevEmu_GenerateTicket2013( ticketBuf, sizeof(ticketBuf), uuid, &steamID64 );
+				if ( ticketLen > 0 )
+				{
+					msg.WriteShort( ticketLen );
+					msg.WriteBytes( ticketBuf, ticketLen );
+				}
+				else
+				{
+					CDKey = GetCDKeyHash();
+					msg.WriteString( CDKey );
+				}
+			}
+			else if ( authMode == 3 )
+			{
+				ALIGN4 char ticketBuf[512] = { 0 };
+				const char *uuid = GetDeviceUUID();
+				uint64 steamID64 = 0;
+				int ticketLen = RevEmu_GenerateTicketSC2009( ticketBuf, sizeof(ticketBuf), uuid, &steamID64 );
+				if ( ticketLen > 0 )
+				{
+					msg.WriteShort( ticketLen );
+					msg.WriteBytes( ticketBuf, ticketLen );
+				}
+				else
+				{
+					CDKey = GetCDKeyHash();
+					msg.WriteString( CDKey );
+				}
+			}
+			else
+			{
+				CDKey = GetCDKeyHash();
+				msg.WriteString( CDKey );
+			}
 			break;
 
 		default: 					Host_Error( "Unexepected authentication protocol %i!\n", authProtocol );
@@ -638,6 +781,12 @@ void CBaseClientState::Connect(const char* adr, const char *pszSourceTag)
 #endif
 
 
+	s_nAutoDetectedProtocol = 0;
+	s_szAutoDetectedVersion[0] = '\0';
+	s_nAutoDetectedAuthMode = -1;
+	s_bRetriedWithPCMode = false;
+	s_bRetriedWithSC2009 = false;
+
 	Q_strncpy( m_szRetryAddress, adr, sizeof(m_szRetryAddress) );
 	m_retryChallenge = (RandomInt(0,0x0FFF) << 16) | RandomInt(0,0xFFFF);
 	m_ulGameServerSteamID = 0;
@@ -680,7 +829,8 @@ void CBaseClientState::FullConnect( netadr_t &adr )
 	
 	COM_TimestampedLog( "CBaseClientState::FullConnect" );
 
-	m_NetChannel = NET_CreateNetChannel( m_Socket, &adr, "CLIENT", this );
+	int nProto = ( s_nAutoDetectedProtocol > 0 ) ? s_nAutoDetectedProtocol : PROTOCOL_VERSION;
+	m_NetChannel = NET_CreateNetChannel( m_Socket, &adr, "CLIENT", this, false, nProto );
 
 	Assert( m_NetChannel );
 	
@@ -934,35 +1084,23 @@ bool CBaseClientState::ProcessConnectionlessPacket( netpacket_t *packet )
 								int authprotocol = msg.ReadLong();
 								uint64 unGSSteamID = 0;
 								bool bGSSecure = false;
-#if 0
+
 								if ( authprotocol == PROTOCOL_STEAM )
 								{
-									if ( msg.ReadShort() != 0 )
+									if ( msg.GetNumBytesLeft() >= 2 )
 									{
-										Msg( "Invalid Steam key size.\n" );
-										Disconnect( "Invalid Steam key size", true );
-										return false;
-									}
-									if ( msg.GetNumBytesLeft() > sizeof(unGSSteamID) ) 
-									{
-										if ( !msg.ReadBytes( &unGSSteamID, sizeof(unGSSteamID) ) )
+										int nKeySize = msg.ReadShort();
+										if ( nKeySize == 0 && msg.GetNumBytesLeft() >= (int)sizeof(unGSSteamID) )
 										{
-											Msg( "Invalid GS Steam ID.\n" );
-											Disconnect( "Invalid GS Steam ID", true );
-											return false;
+											msg.ReadBytes( &unGSSteamID, sizeof(unGSSteamID) );
+											if ( msg.GetNumBytesLeft() > 0 )
+											{
+												bGSSecure = ( msg.ReadByte() == 1 );
+											}
 										}
-
-										bGSSecure = ( msg.ReadByte() == 1 );
-									}
-									// The host can disable access to secure servers if you load unsigned code (mods, plugins, hacks)
-									if ( bGSSecure && !Host_IsSecureServerAllowed() )
-									{
-										COM_ExplainDisconnection( true, "#GameUI_ServerInsecure" );
-										Disconnect( "#GameUI_ServerInsecure", true );
-										return false;
 									}
 								}
-#endif
+
 								SendConnectPacket( challenge, authprotocol, unGSSteamID, bGSSecure );
 							}
 							break;
@@ -977,6 +1115,63 @@ bool CBaseClientState::ProcessConnectionlessPacket( netpacket_t *packet )
 								}
 
 								msg.ReadString( string, sizeof(string) );
+								ConMsg( "[NET] Server rejected connection: '%s'\n", string );
+
+								// Auto-retry with PC compatibility mode if server rejected protocol or version
+								if ( !s_bRetriedWithPCMode && cl_protocol_override.GetInt() == 0 )
+								{
+									bool bIsPCRelatedRejection = ( V_strstr( string, "RejectOldProtocol" ) != NULL ||
+									                               V_strstr( string, "RejectNewProtocol" ) != NULL ||
+									                               V_strstr( string, "RejectOldVersion" ) != NULL ||
+									                               V_strstr( string, "RejectNewVersion" ) != NULL ||
+									                               V_strstr( string, "RejectBadSteamKey" ) != NULL );
+									if ( bIsPCRelatedRejection )
+									{
+										s_bRetriedWithPCMode = true;
+										s_nAutoDetectedProtocol = 24;
+										V_strncpy( s_szAutoDetectedVersion, "10897846", sizeof(s_szAutoDetectedVersion) );
+										s_nAutoDetectedAuthMode = 2; // RevEmu2013
+
+										ConMsg( "[NET] Auto-detected PC CS:S Dedicated Server! Retrying with Protocol 24, Version 10897846, RevEmu auth...\n" );
+
+										m_retryChallenge = (RandomInt(0,0x0FFF) << 16) | RandomInt(0,0xFFFF);
+										m_flConnectTime = -FLT_MAX;
+										m_nRetryNumber = 0;
+										CheckForResend();
+										return true;
+									}
+								}
+								else if ( s_bRetriedWithPCMode && !s_bRetriedWithSC2009 && s_nAutoDetectedAuthMode == 2 && cl_connect_auth_mode.GetInt() == 4 )
+								{
+									if ( V_strstr( string, "RejectSteam" ) != NULL )
+									{
+										s_bRetriedWithSC2009 = true;
+										s_nAutoDetectedAuthMode = 3; // SC2009 legacy
+
+										ConMsg( "[NET] Retrying with SC2009 legacy emulator ticket...\n" );
+
+										m_retryChallenge = (RandomInt(0,0x0FFF) << 16) | RandomInt(0,0xFFFF);
+										m_flConnectTime = -FLT_MAX;
+										m_nRetryNumber = 0;
+										CheckForResend();
+										return true;
+									}
+								}
+								else if ( s_nAutoDetectedProtocol == 24 && cl_protocol_override.GetInt() == 0 )
+								{
+									s_nAutoDetectedProtocol = PROTOCOL_VERSION;
+									V_strncpy( s_szAutoDetectedVersion, GetSteamInfIDVersionInfo().szVersionString, sizeof(s_szAutoDetectedVersion) );
+									s_nAutoDetectedAuthMode = 0;
+
+									ConMsg( "[NET] Retrying with Android Protocol 25 mode...\n" );
+
+									m_retryChallenge = (RandomInt(0,0x0FFF) << 16) | RandomInt(0,0xFFFF);
+									m_flConnectTime = -FLT_MAX;
+									m_nRetryNumber = 0;
+									CheckForResend();
+									return true;
+								}
+
 								// Force failure dialog to come up now.
 								COM_ExplainDisconnection( true, "%s", string );
 								Disconnect( string, true );
@@ -1127,13 +1322,19 @@ bool CBaseClientState::ProcessServerInfo( SVC_ServerInfo *msg )
 
 	COM_TimestampedLog( " CBaseClient::ProcessServerInfo" );
 	
-	if (  msg->m_nProtocol != PROTOCOL_VERSION 
+	int nExpectedProtocol = PROTOCOL_VERSION;
+	if ( cl_protocol_override.GetInt() > 0 )
+	{
+		nExpectedProtocol = cl_protocol_override.GetInt();
+	}
+	bool bProtocolValid = ( msg->m_nProtocol == PROTOCOL_VERSION || msg->m_nProtocol == 24 || msg->m_nProtocol == nExpectedProtocol );
+	if ( !bProtocolValid
 #if  defined( DEMO_BACKWARDCOMPATABILITY ) && (! defined( SWDS ) )
 		&& !( demoplayer->IsPlayingBack() && msg->m_nProtocol >= PROTOCOL_VERSION_12 )
 #endif
 		)
 	{
-		ConMsg ( "Server returned version %i, expected %i.\n", msg->m_nProtocol, PROTOCOL_VERSION );
+		ConMsg ( "Server returned version %i, expected %i (or 24).\n", msg->m_nProtocol, nExpectedProtocol );
 		return false; 
 	}
 
@@ -1141,10 +1342,17 @@ bool CBaseClientState::ProcessServerInfo( SVC_ServerInfo *msg )
 	// So that we can detect new server startup during download, etc.
 	m_nServerCount = msg->m_nServerCount;
 
+	if ( m_NetChannel )
+	{
+		static_cast<CNetChan*>( m_NetChannel )->SetProtocolVersion( msg->m_nProtocol );
+	}
+
 	m_nMaxClients		= msg->m_nMaxClients;
 
 	m_nServerClasses	= msg->m_nMaxClasses;
 	m_nServerClassBits	= Q_log2( m_nServerClasses ) + 1;
+	Msg( "[NET] ProcessServerInfo: maxClasses=%d, serverClassBits=%d, maxClients=%d, protocol=%d\n",
+		msg->m_nMaxClasses, m_nServerClassBits, msg->m_nMaxClients, msg->m_nProtocol );
 	
 	if ( m_nMaxClients < 1 || m_nMaxClients > ABSOLUTE_PLAYER_LIMIT )
 	{
@@ -1593,6 +1801,7 @@ bool CBaseClientState::LinkClasses()
 //	}
 
 	// Match the server classes to the client classes.
+	int linkedCount = 0;
 	for ( int i=0; i < m_nServerClasses; i++ )
 	{
 		C_ServerClassInfo *pServerClass = &m_pServerClasses[i];
@@ -1620,12 +1829,14 @@ bool CBaseClientState::LinkClasses()
 
 			// copy class ID
 			pServerClass->m_pClientClass->m_ClassID = i;
+			linkedCount++;
 		}
 		else
 		{
-			Msg( "Client missing DT class %s\n", pServerClass->m_ClassName );
+			Msg( "Client missing DT class %s (id=%d)\n", pServerClass->m_ClassName, i );
 		}
 	}
+	Msg( "[NET] LinkClasses: linked %d / %d server classes\n", linkedCount, m_nServerClasses );
 
 	return true;
 }

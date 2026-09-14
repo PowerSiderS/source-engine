@@ -748,6 +748,7 @@ END_RECV_TABLE()
 
 
 IMPLEMENT_CLIENTCLASS_DT( C_CSPlayer, DT_CSPlayer, CCSPlayer )
+
 	RecvPropDataTable( "cslocaldata", 0, 0, &REFERENCE_RECV_TABLE(DT_CSLocalPlayerExclusive) ),
 	RecvPropDataTable( "csnonlocaldata", 0, 0, &REFERENCE_RECV_TABLE(DT_CSNonLocalPlayerExclusive) ),
 	RecvPropInt( RECVINFO( m_iAddonBits ) ),
@@ -767,6 +768,25 @@ IMPLEMENT_CLIENTCLASS_DT( C_CSPlayer, DT_CSPlayer, CCSPlayer )
 	RecvPropInt( RECVINFO( m_bHasDefuser ), 0, RecvProxy_HasDefuser ),
 	RecvPropInt( RECVINFO( m_bNightVisionOn), 0, RecvProxy_NightVision ),
 	RecvPropBool( RECVINFO( m_bHasNightVision ) ),
+
+        RecvPropDataTable( "cslocaldata", 0, 0, &REFERENCE_RECV_TABLE(DT_CSLocalPlayerExclusive) ),
+        RecvPropDataTable( "csnonlocaldata", 0, 0, &REFERENCE_RECV_TABLE(DT_CSNonLocalPlayerExclusive) ),
+        RecvPropInt( RECVINFO( m_iAddonBits ) ),
+        RecvPropInt( RECVINFO( m_iPrimaryAddon ) ),
+        RecvPropInt( RECVINFO( m_iSecondaryAddon ) ),
+        RecvPropInt( RECVINFO( m_iThrowGrenadeCounter ) ),
+        RecvPropInt( RECVINFO( m_iPlayerState ) ),
+        RecvPropInt( RECVINFO( m_iAccount ) ),
+        RecvPropInt( RECVINFO( m_bInBombZone ) ),
+        RecvPropInt( RECVINFO( m_bInBuyZone ) ),
+        RecvPropInt( RECVINFO( m_iClass ) ),
+        RecvPropInt( RECVINFO( m_ArmorValue ) ),
+        RecvPropFloat( RECVINFO( m_angEyeAngles[0] ) ),
+        RecvPropFloat( RECVINFO( m_angEyeAngles[1] ) ),
+        RecvPropFloat( RECVINFO( m_flStamina ) ),
+        RecvPropInt( RECVINFO( m_bHasDefuser ), 0, RecvProxy_HasDefuser ),
+        RecvPropInt( RECVINFO( m_bNightVisionOn), 0, RecvProxy_NightVision ),
+        RecvPropBool( RECVINFO( m_bHasNightVision ) ),
 
 
     //=============================================================================
@@ -799,6 +819,15 @@ IMPLEMENT_CLIENTCLASS_DT( C_CSPlayer, DT_CSPlayer, CCSPlayer )
 	RecvPropFloat( RECVINFO( m_flProgressBarStartTime ) ),
 	RecvPropEHandle( RECVINFO( m_hRagdoll ) ),
 	RecvPropInt( RECVINFO( m_cycleLatch ), 0, &C_CSPlayer::RecvProxy_CycleLatch ),
+
+        RecvPropInt( RECVINFO( m_bHasHelmet ) ),
+        RecvPropVector( RECVINFO( m_vecRagdollVelocity ) ),
+        RecvPropFloat( RECVINFO( m_flFlashDuration ), 0, RecvProxy_FlashTime ),
+        RecvPropFloat( RECVINFO( m_flFlashMaxAlpha)),
+        RecvPropInt( RECVINFO( m_iProgressBarDuration ) ),
+        RecvPropFloat( RECVINFO( m_flProgressBarStartTime ) ),
+        RecvPropEHandle( RECVINFO( m_hRagdoll ) ),
+        RecvPropInt( RECVINFO( m_cycleLatch ), 0, &C_CSPlayer::RecvProxy_CycleLatch ),
 
 END_RECV_TABLE()
 
@@ -1409,6 +1438,11 @@ void C_CSPlayer::PostDataUpdate( DataUpdateType_t updateType )
 	// C_BaseEntity assumes we're networking the entity's angles, so pretend that it
 	// networked the same value we already have.
 	SetNetworkAngles( GetLocalAngles() );
+        m_bIsScoped = ( GetFOV() != GetDefaultFOV() );
+
+        // C_BaseEntity assumes we're networking the entity's angles, so pretend that it
+        // networked the same value we already have.
+        SetNetworkAngles( GetLocalAngles() );
 
 	BaseClass::PostDataUpdate( updateType );
 }

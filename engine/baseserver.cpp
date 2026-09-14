@@ -534,7 +534,7 @@ IClient *CBaseServer::ConnectClient ( netadr_t &adr, int protocol, int challenge
 	COM_TimestampedLog( "CBaseServer::ConnectClient:  NET_CreateNetChannel" );
 
 	// create network channel
-	INetChannel * netchan = NET_CreateNetChannel( m_Socket, &adr, adr.ToString(), client );
+	INetChannel * netchan = NET_CreateNetChannel( m_Socket, &adr, adr.ToString(), client, false, protocol );
 
 	if ( !netchan )
 	{
@@ -733,16 +733,21 @@ bool CBaseServer::ProcessConnectionlessPacket(netpacket_t * packet)
 				const char *pszVersionString = GetSteamInfIDVersionInfo().szVersionString;
 				if ( V_strcmp( pszVersionString, pszVersionInP4 ) && V_strcmp( productVersion, pszVersionInP4 ) )
 				{
-					int nVersionCheck = Q_strncmp( pszVersionString, productVersion, V_strlen( pszVersionString ) );
-					if ( nVersionCheck < 0 )
+					bool bIsKnownCompatibleVersion = ( protocol == 24 && !V_strcmp( productVersion, "10897846" ) ) ||
+					                                  ( !V_strcmp( productVersion, pszVersionString ) );
+					if ( !bIsKnownCompatibleVersion )
 					{
-						RejectConnection( packet->from, clientChallenge, "#GameUI_ServerRejectOldVersion" );
-						break;
-					}
-					if ( nVersionCheck > 0 )
-					{
-						RejectConnection( packet->from, clientChallenge, "#GameUI_ServerRejectNewVersion" );
-						break;
+						int nVersionCheck = Q_strncmp( pszVersionString, productVersion, V_strlen( pszVersionString ) );
+						if ( nVersionCheck < 0 )
+						{
+							RejectConnection( packet->from, clientChallenge, "#GameUI_ServerRejectOldVersion" );
+							break;
+						}
+						if ( nVersionCheck > 0 )
+						{
+							RejectConnection( packet->from, clientChallenge, "#GameUI_ServerRejectNewVersion" );
+							break;
+						}
 					}
 				}
 
@@ -1407,7 +1412,7 @@ Make sure connecting client is using proper protocol
 */
 bool CBaseServer::CheckProtocol( netadr_t &adr, int nProtocol, int clientChallenge )
 {
-	if ( nProtocol != PROTOCOL_VERSION )
+	if ( nProtocol != PROTOCOL_VERSION && nProtocol != 24 )
 	{
 		// Client is newer than server
 		if ( nProtocol > PROTOCOL_VERSION )

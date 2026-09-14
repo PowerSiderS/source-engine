@@ -63,6 +63,7 @@ public:
 	bool					m_bDrawViewmodel;
 	bool					m_bWearingSuit;
 	bool					m_bPoisoned;
+	bool					m_bForceLocalPlayerDraw;
 	float					m_flStepSize;
 	bool					m_bAllowAutoMovement;
 
@@ -72,6 +73,8 @@ public:
 	fogplayerparams_t		m_PlayerFog;
 	// audio environment
 	audioparams_t			m_audio;
+
+	char					m_szScriptOverlayMaterial[255];
 
 	bool					m_bSlowMovement;
 

@@ -73,6 +73,7 @@ static ConVar cl_always_flush_models( "cl_always_flush_models", CONVAR_DEFAULT_A
                                       "If set, always flush models between map loads.  Useful on systems under memory pressure." );
 
 extern ConVar sv_downloadurl;
+extern ConVar cl_sendtable_crc_override;
 
 #if defined( _DEBUG ) || defined( STAGING_ONLY )
 static ConVar debug_clientstate_fake_hltv( "debug_clientstate_fake_hltv", "0", 0, "If set, spoof as HLTV for testing purposes." );
@@ -189,6 +190,24 @@ void CClientState::SendClientInfo( void )
 #if defined( REPLAY_ENABLED )
 	info.m_bIsReplay = false;
 #endif
+        CLC_ClientInfo info;
+        info.SetNetChannel( m_NetChannel );
+        
+        int nProto = m_NetChannel ? m_NetChannel->GetProtocolVersion() : GetActiveClientProtocol();
+        CRC32_t nSendTableCRC = SendTable_GetCRC();
+        if ( cl_sendtable_crc_override.GetInt() != 0 )
+        {
+                nSendTableCRC = (CRC32_t)cl_sendtable_crc_override.GetInt();
+        }
+        else if ( nProto == 24 )
+        {
+                nSendTableCRC = (CRC32_t)108050409; // Official PC CS:S v92 (Protocol 24, Build 10897846) SendTable CRC
+        }
+
+        info.m_nSendTableCRC = nSendTableCRC;
+        info.m_nServerCount = m_nServerCount;
+        info.m_bIsHLTV = false;
+        info.m_bIsReplay = false;
 #if !defined( NO_STEAM )
 	info.m_nFriendsID = Steam3Client().SteamUser() ? Steam3Client().SteamUser()->GetSteamID().GetAccountID() : GetLocalDeviceSteamID().GetAccountID();
 #else
@@ -216,7 +235,13 @@ void CClientState::SendClientInfo( void )
 	}
 #endif // defined( REPLAY_ENABLED )
 #endif // defined( _DEBUG ) || defined( STAGING_ONLY )
+
 	m_NetChannel->SendNetMsg( info );
+
+        ConMsg( "[NET] SendClientInfo: proto=%d, serverCount=%d, sendTableCRC=%d, isReplay=%d\n",
+                m_NetChannel ? m_NetChannel->GetProtocolVersion() : 0, info.m_nServerCount, info.m_nSendTableCRC, (int)info.m_bIsReplay );
+        m_NetChannel->SendNetMsg( info );
+
 }
 
 void CClientState::SendServerCmdKeyValues( KeyValues *pKeyValues )
@@ -247,6 +272,8 @@ bool CClientState::SetSignonState ( int state, int count )
 	}
 
 	// ConDMsg ("Signon state: %i\n", state );
+
+    ConMsg( "[NET] Signon state -> %i (count=%i)\n", state, count );
 
 	COM_TimestampedLog( "CClientState::SetSignonState: start %i", state );
 
@@ -1344,6 +1371,11 @@ void CClientState::ReadEnterPVS( CEntityReadInfo &u )
 
 	CL_CopyNewEntity( u, iClass, iSerialNum );
 
+        Msg( "[ENT] ReadEnterPVS: ent=%d, classID=%d (bits=%d), serial=%d, bitsRead=%d\n",
+             u.m_nNewEntity, iClass, m_nServerClassBits, iSerialNum, u.m_pBuf->GetNumBitsRead() );
+
+        CL_CopyNewEntity( u, iClass, iSerialNum );
+
 	if ( u.m_nNewEntity == u.m_nOldEntity ) // that was a recreate
 		u.NextOldEntity();
 }
@@ -1359,6 +1391,17 @@ void CClientState::ReadLeavePVS( CEntityReadInfo &u )
 		u.m_UpdateType = Failed;	// break out
 		return;
 	}
+
+        VPROF( "ReadLeavePVS" );
+        Msg( "[ENT] ReadLeavePVS: ent=%d, oldEnt=%d\n", u.m_nNewEntity, u.m_nOldEntity );
+        // Sanity check.
+        if ( !u.m_bAsDelta )
+        {
+                Assert(0); // cl.validsequence = 0;
+                ConMsg( "WARNING: LeavePVS on full update" );
+                u.m_UpdateType = Failed;        // break out
+                return;
+        }
 
 	Assert( !u.m_pTo->transmit_entity.Get( u.m_nOldEntity ) );
 
@@ -1376,6 +1419,12 @@ void CClientState::ReadDeltaEnt( CEntityReadInfo &u )
 	CL_CopyExistingEntity( u );
 	
 	u.NextOldEntity();
+        VPROF( "ReadDeltaEnt" );
+        Msg( "[ENT] ReadDeltaEnt: ent=%d, oldEnt=%d, bitsRead=%d\n",
+             u.m_nNewEntity, u.m_nOldEntity, u.m_pBuf->GetNumBitsRead() );
+        CL_CopyExistingEntity( u );
+        
+        u.NextOldEntity();
 }
 
 void CClientState::ReadPreserveEnt( CEntityReadInfo &u )

@@ -183,6 +183,28 @@ void DataTable_MaybeCreateReceiveTable_R( CUtlVector< SendTable * >& visited, Se
 	}
 }
 
+#include "dt_sendtables_pc24.inl"
+
+bool DataTable_CreateClientTablesForPCProtocol24()
+{
+	// The CRC we advertise belongs to this schema, not the local game DLL.
+	// Read the PC wire descriptions through the normal receive-table path so
+	// exclusions, array lengths, quantization and flattened ordering stay intact.
+	bf_read buf( s_PC24SendTables, sizeof( s_PC24SendTables ) - 1, 688441 );
+	int count = 0;
+	while ( buf.ReadOneBit() )
+	{
+		bool needsDecoder = buf.ReadOneBit() != 0;
+		if ( !RecvTable_RecvClassInfos( &buf, needsDecoder ) )
+			return false;
+		++count;
+	}
+	if ( buf.IsOverflowed() || buf.GetNumBitsRead() != 688441 )
+		return false;
+	Msg( "[NET] PC24 receive schema: %d tables, CRC=108050409\n", count );
+	return true;
+}
+
 void DataTable_CreateClientTablesFromServerTables()
 {
 	if ( !serverGameDLL )
@@ -210,8 +232,46 @@ void DataTable_CreateClientTablesFromServerTables()
 	}
 }
 
+#include "dt_common_pc24.inl"
+
+void DataTable_CreateClientClassInfosForPCProtocol24( CBaseClientState *pState )
+{
+	// Remove old
+	if ( pState->m_pServerClasses )
+	{
+		delete [] pState->m_pServerClasses;
+	}
+
+	pState->m_nServerClasses = 197;
+	pState->m_nServerClassBits = Q_log2( pState->m_nServerClasses ) + 1;
+	pState->m_pServerClasses = new C_ServerClassInfo[ pState->m_nServerClasses ];
+	if ( !pState->m_pServerClasses )
+	{
+		Host_EndGame( true, "CL_ParseClassInfo: can't allocate %d C_ServerClassInfos.\n", pState->m_nServerClasses );
+		return;
+	}
+
+	for ( int i = 0; i < 197; i++ )
+	{
+		pState->m_pServerClasses[ i ].m_ClassName = COM_StringCopy( s_PCServerClasses[ i ].m_pClassName );
+		pState->m_pServerClasses[ i ].m_DatatableName = COM_StringCopy( s_PCServerClasses[ i ].m_pDatatableName );
+	}
+
+	// PC IDs belong only to the remote receive side. Changing the local
+	// server DLL's IDs here corrupts a subsequent Android/LAN session.
+
+	Msg( "[NET] DataTable_CreateClientClassInfosForPCProtocol24: initialized 197 PC server classes (bits=%d)\n", pState->m_nServerClassBits );
+}
+
 void DataTable_CreateClientClassInfosFromServerClasses( CBaseClientState *pState )
 {
+	int nProto = pState->m_NetChannel ? pState->m_NetChannel->GetProtocolVersion() : GetActiveClientProtocol();
+	if ( nProto == 24 || pState->m_nServerClasses == 197 )
+	{
+		DataTable_CreateClientClassInfosForPCProtocol24( pState );
+		return;
+	}
+
 	if ( !serverGameDLL )
 	{
 		Sys_Error( "DataTable_CreateClientClassInfosFromServerClasses:  No serverGameDLL loaded!" );

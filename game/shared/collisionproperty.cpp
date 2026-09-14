@@ -379,6 +379,7 @@ BEGIN_NETWORK_TABLE_NOBASE( CCollisionProperty, DT_CollisionProperty )
 	RecvPropInt( RECVINFO( m_usSolidFlags ),	0, RecvProxy_SolidFlags ),
 	RecvPropInt( RECVINFO(m_nSurroundType), 0, RecvProxy_IntDirtySurround ),
 	RecvPropInt( RECVINFO(m_triggerBloat), 0, RecvProxy_IntDirtySurround ), 
+	RecvPropInt( RECVINFO(m_bUniformTriggerBloat), 0, RecvProxy_IntDirtySurround ), 
 	RecvPropVector( RECVINFO(m_vecSpecifiedSurroundingMinsPreScaled), 0, RecvProxy_VectorDirtySurround ),
 	RecvPropVector( RECVINFO(m_vecSpecifiedSurroundingMaxsPreScaled), 0, RecvProxy_VectorDirtySurround ),
 	RecvPropVector( RECVINFO(m_vecSpecifiedSurroundingMins), 0, RecvProxy_VectorDirtySurround ),
@@ -391,7 +392,8 @@ BEGIN_NETWORK_TABLE_NOBASE( CCollisionProperty, DT_CollisionProperty )
 	SendPropInt( SENDINFO( m_nSolidType ),		3, SPROP_UNSIGNED, SendProxy_Solid ),
 	SendPropInt( SENDINFO( m_usSolidFlags ),	FSOLID_MAX_BITS, SPROP_UNSIGNED, SendProxy_SolidFlags ),
 	SendPropInt( SENDINFO( m_nSurroundType ), SURROUNDING_TYPE_BIT_COUNT, SPROP_UNSIGNED ),
-	SendPropInt( SENDINFO(m_triggerBloat), 0, SPROP_UNSIGNED),
+	SendPropInt( SENDINFO(m_triggerBloat), 8, SPROP_UNSIGNED),
+	SendPropBool( SENDINFO(m_bUniformTriggerBloat) ),
 	SendPropVector( SENDINFO(m_vecSpecifiedSurroundingMinsPreScaled), 0, SPROP_NOSCALE),
 	SendPropVector( SENDINFO(m_vecSpecifiedSurroundingMaxsPreScaled), 0, SPROP_NOSCALE),
 	SendPropVector( SENDINFO(m_vecSpecifiedSurroundingMins), 0, SPROP_NOSCALE),
@@ -428,6 +430,7 @@ void CCollisionProperty::Init( CBaseEntity *pEntity )
 	m_vecMaxs.GetForModify().Init();
 	m_flRadius = 0.0f;
 	m_triggerBloat = 0;
+	m_bUniformTriggerBloat = false;
 	m_usSolidFlags = 0;
 	m_nSolidType = SOLID_NONE;
 
