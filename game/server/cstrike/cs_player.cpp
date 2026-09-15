@@ -925,7 +925,16 @@ void CCSPlayer::Spawn()
 	m_bIsInAutoBuy = false;
 	m_bIsInRebuy = false;
 	m_bAutoReload = false;
-
+	
+	// Read CVar from Client And Apply (cl_clantag)
+	const char *pClanTag = engine->GetClientConVarValue( engine->IndexOfEdict( edict() ), "cl_clantag" );
+    if ( pClanTag )
+    {
+            char szClanTag[13]; // 12 chars + null terminator
+            Q_strncpy( szClanTag, pClanTag, sizeof(szClanTag) );
+            SetClanTag( szClanTag );
+    }
+    
 	SetContextThink( &CCSPlayer::PushawayThink, gpGlobals->curtime + PUSHAWAY_THINK_INTERVAL, CS_PUSHAWAY_THINK_CONTEXT );
 
 	if ( GetActiveWeapon() && !IsObserver() )

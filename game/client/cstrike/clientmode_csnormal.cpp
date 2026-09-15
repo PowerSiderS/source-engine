@@ -87,6 +87,12 @@ extern ConVar cl_detail_avoid_force;
 extern ConVar cl_detail_avoid_recover_speed;
 
 //-----------------------------------------------------------------------------
+ConVar cl_clantag(
+        "cl_clantag",
+        "",
+        FCVAR_ARCHIVE | FCVAR_USERINFO,
+        "Set your clan tag (max 12 characters)" );
+//-----------------------------------------------------------------------------
 ConVar cl_autobuy(
 	"cl_autobuy",
 	"",
