@@ -57,6 +57,7 @@
 static ConVar cl_timeout( "cl_timeout", "30", FCVAR_ARCHIVE, "After this many seconds without receiving a packet from the server, the client will disconnect itself" );
 	   ConVar cl_logofile( "cl_logofile", "materials/decals/spraylogo.vtf", FCVAR_ARCHIVE, "Spraypoint logo decal." ); // TODO must be more generic
 static ConVar cl_soundfile( "cl_soundfile", "sound/player/jingle.wav", FCVAR_ARCHIVE, "Jingle sound file." );
+ConVar cl_avatar( "cl_avatar", "", FCVAR_USERINFO | FCVAR_ARCHIVE, "Player avatar VTF file." );
 static ConVar cl_allowdownload ( "cl_allowdownload", "1", FCVAR_ARCHIVE, "Client downloads customization files" );
 static ConVar cl_downloadfilter( "cl_downloadfilter", "all", FCVAR_ARCHIVE, "Determines which files can be downloaded from the server (all, none, nosounds, mapsonly)" );
 
@@ -1229,9 +1230,13 @@ void CClientState::CheckOwnCustomFiles()
 
 	if ( IsPC() )
 	{
-		AddCustomFile( 0, cl_logofile.GetString() );
-		AddCustomFile( 1, cl_soundfile.GetString() );
+		AddCustomFile( CUSTOM_FILE_LOGO, cl_logofile.GetString() );
+		AddCustomFile( CUSTOM_FILE_SOUND, cl_soundfile.GetString() );
 	}
+
+	// Avatars use the same custom-file CRC/download path on every client
+	// platform, including Android.
+	AddCustomFile( CUSTOM_FILE_AVATAR, cl_avatar.GetString() );
 }
 
 //-----------------------------------------------------------------------------

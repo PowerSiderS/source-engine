@@ -94,8 +94,12 @@
 // This is the maximum number of properties that can be delta'd. Must be evenly divisible by 8.
 #define MAX_PACKEDENTITY_PROPS	(4096)
 
-// a client can have up to 4 customization files (logo, sounds, models, txt).
+// A client can have up to 4 customization files. These slots are sent in
+// CLC_ClientInfo and are downloaded using the CRC-based custom-file path.
 #define MAX_CUSTOM_FILES		4		// max 4 files
+#define CUSTOM_FILE_LOGO		0
+#define CUSTOM_FILE_SOUND		1
+#define CUSTOM_FILE_AVATAR		2
 #define MAX_CUSTOM_FILE_SIZE	524288	// Half a megabyte
 
 //
