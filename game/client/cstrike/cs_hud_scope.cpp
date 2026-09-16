@@ -198,10 +198,10 @@ void CHudScope::Paint( void )
   		// If our fps is lower we will reach the target faster, if higher it is slightly slower
   		// (since this is a framerate-dependent approach function).
   		m_fLineSpreadDistance = RemapValClamped( gpGlobals->frametime * 140.0f, 0.0f, 1.0f, m_fLineSpreadDistance, fRawSpreadDistance );
-
-  		int offsetX = viewModel->GetBobState().m_flRawLateralBob * (screenTall/14);
-  		int offsetY = viewModel->GetBobState().m_flRawVerticalBob * (screenTall/14);
-
+        
+        int OffsetX = 0;
+        int OffsetY = 0;
+        
   		float flInacDisplayBlur = m_fAnimInset * 0.04f;
   		if ( flInacDisplayBlur > 0.22 )
    		flInacDisplayBlur = 0.22;
