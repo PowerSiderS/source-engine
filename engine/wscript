@@ -32,7 +32,6 @@ def configure(conf):
 def build(bld):
 	source = [
 		'socketcreator.cpp',
-		'custom_steamid.cpp',
 		'clientframe.cpp',
 		'decal_clip.cpp',
 		'demofile.cpp',

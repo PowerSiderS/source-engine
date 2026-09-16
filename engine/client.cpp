@@ -50,7 +50,6 @@
 
 #include "tier0/platform.h"
 #include "tier0/systeminformation.h"
-#include "custom_steamid.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -126,7 +125,6 @@ A LAN server will know not to allows more then xxx users with the same CD Key
 */
 const char *CClientState::GetCDKeyHash( void )
 {
-<<<<<<< HEAD
 	if ( IsPC() )
 	{
 		char szKeyBuffer[256]; // Keys are about 13 chars long.	
@@ -175,9 +173,6 @@ const char *CClientState::GetCDKeyHash( void )
 	}
 
 	return "12345678901234567890123456789012";
-=======
-        return GetDeviceUUID();
->>>>>>> ae1f5aca (Implement persistent custom SteamID generation and myid command)
 }
 
 void CClientState::SendClientInfo( void )
@@ -191,15 +186,9 @@ void CClientState::SendClientInfo( void )
 	info.m_bIsReplay = false;
 #endif
 #if !defined( NO_STEAM )
-<<<<<<< HEAD
 	info.m_nFriendsID = Steam3Client().SteamUser() ? Steam3Client().SteamUser()->GetSteamID().GetAccountID() : 0;
 #else
 	info.m_nFriendsID = 0;
-=======
-        info.m_nFriendsID = Steam3Client().SteamUser() ? Steam3Client().SteamUser()->GetSteamID().GetAccountID() : GetLocalDeviceSteamID().GetAccountID();
-#else
-        info.m_nFriendsID = GetLocalDeviceSteamID().GetAccountID();
->>>>>>> ae1f5aca (Implement persistent custom SteamID generation and myid command)
 #endif
 	Q_strncpy( info.m_FriendsName, m_FriendsName, sizeof(info.m_FriendsName) );
 

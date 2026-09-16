@@ -29,7 +29,6 @@
 #include "steam/steam_gameserver.h"
 #include "hltvserver.h"
 #include "sys_dll.h"
-#include "custom_steamid.h"
 #if defined( REPLAY_ENABLED )
 #include "replayserver.h"
 #endif
@@ -779,10 +778,6 @@ bool CSteam3Server::NotifyLocalClientConnect( CBaseClient *client )
 	if ( SteamGameServer() )
 	{
 		steamID = SteamGameServer()->CreateUnauthenticatedUserConnection();
-	}
-	else
-	{
-		steamID = GetLocalDeviceSteamID();
 	}
 	
 	client->SetSteamID( steamID );
