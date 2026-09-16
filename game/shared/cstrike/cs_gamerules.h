@@ -113,6 +113,8 @@ public:
 
 	bool IsBuyTimeElapsed();
 
+	bool HasHalfTime( void ) const;
+
 	virtual int	DefaultFOV();
 
 	// Get the view vectors for this mod.
@@ -138,11 +140,15 @@ private:
 	CNetworkVar( bool, m_bLogoMap );		 // If there's an info_player_logo entity, then it's a logo map.
 	CNetworkVar( bool, m_bBlackMarket );
 
-	bool		m_bDontUploadStats;
+		bool	m_bDontUploadStats;
 
-public:
+		void SetPhase( GamePhase phase );
+		GamePhase GetPhase( void ) const { return m_gamePhase; }
+		GamePhase m_gamePhase;
 
-	bool IsBlackMarket( void ) { return m_bBlackMarket; }
+	public:
+
+		bool IsBlackMarket( void ) { return m_bBlackMarket; }
 	int GetNumHostagesRemaining( void ) { return m_iHostagesRemaining; }
 
 	virtual CBaseCombatWeapon *GetNextBestWeapon( CBaseCombatCharacter *pPlayer, CBaseCombatWeapon *pCurrentWeapon );
@@ -269,6 +275,12 @@ public:
 	//=============================================================================
 
 	void RestartRound( void );
+
+	void SwitchTeamsAtRoundReset( void );
+
+	void FreezePlayers( void );
+	void UnfreezeAllPlayers( void );
+
 	void BalanceTeams( void );
 	void MoveHumansToHumanTeam( void );
 	bool TeamFull( int team_id );
@@ -352,6 +364,10 @@ protected:
 public:
 
 	bool IsFriendlyFireOn();
+
+	bool	IsLastRoundBeforeHalfTime( void );
+
+	int	GetRoundsPlayed() { return m_iNumCTWins + m_iNumTerroristWins; }
 
 	virtual void	SetAllowWeaponSwitch( bool allow );
 	virtual bool	GetAllowWeaponSwitch( void );
@@ -502,9 +518,14 @@ public:
 
 	void SetBlackMarketPrices( bool bSetDefaults );
 
+	bool IsSwitchingTeamsAtRoundReset( void ) { return m_bSwitchingTeamsAtRoundReset; }
+
 	// Black market
 	INetworkStringTable *m_StringTableBlackMarket;
 	const weeklyprice_t *m_pPrices;
+
+private:
+	bool m_bSwitchingTeamsAtRoundReset;
 };
 
 //-----------------------------------------------------------------------------

@@ -575,16 +575,18 @@ private:
 	int	m_iDeathPose;
 	int	m_iDeathFrame;
 
+	bool m_switchTeamsOnNextRoundReset;
+
 //=============================================================================
 // HPE_BEGIN:
 // [menglish] Freeze cam function and variable declarations
 //=============================================================================
-	 
+
 	bool m_bAbortFreezeCam;
 
 protected:
 	void AttemptToExitFreezeCam( void );
-	 
+
 //=============================================================================
 // HPE_END
 //=============================================================================
@@ -601,7 +603,7 @@ public:
 	// HPE_BEGIN:
 	// [menglish] Adding two variables, keeping track of damage to the player
 	//=============================================================================
-	 
+
 	int m_LastHitBox;			// the last body hitbox that took damage
 	Vector m_vLastHitLocationObjectSpace; //position where last hit occured in space of the bone associated with the hitbox
 	EHANDLE		m_hDroppedEquipment[DROPPED_COUNT];
@@ -631,7 +633,7 @@ public:
 	bool m_bTeamChanged;		// Just allow one team change per round
 	CNetworkVar( int, m_iAccount );	// How much cash this player has.
 	int m_iShouldHaveCash;
-	
+
 	bool m_bJustKilledTeammate;
 	bool m_bPunishedForTK;
 	int m_iTeamKills;
@@ -701,21 +703,21 @@ public:
 
 	void SetShieldDrawnState( bool bState );
 	void DropShield( void );
-	
+
 	char m_szNewName [MAX_PLAYER_NAME_LENGTH]; // not empty if player requested a namechange
 	char m_szClanTag[MAX_CLAN_TAG_LENGTH];
 
 	Vector m_vecTotalBulletForce;	//Accumulator for bullet force in a single frame
-	
+
 	CNetworkVar( float, m_flFlashDuration );
 	CNetworkVar( float, m_flFlashMaxAlpha );
-	
+
 	CNetworkVar( float, m_flProgressBarStartTime );
 	CNetworkVar( int, m_iProgressBarDuration );
 	CNetworkVar( int, m_iThrowGrenadeCounter );	// used to trigger grenade throw animations.
-	
+
 	// Tracks our ragdoll entity.
-	CNetworkHandle( CBaseEntity, m_hRagdoll );	// networked entity handle 
+	CNetworkHandle( CBaseEntity, m_hRagdoll );	// networked entity handle
 
 	// Bots and hostages auto-duck during jumps
 	bool m_duckUntilOnGround;
@@ -724,6 +726,9 @@ public:
 
 	void SurpressLadderChecks( const Vector& pos, const Vector& normal );
 	bool CanGrabLadder( const Vector& pos, const Vector& normal );
+
+	void SwitchTeamsAtRoundReset( void ) { m_switchTeamsOnNextRoundReset = true; }
+	bool WillSwitchTeamsAtRoundReset( void ) { return m_switchTeamsOnNextRoundReset; }
 
 	CNetworkVar( bool, m_bDetected );
 

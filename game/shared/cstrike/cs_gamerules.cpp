@@ -223,6 +223,16 @@ ConVar mp_round_restart_delay(
 	true, 0.0f,
 	true, 10.0f );
 
+ConVar mp_halftime_duration(
+	"mp_halftime_duration",
+	"15.0",
+	FCVAR_REPLICATED,
+	"Number of seconds that halftime lasts",
+	true, 0.0f,
+	true, 300.0f );
+
+ConVar mp_halftime( "mp_halftime", "0", FCVAR_REPLICATED, "Determines whether the match switches sides in a halftime event." );
+
 ConVar sv_allowminmodels(
 	"sv_allowminmodels",
 	"1",
@@ -409,10 +419,22 @@ ConVar cl_autohelp(
 		"Restricts human players to a single team {any, CT, T}" );
 
 	ConVar mp_ignore_round_win_conditions(
-		"mp_ignore_round_win_conditions",
-		"0",
-		FCVAR_REPLICATED,
-		"Ignore conditions which would end the current round");
+	"mp_ignore_round_win_conditions",
+	"0",
+	FCVAR_REPLICATED,
+	"Ignore conditions which would end the current round");
+
+	ConVar mp_halftime_pausetimer(
+	"mp_halftime_pausetimer",
+	"0",
+	FCVAR_REPLICATED,
+	"Set to 1 to stay in halftime indefinitely. Set to 0 to resume the timer." );
+
+	ConVar mp_halftime_pausematch(
+	"mp_halftime_pausematch",
+	"0",
+	FCVAR_REPLICATED,
+	"Set to 1 to pause match after halftime countdown elapses. Match must be resumed by vote or admin." );
 
 	ConCommand EndRound( "endround", &CCSGameRules::EndRound, "End the current round.", FCVAR_CHEAT );
 
@@ -570,8 +592,9 @@ ConVar cl_autohelp(
 
 	CCSGameRules::CCSGameRules()
 	{
-		m_iRoundTime = 0;
-		m_iRoundWinStatus = WINNER_NONE;
+	m_iRoundTime = 0;
+	m_gamePhase = GAMEPHASE_PLAYING_STANDARD;
+	m_iRoundWinStatus = WINNER_NONE;
 		m_iFreezeTime = 0;
 
 		m_fRoundStartTime = 0;
@@ -664,7 +687,9 @@ ConVar cl_autohelp(
 
 		m_flNextHostageAnnouncement = gpGlobals->curtime;	// asap.
 
-		ReadMultiplayCvars();
+			ReadMultiplayCvars();
+
+		m_bSwitchingTeamsAtRoundReset = false;
 
 		m_pPrices = NULL;
 		m_bBlackMarket = false;
@@ -698,6 +723,14 @@ ConVar cl_autohelp(
 			g_flGameStatsUpdateTime = CS_GAME_STATS_UPDATE; //Next update is between 22 and 24 hours.
 		}
 #endif
+	}
+
+	void CCSGameRules::SetPhase( GamePhase phase )
+	{
+	// NOTE: csso-src's SetPhase also handles mp_halftime_pausematch via its match
+	// pause/resume system, which this tree does not have. Halftime itself does not
+	// require that system, so it is intentionally omitted here.
+	m_gamePhase = phase;
 	}
 
 	void CCSGameRules::AddPricesToTable( weeklyprice_t prices )
@@ -2302,9 +2335,45 @@ ConVar cl_autohelp(
 		m_bBombDropped = false;
 		m_bBombPlanted = false;
 		
-		if ( GetHumanTeam() != TEAM_UNASSIGNED )
+			if ( GetHumanTeam() != TEAM_UNASSIGNED )
 		{
-			MoveHumansToHumanTeam();
+		MoveHumansToHumanTeam();
+		}
+
+		//If this is the first restart since halftime, do the appropriate bookkeeping.
+		bool bClearAccountsAfterHalftime = false;
+		if ( GetPhase() == GAMEPHASE_HALFTIME )
+		{
+		// Regulation halftime or 1st half of overtime finished, swap the CT and T scores so the scoreboard will be correct
+		int temp = m_iNumCTWins;
+		m_iNumCTWins = m_iNumTerroristWins;
+		m_iNumTerroristWins = temp;
+		UpdateTeamScores();
+		SetPhase( GAMEPHASE_PLAYING_SECOND_HALF );
+
+		// hide scoreboard
+		for ( int i = 1; i <= MAX_PLAYERS; i++ )
+		{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
+
+		if ( !pPlayer )
+		continue;
+
+		pPlayer->ShowViewPortPanel( PANEL_SCOREBOARD, false );
+		}
+
+		// Ensure everyone is given only the starting money
+		bClearAccountsAfterHalftime = true;
+
+		// Remove all items at halftime or before overtime when teams aren't switching sides
+		for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+		{
+		CCSPlayer *pPlayer = (CCSPlayer*) UTIL_PlayerByIndex( i );
+		if ( !pPlayer )
+		continue;
+
+		pPlayer->RemoveAllItems( true );
+		}
 		}
 
 		/*************** AUTO-BALANCE CODE *************/
@@ -2359,9 +2428,17 @@ ConVar cl_autohelp(
 			// Reset score info
 			m_iNumTerroristWins				= 0;
 			m_iNumCTWins					= 0;
-			m_iNumConsecutiveTerroristLoses	= 0;
-			m_iNumConsecutiveCTLoses		= 0;
+				m_iNumConsecutiveTerroristLoses	= 0;
+			m_iNumConsecutiveCTLoses	= 0;
 
+			if ( HasHalfTime() )
+			{
+			SetPhase( GAMEPHASE_PLAYING_FIRST_HALF );
+			}
+			else
+			{
+			SetPhase( GAMEPHASE_PLAYING_STANDARD );
+			}
 
 			// Reset team scores
 			UpdateTeamScores();
@@ -2834,7 +2911,40 @@ ConVar cl_autohelp(
 			gameeventmanager->FireEvent( event );
 		}
 	
-		UploadGameStats();
+			UploadGameStats();
+
+		if ( bClearAccountsAfterHalftime && HasHalfTime() )
+		{
+		// Loop through all players and give them only the starting money
+		for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+		{
+		CCSPlayer *pPlayer = (CCSPlayer*) UTIL_PlayerByIndex( i );
+		if ( !pPlayer )
+		continue;
+
+		if ( pPlayer->GetTeamNumber() == TEAM_CT || pPlayer->GetTeamNumber() == TEAM_TERRORIST )
+		{
+		int amount_to_assign = -pPlayer->m_iAccount + GetStartMoney();
+
+		pPlayer->AddAccount( amount_to_assign, false );
+		}
+		}
+
+		m_iNumConsecutiveTerroristLoses = 0;
+		m_iNumConsecutiveCTLoses = 0;
+		m_iLoserBonus = 1500;
+		}
+
+		m_bSwitchingTeamsAtRoundReset = false;
+
+		// Unfreeze all players now that the round is starting
+		UnfreezeAllPlayers();
+
+		// should we show an announcement to declare that this round might be the last round?
+		if ( IsLastRoundBeforeHalfTime() )
+		{
+		UTIL_ClientPrintAll( HUD_PRINTCENTER, "#Cstrike_TitlesTXT_Last_Round_Half" );
+		}
 
 		//=============================================================================
 		// HPE_BEGIN:
@@ -2925,14 +3035,24 @@ ConVar cl_autohelp(
 
 	void CCSGameRules::Think()
 	{
-		CGameRules::Think();
+	CGameRules::Think();
 
-		for ( int i = 0; i < GetNumberOfTeams(); i++ )
-		{
-			GetGlobalTeam( i )->Think();
-		}
+	//Update replicated variable for time till next match or half
+	if ( GetPhase() == GAMEPHASE_HALFTIME )
+	{
+	if ( mp_halftime_pausetimer.GetBool() )
+	{
+	//Delay m_flRestartRoundTime for as long as we're paused.
+	m_flRestartRoundTime += gpGlobals->frametime;
+	}
+	}
 
-		///// Check game rules /////
+	for ( int i = 0; i < GetNumberOfTeams(); i++ )
+	{
+	GetGlobalTeam( i )->Think();
+	}
+
+	///// Check game rules /////
 		if ( CheckGameOver() )
 		{
 			return;
@@ -2950,9 +3070,56 @@ ConVar cl_autohelp(
 			return;
 		}
 
-		if ( CheckWinLimit() )
+			if ( CheckWinLimit() )
 		{
-			return;
+		return;
+		}
+
+		//Check for halftime switching
+		if ( GetPhase() == GAMEPHASE_PLAYING_FIRST_HALF )
+		{
+		//The number of rounds before halftime depends on the mode and the associated convar
+		int numRoundsBeforeHalftime = (mp_maxrounds.GetInt() / 2);
+
+		//Finally, check for halftime
+		bool bhalftime = false;
+		if ( numRoundsBeforeHalftime > 0 )
+		{
+		if ( GetRoundsPlayed() >= numRoundsBeforeHalftime )
+		{
+		bhalftime = true;
+		}
+		}
+			else if ( mp_timelimit.GetFloat() > 0.0f )
+		{
+		// if maxrounds is 0 then the server is relying on mp_timelimit rather than mp_maxrounds.
+				float flHalfTimeLeft = ( mp_timelimit.GetInt() * 60 ) / 2;
+			bool bTimeToSwitch = ( GetMapRemainingTime() <= flHalfTimeLeft );
+			bool bRoundJustEnded = ( m_iRoundWinStatus != WINNER_NONE );
+			if ( bTimeToSwitch && bRoundJustEnded )
+			{
+			bhalftime = true;
+			}
+		}
+
+		if ( bhalftime )
+		{
+		SetPhase( GAMEPHASE_HALFTIME );
+		m_flRestartRoundTime = gpGlobals->curtime + mp_halftime_duration.GetFloat();
+		SwitchTeamsAtRoundReset();
+		FreezePlayers();
+
+		// show scoreboard
+		for ( int i = 1; i <= MAX_PLAYERS; i++ )
+		{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
+
+		if ( !pPlayer )
+		continue;
+
+		pPlayer->ShowViewPortPanel( PANEL_SCOREBOARD );
+		}
+		}
 		}
 
 		
@@ -5031,6 +5198,12 @@ bool CCSGameRules::IsBuyTimeElapsed()
 	return ( GetRoundElapsedTime() > GetBuyTimeLength() );
 }
 
+// Returns true if the game is to be split into two halves.
+bool CCSGameRules::HasHalfTime( void ) const
+{
+	return mp_halftime.GetBool();
+}
+
 int CCSGameRules::DefaultFOV()
 {
 	return 90;
@@ -5052,7 +5225,7 @@ const CViewVectors* CCSGameRules::GetViewVectors() const
 #define BULLET_MASS_GRAINS_TO_KG(grains)	lbs2kg(BULLET_MASS_GRAINS_TO_LB(grains))
 
 // exaggerate all of the forces, but use real numbers to keep them consistent
-#define BULLET_IMPULSE_EXAGGERATION			1	
+#define BULLET_IMPULSE_EXAGGERATION			1
 
 // convert a velocity in ft/sec and a mass in grains to an impulse in kg in/s
 #define BULLET_IMPULSE(grains, ftpersec)	((ftpersec)*12*BULLET_MASS_GRAINS_TO_KG(grains)*BULLET_IMPULSE_EXAGGERATION)
@@ -5072,7 +5245,7 @@ CAmmoDef* GetAmmoDef()
 	if ( !bInitted )
 	{
 		bInitted = true;
-		
+
 		ammoDef.AddAmmoType( BULLET_PLAYER_50AE,		DMG_BULLET, TRACER_LINE, 0, 0, "ammo_50AE_max",		2400 * BULLET_IMPULSE_EXAGGERATION, 0, 10, 14 );
 		ammoDef.AddAmmoType( BULLET_PLAYER_762MM,		DMG_BULLET, TRACER_LINE, 0, 0, "ammo_762mm_max",	2400 * BULLET_IMPULSE_EXAGGERATION, 0, 10, 14 );
 		ammoDef.AddAmmoType( BULLET_PLAYER_556MM,		DMG_BULLET, TRACER_LINE, 0, 0, "ammo_556mm_max",	2400 * BULLET_IMPULSE_EXAGGERATION, 0, 10, 14 );
@@ -5124,7 +5297,7 @@ const char *CCSGameRules::GetChatPrefix( bool bTeamOnly, CBasePlayer *pPlayer )
 				{
 					pszPrefix = "(Counter-Terrorist)";
 				}
-				else 
+				else
 				{
 					pszPrefix = "*DEAD*(Counter-Terrorist)";
 				}
@@ -5156,7 +5329,7 @@ const char *CCSGameRules::GetChatPrefix( bool bTeamOnly, CBasePlayer *pPlayer )
 			{
 				if ( pPlayer->GetTeamNumber() != TEAM_SPECTATOR )
 				{
-					pszPrefix = "*DEAD*";	
+					pszPrefix = "*DEAD*";
 				}
 				else
 				{
@@ -5216,7 +5389,7 @@ const char *CCSGameRules::GetChatFormat( bool bTeamOnly, CBasePlayer *pPlayer )
 					pszFormat = "Cstrike_Chat_CT";
 				}
 			}
-			else 
+			else
 			{
 				pszFormat = "Cstrike_Chat_CT_Dead";
 			}
@@ -5256,7 +5429,7 @@ const char *CCSGameRules::GetChatFormat( bool bTeamOnly, CBasePlayer *pPlayer )
 		{
 			if ( pPlayer->GetTeamNumber() != TEAM_SPECTATOR )
 			{
-				pszFormat = "Cstrike_Chat_AllDead";	
+				pszFormat = "Cstrike_Chat_AllDead";
 			}
 			else
 			{
@@ -5272,10 +5445,10 @@ void CCSGameRules::ClientSettingsChanged( CBasePlayer *pPlayer )
 {
 	const char *pszNewName = engine->GetClientConVarValue( pPlayer->entindex(), "name" );
 	const char *pszOldName = pPlayer->GetPlayerName();
-	CCSPlayer *pCSPlayer = (CCSPlayer*)pPlayer;		
-	if ( pszOldName[0] != 0 && Q_strncmp( pszOldName, pszNewName, MAX_PLAYER_NAME_LENGTH-1 ) )		
+	CCSPlayer *pCSPlayer = (CCSPlayer*)pPlayer;
+	if ( pszOldName[0] != 0 && Q_strncmp( pszOldName, pszNewName, MAX_PLAYER_NAME_LENGTH-1 ) )
 	{
-		pCSPlayer->ChangeName( pszNewName );		
+		pCSPlayer->ChangeName( pszNewName );
 	}
 
 	pCSPlayer->m_bShowHints = true;
@@ -5299,6 +5472,21 @@ bool CCSGameRules::IsFriendlyFireOn( void )
 	return friendlyfire.GetBool();
 }
 
+bool CCSGameRules::IsLastRoundBeforeHalfTime( void )
+{
+	if ( !HasHalfTime() )
+	return false;
+
+	int numRoundsBeforeHalftime = -1;
+	if ( GetPhase() == GAMEPHASE_PLAYING_FIRST_HALF )
+	numRoundsBeforeHalftime = ( mp_maxrounds.GetInt() / 2 );
+
+	if ( numRoundsBeforeHalftime <= 0 )
+	return false;
+
+	bool bLastRound = ( m_iTotalRoundsPlayed == numRoundsBeforeHalftime - 1 );
+	return bLastRound;
+}
 
 CON_COMMAND( map_showspawnpoints, "Shows player spawn points (red=invalid)" )
 {
@@ -5487,8 +5675,50 @@ void CCSGameRules::PlayerTookDamage(CCSPlayer* player, const CTakeDamageInfo &da
 //=============================================================================
 // HPE_END
 //=============================================================================
-#endif
 
+void CCSGameRules::FreezePlayers( void )
+{
+	for ( int i = 1; i <= MAX_PLAYERS; i++ )
+	{
+	CCSPlayer *pPlayer = ToCSPlayer( UTIL_PlayerByIndex( i ) );
+
+	if ( pPlayer )
+	{
+	pPlayer->AddFlag( FL_FROZEN );
+	}
+	}
+}
+
+void CCSGameRules::UnfreezeAllPlayers( void )
+{
+	for ( int i = 1; i <= MAX_PLAYERS; i++ )
+	{
+	CCSPlayer *pPlayer = ToCSPlayer( UTIL_PlayerByIndex( i ) );
+
+	if ( pPlayer )
+	{
+	pPlayer->RemoveFlag( FL_FROZEN );
+	}
+	}
+}
+
+void CCSGameRules::SwitchTeamsAtRoundReset( void )
+{
+	m_bSwitchingTeamsAtRoundReset = true;
+
+	for ( int i = 1; i <= MAX_PLAYERS; i++ )
+	{
+	CCSPlayer *pPlayer = ToCSPlayer( UTIL_PlayerByIndex( i ) );
+	if ( pPlayer )
+	{
+	if ( pPlayer->GetTeamNumber() == TEAM_CT || pPlayer->GetTeamNumber() == TEAM_TERRORIST )
+	{
+	pPlayer->SwitchTeamsAtRoundReset();
+	}
+	}
+	}
+}
+#endif
 bool CCSGameRules::IsConnectedUserInfoChangeAllowed( CBasePlayer *pPlayer )
 {
 #ifdef GAME_DLL

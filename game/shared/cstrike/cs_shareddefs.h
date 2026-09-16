@@ -181,11 +181,21 @@ enum e_RoundEndReason
     Hostages_Not_Rescued,
     Terrorists_Not_Escaped,
     VIP_Not_Escaped,
-    Game_Commencing,
-    RoundEndReason_Count    
-};
+        Game_Commencing,
+        RoundEndReason_Count
+    };
 
-#define PUSHAWAY_THINK_INTERVAL		(1.0f / 20.0f)
+    enum GamePhase
+    {
+    	GAMEPHASE_WARMUP_ROUND,
+    	GAMEPHASE_PLAYING_STANDARD,
+    	GAMEPHASE_PLAYING_FIRST_HALF,
+    	GAMEPHASE_PLAYING_SECOND_HALF,
+    	GAMEPHASE_HALFTIME,
+    	GAMEPHASE_MAX
+    };
+
+    #define PUSHAWAY_THINK_INTERVAL	(1.0f / 20.0f)
 
 enum
 {
