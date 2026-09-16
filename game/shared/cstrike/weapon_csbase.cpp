@@ -22,6 +22,7 @@
 	#include "hud_crosshair.h"
 	#include "c_te_effect_dispatch.h"
 	#include "c_te_legacytempents.h"
+	#include "predicted_viewmodel.h"
 
 	extern IVModelInfoClient* modelinfo;
 
@@ -899,6 +900,7 @@ bool CWeaponCSBase::Deploy()
 	m_iAlpha =  80;
 	if ( pPlayer )
 	{
+		pPlayer->m_bIsScoped = false;
 		pPlayer->m_iLastZoom = 0;
 		pPlayer->SetFOV( pPlayer, 0 );
 	}
@@ -1313,6 +1315,9 @@ void CWeaponCSBase::DefaultTouch(CBaseEntity *pOther)
 		{
 			C_CSPlayer *pPlayer = ToCSPlayer( GetOwner() );
 			if( pPlayer && pPlayer->GetFOV() < pPlayer->GetDefaultFOV() && HideViewModelWhenZoomed() )
+				return true;
+
+			if ( pPlayer && pPlayer->GetFOV() != pPlayer->GetDefaultFOV() && pPlayer->m_bIsScoped )
 				return true;
 
 			CEffectData data;

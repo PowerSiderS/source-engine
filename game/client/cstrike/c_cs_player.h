@@ -234,7 +234,8 @@ public:
 	CNetworkVar( bool, m_bInBombZone );
 	CNetworkVar( bool, m_bInBuyZone );
 	CNetworkVar( int, m_iThrowGrenadeCounter );	// used to trigger grenade throw animations.
-
+	CNetworkVar( bool, m_bIsScoped );
+	
 	bool IsInHostageRescueZone( void );
 
 	// This is a combination of the ADDON_ flags in cs_shareddefs.h.
