@@ -2940,10 +2940,38 @@ ConVar cl_autohelp(
 		// Unfreeze all players now that the round is starting
 		UnfreezeAllPlayers();
 
-		// should we show an announcement to declare that this round might be the last round?
+			// should we show an announcement to declare that this round might be the last round?
 		if ( IsLastRoundBeforeHalfTime() )
 		{
 		UTIL_ClientPrintAll( HUD_PRINTCENTER, "#Cstrike_TitlesTXT_Last_Round_Half" );
+		}
+
+		// Announce match point / final round based on the win limit
+		if ( mp_winlimit.GetInt() != 0 )
+		{
+		bool bCTMatchPoint = ( m_iNumCTWins == mp_winlimit.GetInt() - 1 );
+		bool bTMatchPoint = ( m_iNumTerroristWins == mp_winlimit.GetInt() - 1 );
+
+		if ( bCTMatchPoint && bTMatchPoint )
+		{
+		// both teams are one win away from the win limit - the next round decides the match
+		UTIL_ClientPrintAll( HUD_PRINTCENTER, "#Cstrike_TitlesTXT_Final_Round" );
+		}
+		else if ( bCTMatchPoint || bTMatchPoint )
+		{
+		// one team is one win away from the win limit
+		UTIL_ClientPrintAll( HUD_PRINTCENTER, "#Cstrike_TitlesTXT_Match_Point" );
+		}
+		}
+
+		// Announce the final round based on the round limit
+		if ( mp_maxrounds.GetInt() != 0 )
+		{
+		int iRoundsLeft = mp_maxrounds.GetInt() - m_iTotalRoundsPlayed;
+		if ( iRoundsLeft == 1 )
+		{
+		UTIL_ClientPrintAll( HUD_PRINTCENTER, "#Cstrike_TitlesTXT_Final_Round" );
+		}
 		}
 
 		//=============================================================================
