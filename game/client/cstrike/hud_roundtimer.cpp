@@ -16,6 +16,8 @@
 
 #include <vgui_controls/AnimationController.h>
 
+ConVar hud_display_c4_time( "hud_display_c4_time", "0", FCVAR_ARCHIVE | FCVAR_CLIENTDLL, "Display C4 countdown timer after planting." );
+
 class CHudRoundTimer : public CHudElement, public vgui::Panel
 {
 public:
@@ -111,8 +113,12 @@ void CHudRoundTimer::Think()
 		timer = (int)ceil(pRules->GetRoundStartTime()-gpGlobals->curtime);
 	}
 
-	//If the bomb is planted don't draw -- the timer is irrelevant
-	SetVisible(g_PlantedC4s.Count() == 0);
+	if ( g_PlantedC4s.Count() > 0 && !hud_display_c4_time.GetBool() )
+	{
+		SetVisible( false );
+		return;
+	}
+	SetVisible( true );
 
 	if(timer > 30)
 	{
@@ -194,27 +200,53 @@ void CHudRoundTimer::Think()
 
 void CHudRoundTimer::Paint()
 {
-	// Update the time.
 	C_CSGameRules *pRules = CSGameRules();
 	if ( !pRules )
 		return;
 
-	int timer = (int)ceil( pRules->GetRoundRemainingTime() );
+	int minutes = 0;
+	int seconds = 0;
 
-	if ( pRules->IsFreezePeriod() )
+	// Check if bomb is planted and cvar is enabled
+	if ( g_PlantedC4s.Count() > 0 && hud_display_c4_time.GetBool() )
 	{
-		// in freeze period countdown to round start time
-		timer = (int)ceil(pRules->GetRoundStartTime()-gpGlobals->curtime);
-	}
-	
-	if(timer < 0) 
-		timer = 0;
-		
-	int minutes = timer / 60;
-	int seconds = timer % 60;
+		// Get the first planted C4 and display its remaining time
+		C_PlantedC4 *pC4 = g_PlantedC4s[0];
+		if ( pC4 && pC4->IsBombActive() )
+		{
+			int iTimeLeft = pC4->GetSecondsRemaining();
+			if ( iTimeLeft < 0 )
+				iTimeLeft = 0;
 
-	//Draw Timer icon
-	if( m_pTimerIcon )
+			minutes = iTimeLeft / 60;
+			seconds = iTimeLeft % 60;
+
+			// Change color to red if less than 10 seconds
+			if ( iTimeLeft <= 10 )
+			{
+				SetFgColor( Color( 255, 0, 0, 255 ) );
+			}
+		}
+	}
+	else
+	{
+		// Normal round timer logic
+		int timer = (int)ceil( pRules->GetRoundRemainingTime() );
+
+		if ( pRules->IsFreezePeriod() )
+		{
+			timer = (int)ceil( pRules->GetRoundStartTime() - gpGlobals->curtime );
+		}
+		
+		if ( timer < 0 ) 
+			timer = 0;
+			
+		minutes = timer / 60;
+		seconds = timer % 60;
+	}
+
+	// Draw Timer icon
+	if ( m_pTimerIcon )
 	{
 		m_pTimerIcon->DrawSelf( icon_xpos, icon_ypos, icon_wide, icon_tall, GetFgColor() );
 	}
