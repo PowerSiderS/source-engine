@@ -58,6 +58,8 @@ CBaseViewModel::CBaseViewModel()
 	m_nViewModelIndex	= 0;
 
 	m_nAnimationParity	= 0;
+
+	m_bShouldIgnoreOffsetAndAccuracy = false;
 }
 
 //-----------------------------------------------------------------------------

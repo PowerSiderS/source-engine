@@ -55,10 +55,13 @@ public:
 	virtual void			CalcViewModelLag( Vector& origin, QAngle& angles, QAngle& original_angles );
 	virtual void			CalcViewModelView( CBasePlayer *owner, const Vector& eyePosition, 
 								const QAngle& eyeAngles );
-	virtual void			AddViewModelBob( CBasePlayer *owner, Vector& eyePosition, QAngle& eyeAngles ) {};
+	virtual void	AddViewModelBob( CBasePlayer *owner, Vector& eyePosition, QAngle& eyeAngles ) {};
 
-	// Initializes the viewmodel for use							
-	void					SetOwner( CBaseEntity *pEntity );
+	// When true, the viewmodel bob ignores weapon offset and accuracy effects
+	bool	m_bShouldIgnoreOffsetAndAccuracy;
+
+	// Initializes the viewmodel for use
+	void	SetOwner( CBaseEntity *pEntity );
 	void					SetIndex( int nIndex );
 	// Returns which viewmodel it is
 	int						ViewModelIndex( ) const;

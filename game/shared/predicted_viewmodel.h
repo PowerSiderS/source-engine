@@ -15,6 +15,7 @@
 #include "utlvector.h"
 #include "baseplayer_shared.h"
 #include "shared_classnames.h"
+#include "weapon_csbase.h"
 
 #if defined( CLIENT_DLL )
 #define CPredictedViewModel C_PredictedViewModel
@@ -31,7 +32,11 @@ public:
 	virtual ~CPredictedViewModel( void );
 							
 	virtual void CalcViewModelLag( Vector& origin, QAngle& angles, QAngle& original_angles );
+	virtual void AddViewModelBob( CBasePlayer *owner, Vector& eyePosition, QAngle& eyeAngles );
 
+#if defined( CLIENT_DLL )
+	BobState_t	&GetBobState() { return m_BobState; }
+#endif //CLIENT_DLL
 #if defined( CLIENT_DLL )
 	virtual bool ShouldPredict( void )
 	{
@@ -43,13 +48,14 @@ public:
 #endif
 
 private:
-	
+
 #if defined( CLIENT_DLL )
 
 	// This is used to lag the angles.
 	CInterpolatedVar<QAngle> m_LagAnglesHistory;
 	QAngle m_vLagAngles;
 
+	BobState_t	m_BobState;		// view model head bob state
 	CPredictedViewModel( const CPredictedViewModel & ); // not defined, not accessible
 
 #endif

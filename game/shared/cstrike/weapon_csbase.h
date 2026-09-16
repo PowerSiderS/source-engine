@@ -61,6 +61,29 @@ enum CSWeaponMode
 	WeaponMode_MAX
 };
 
+// structure to encapsulate state of head bob
+struct BobState_t
+{
+	BobState_t()
+	{
+	m_flBobTime = 0;
+	m_flLastBobTime = 0;
+	m_flLastSpeed = 0;
+	m_flVerticalBob = 0;
+	m_flLateralBob = 0;
+	m_flRawVerticalBob = 0;
+	m_flRawLateralBob = 0;
+	}
+
+	float m_flBobTime;
+	float m_flLastBobTime;
+	float m_flLastSpeed;
+	float m_flVerticalBob;
+	float m_flLateralBob;
+	float m_flRawVerticalBob;
+	float m_flRawLateralBob;
+};
+
 #if defined( CLIENT_DLL )
 
 	//--------------------------------------------------------------------------------------------------------------
@@ -68,6 +91,9 @@ enum CSWeaponMode
 	*  Returns the client's ID_* value for the currently owned weapon, or ID_NONE if no weapon is owned
 	*/
 	CSWeaponID GetClientWeaponID( bool primary );
+
+	float CalcViewModelBobHelper( CBasePlayer *player, BobState_t *pBobState, int nVMIndex = 0 );
+	void AddViewModelBobHelper( Vector &origin, QAngle &angles, BobState_t *pBobState );
 
 #endif
 
@@ -79,7 +105,7 @@ class CWeaponCSBase : public CBaseCombatWeapon
 {
 public:
 	DECLARE_CLASS( CWeaponCSBase, CBaseCombatWeapon );
-	DECLARE_NETWORKCLASS(); 
+	DECLARE_NETWORKCLASS();
 	DECLARE_PREDICTABLE();
 
 	CWeaponCSBase();
@@ -89,7 +115,7 @@ public:
 
 		virtual void CheckRespawn();
 		virtual CBaseEntity* Respawn();
-		
+
 		virtual const Vector& GetBulletSpread();
 		virtual float	GetDefaultAnimSpeed();
 
@@ -116,12 +142,13 @@ public:
 		virtual void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 
 		virtual bool IsRemoveable();
-		
+
 	#endif
 
 	virtual bool	Holster( CBaseCombatWeapon *pSwitchingTo );
 	virtual void	AddViewmodelBob( CBaseViewModel *viewmodel, Vector &origin, QAngle &angles );
 	virtual	float	CalcViewmodelBob( void );
+	BobState_t	*GetBobState();
 	// All predicted weapons need to implement and return true
 	virtual bool	IsPredicted() const;
 
@@ -221,6 +248,9 @@ public:
 	virtual void UpdateAccuracyPenalty();
 
 	CNetworkVar( float, m_fAccuracyPenalty );
+
+	// Client-side viewmodel accuracy shift position (used by CS:GO head bob)
+	float m_flGunAccuracyPosition;
 
 	//=============================================================================
 	// HPE_END
