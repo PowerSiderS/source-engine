@@ -199,8 +199,8 @@ void CHudScope::Paint( void )
   		// (since this is a framerate-dependent approach function).
   		m_fLineSpreadDistance = RemapValClamped( gpGlobals->frametime * 140.0f, 0.0f, 1.0f, m_fLineSpreadDistance, fRawSpreadDistance );
         
-        int OffsetX = 0;
-        int OffsetY = 0;
+        int offsetX = 0;
+        int offsetY = 0;
         
   		float flInacDisplayBlur = m_fAnimInset * 0.04f;
   		if ( flInacDisplayBlur > 0.22 )
