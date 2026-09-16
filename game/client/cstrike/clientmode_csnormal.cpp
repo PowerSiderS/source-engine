@@ -66,6 +66,10 @@ void __MsgFunc_MatchEndConditions( bf_read &msg );
 
 class CHudChat;
 
+ConVar e_viewmodel_fov( "e_viewmodel_fov", "74", FCVAR_ARCHIVE, "Viewmodel FOV" );
+ConVar e_viewmodel_up( "e_viewmodel_up", "0", FCVAR_ARCHIVE, "Viewmodel vertical offset", true, -12.0f, true, 12.0f );
+ConVar e_viewmodel_right( "e_viewmodel_right", "0", FCVAR_ARCHIVE, "Viewmodel horizontal offset", true, -12.0f, true, 12.0f );
+
 ConVar cl_radar_square_with_scoreboard( "cl_radar_square_with_scoreboard", "1", FCVAR_ARCHIVE, "If set, the radar will toggle to square when the scoreboard is visible." );
 
 ConVar default_fov( "default_fov", "90", FCVAR_CHEAT );
@@ -447,7 +451,7 @@ ClientModeCSNormal* GetClientModeCSNormal()
 
 float ClientModeCSNormal::GetViewModelFOV( void )
 {
-	return 90.0f;
+	return e_viewmodel_fov.GetFloat();
 }
 
 int ClientModeCSNormal::GetDeathMessageStartHeight( void )

@@ -33,6 +33,11 @@ extern ConVar in_forceuser;
 #define VIEWMODEL_ANIMATION_PARITY_BITS 3
 #define SCREEN_OVERLAY_MATERIAL "vgui/screens/vgui_overlay"
 
+#ifdef CSTRIKE_DLL
+extern ConVar e_viewmodel_up;
+extern ConVar e_viewmodel_right;
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -425,6 +430,12 @@ void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePos
 	{
 		g_ClientVirtualReality.OverrideViewModelTransform( vmorigin, vmangles, pWeapon && pWeapon->ShouldUseLargeViewModelVROverride() );
 	}
+
+	float flUp = e_viewmodel_up.GetFloat();
+	float flRight = e_viewmodel_right.GetFloat();
+
+	vmorigin.z += flUp;
+	vmorigin.y -= flRight;
 
 	SetLocalOrigin( vmorigin );
 	SetLocalAngles( vmangles );
