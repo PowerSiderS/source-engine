@@ -143,8 +143,6 @@ public:
 
 		virtual bool IsRemoveable();
 
-        virtual bool IsRemoveable();
-		
 	#endif
 
 	virtual bool	Holster( CBaseCombatWeapon *pSwitchingTo );
@@ -176,7 +174,13 @@ public:
 	bool IsKindOf( CSWeaponType type ) const			{ return GetCSWpnData().m_WeaponType == type; }
 
 	// return true if this weapon has a silencer equipped
-	virtual bool IsSilenced( void ) const				{ return false; }
+	virtual bool IsSilenced( void ) const	{ return false; }
+
+	// return true while the player is installing/uninstalling the silencer
+	virtual bool IsSwitchingSilencer( void ) const	{ return false; }
+
+	// shotgun per-shell reload state (0 = not reloading)
+	virtual int GetShotgunReloadState( void ) const	{ return 0; }
 
 	virtual void SetWeaponModelIndex( const char *pName );
 	virtual void OnPickedUp( CBaseCombatCharacter *pNewOwner );

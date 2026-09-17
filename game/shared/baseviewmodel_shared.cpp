@@ -46,6 +46,7 @@ CBaseViewModel::CBaseViewModel()
 #if defined( CLIENT_DLL )
 	// NOTE: We do this here because the color is never transmitted for the view model.
 	m_nOldAnimationParity = 0;
+	m_fCycleOffset = 0.0f;
 	m_EntClientFlags |= ENTCLIENTFLAG_ALWAYS_INTERPOLATE;
 #endif
 	SetRenderColor( 255, 255, 255, 255 );

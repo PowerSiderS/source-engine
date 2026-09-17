@@ -50,7 +50,9 @@ public:
 	virtual CSWeaponID GetWeaponID( void ) const		{ return WEAPON_USP; }
 
 	// return true if this weapon has a silencer equipped
-	virtual bool IsSilenced( void ) const				{ return m_bSilencerOn; }
+	virtual bool IsSilenced( void ) const	{ return m_bSilencerOn; }
+
+	virtual bool IsSwitchingSilencer( void ) const	{ return gpGlobals->curtime < m_flDoneSwitchingSilencer; }
 
 	virtual Activity GetDeployActivity( void );
 

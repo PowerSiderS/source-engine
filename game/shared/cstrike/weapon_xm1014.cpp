@@ -41,6 +41,8 @@ public:
 
 	virtual CSWeaponID GetWeaponID( void ) const		{ return WEAPON_XM1014; }
 
+	virtual int GetShotgunReloadState( void ) const	{ return m_reloadState; }
+
 private:
 
 	CWeaponXM1014( const CWeaponXM1014 & );

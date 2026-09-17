@@ -40,6 +40,8 @@ public:
 
 	virtual CSWeaponID GetWeaponID( void ) const		{ return WEAPON_M3; }
 
+	virtual int GetShotgunReloadState( void ) const	{ return m_reloadState; }
+
 private:
 
 	CWeaponM3( const CWeaponM3 & );

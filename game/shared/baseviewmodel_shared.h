@@ -198,7 +198,12 @@ private:
 	string_t				m_sAnimationPrefix;		// Prefix of the animations that should be used by the player carrying this weapon
 
 #if defined( CLIENT_DLL )
-	int						m_nOldAnimationParity;
+	int	m_nOldAnimationParity;
+#endif
+public:
+#if defined( CLIENT_DLL )
+	// Used by weapon inspection to sync client cycle with the server's animation time
+	float	m_fCycleOffset;
 #endif
 
 

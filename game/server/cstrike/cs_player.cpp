@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+﻿//========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Purpose:		Player for HL1.
 //
@@ -4734,41 +4734,38 @@ void CCSPlayer::LookAtHeldWeapon( void )
 	CWeaponCSBase *pActiveWeapon = GetActiveCSWeapon();
 	if ( !pActiveWeapon )
 		return;
-
-	// Can't taunt while  reloading, or switching silencer
-	if (   pActiveWeapon->m_bInReload  )
+	// Can't taunt while reloading, or switching the silencer
+	if ( pActiveWeapon->m_bInReload || pActiveWeapon->IsSwitchingSilencer() )
 		return;
-
-	// don't let me inspect a shotgun that's reloading
-	/*if ( pActiveWeapon->GetWeaponType() == WEAPONTYPE_SHOTGUN && pActiveWeapon->GetShotgunReloadState() != 0 )
-	{
+	// Don't let me inspect a shotgun that's mid per-shell reload
+	if ( pActiveWeapon->IsKindOf( WEAPONTYPE_SHOTGUN ) && pActiveWeapon->GetShotgunReloadState() != 0 )
 		return;
-	}*/
-
-#if IRONSIGHT
-	if ( pActiveWeapon->m_iIronSightMode == IronSight_should_approach_sighted )
-		return;
-#endif
-
 	CBaseViewModel *pViewModel = GetViewModel();
-	if ( pViewModel )
-	{
-		nSequence = pViewModel->SelectWeightedSequence( ACT_VM_IDLE_LOWERED );
-
-		if ( nSequence == ACT_INVALID )
-			nSequence = pViewModel->LookupSequence( "lookat01" );
-
-		if ( nSequence != ACTIVITY_NOT_AVAILABLE )
+		if ( pViewModel )
 		{
-			m_flLookWeaponEndTime = gpGlobals->curtime + pViewModel->SequenceDuration( nSequence );
-			m_bIsLookingAtWeapon = true;
+		// M4A1 / USP use the silenced inspect animation when a silencer is attached
+		bool bSilencedInspect = false;
+		bool bSilencedWeapon = ( pActiveWeapon->IsA( WEAPON_M4A1 ) || pActiveWeapon->IsA( WEAPON_USP ) );
+		if ( bSilencedWeapon && pActiveWeapon->IsSilenced() )
+		bSilencedInspect = true;
 
-			pViewModel->SetCycle( 0 );
-			pViewModel->ResetSequence( nSequence ) ;
+		if ( bSilencedInspect )
+		nSequence = pViewModel->LookupSequence( "lookat01_silenced" );
+
+		if ( nSequence == ACT_INVALID || nSequence == ACTIVITY_NOT_AVAILABLE )
+		nSequence = pViewModel->LookupSequence( "lookat01" );
+
+		if ( nSequence != ACTIVITY_NOT_AVAILABLE && nSequence != ACT_INVALID )
+		{
+		m_flLookWeaponEndTime = gpGlobals->curtime + pViewModel->SequenceDuration( nSequence );
+		m_bIsLookingAtWeapon = true;
+
+		pViewModel->SetCycle( 0 );
+		pViewModel->ResetSequence( nSequence ) ;
 		}
-	}
+		}
 
-}
+	}
 
 // returns true if the selection has been handled and the player's menu
 // can be closed...false if the menu should be displayed again
