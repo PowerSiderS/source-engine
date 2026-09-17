@@ -397,6 +397,17 @@ void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePos
 	QAngle vmangles = eyeAngles;
 	Vector vmorigin = eyePosition;
 
+	#ifdef CSTRIKE_DLL
+	// apply the viewmodel position offset (CS:GO style) relative to the view angles
+	if ( !m_bShouldIgnoreOffsetAndAccuracy )
+	{
+	Vector vecRight;
+	Vector vecUp;
+	AngleVectors( vmangoriginal, NULL, &vecRight, &vecUp );
+
+	vmorigin += ( e_viewmodel_right.GetFloat() * vecRight ) + ( e_viewmodel_up.GetFloat() * vecUp );
+	}
+	#endif
 	CBaseCombatWeapon *pWeapon = m_hWeapon.Get();
 	//Allow weapon lagging
 	if ( pWeapon != NULL )
@@ -405,7 +416,7 @@ void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePos
 		if ( !prediction->InPrediction() )
 #endif
 		{
-			// add weapon-specific bob 
+			// add weapon-specific bob
 			pWeapon->AddViewmodelBob( this, vmorigin, vmangles );
 #if defined ( CSTRIKE_DLL )
 			CalcViewModelLag( vmorigin, vmangles, vmangoriginal );
@@ -424,7 +435,7 @@ void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePos
 	if ( !prediction->InPrediction() )
 	{
 		// Let the viewmodel shake at about 10% of the amplitude of the player's view
-		vieweffects->ApplyShake( vmorigin, vmangles, 0.1 );	
+		vieweffects->ApplyShake( vmorigin, vmangles, 0.1 );
 	}
 #endif
 
@@ -432,12 +443,6 @@ void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePos
 	{
 		g_ClientVirtualReality.OverrideViewModelTransform( vmorigin, vmangles, pWeapon && pWeapon->ShouldUseLargeViewModelVROverride() );
 	}
-
-	float flUp = e_viewmodel_up.GetFloat();
-	float flRight = e_viewmodel_right.GetFloat();
-
-	vmorigin.z += flUp;
-	vmorigin.y -= flRight;
 
 	SetLocalOrigin( vmorigin );
 	SetLocalAngles( vmangles );
