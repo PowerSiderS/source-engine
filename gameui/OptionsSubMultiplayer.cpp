@@ -95,977 +95,6 @@ static ColorItem_t itemlist[]=
 	{ "#Valve_Dkgray", 36, 36, 36 },
 };
 
-static ColorItem_t s_crosshairColors[] = 
-{
-	{ "#Valve_Green",	50,		250,	50 },
-	{ "#Valve_Red",		250,	50,		50 },
-	{ "#Valve_Blue",	50,		50,		250 },
-	{ "#Valve_Yellow",	250,	250,	50 },
-	{ "#Valve_Ltblue",	50,		250,	250 },
-};
-static const int NumCrosshairColors = ARRAYSIZE(s_crosshairColors);
-
-
-//-----------------------------------------------------------------------------
-class CrosshairImagePanelSimple : public CrosshairImagePanelBase
-{
-	DECLARE_CLASS_SIMPLE( CrosshairImagePanelSimple, CrosshairImagePanelBase );
-public:
-	CrosshairImagePanelSimple( Panel *parent, const char *name, COptionsSubMultiplayer* pOptionsPanel );
-	virtual void Paint();
-	virtual void ResetData();
-	virtual void ApplyChanges();
-	static void DrawCrosshairRect( int x, int y, int w, int h, bool bAdditive );
-
-protected:
-	MESSAGE_FUNC_PTR( OnTextChanged, "TextChanged", panel );
-
-	void InitCrosshairColorEntries();
-	void InitCrosshairSizeList();
-	void UpdateCrosshair();
-
-private:
-	COptionsSubMultiplayer* m_pOptionsPanel;
-	vgui::ComboBox *m_pCrosshairColorCombo;
-	CLabeledCommandComboBox *m_pCrosshairSizeCombo;
-	CCvarToggleCheckButton *m_pCrosshairTranslucencyCheckbox;
-	int m_R, m_G, m_B;
-	int m_barSize;
-	int m_barGap;
-	int m_iCrosshairTextureID;
-};
-
-//-----------------------------------------------------------------------------
-CrosshairImagePanelSimple::CrosshairImagePanelSimple( Panel *parent, const char *name, COptionsSubMultiplayer* pOptionsPanel ) : CrosshairImagePanelBase( parent, name )
-{
-	m_pOptionsPanel = pOptionsPanel;
-	m_pCrosshairTranslucencyCheckbox = new CCvarToggleCheckButton(m_pOptionsPanel, "CrosshairTranslucencyCheckbox", "#GameUI_Translucent", "cl_crosshairusealpha");
-	m_pCrosshairColorCombo = new ComboBox(m_pOptionsPanel, "CrosshairColorComboBox", 6, false);
-	m_pCrosshairSizeCombo = new CLabeledCommandComboBox(m_pOptionsPanel, "CrosshairSizeComboBox");
-
-	m_pCrosshairColorCombo->AddActionSignalTarget( this );
-	m_pCrosshairSizeCombo->AddActionSignalTarget( this );
-
-	m_iCrosshairTextureID = vgui::surface()->CreateNewTextureID();
-	vgui::surface()->DrawSetTextureFile( m_iCrosshairTextureID, "vgui/white_additive" , true, false);
-
-	InitCrosshairSizeList();
-	InitCrosshairColorEntries();
-	ResetData();
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: initialize the crosshair size list.
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelSimple::InitCrosshairSizeList()
-{
-	// add in the auto, small, medium, and large size selections.
-	m_pCrosshairSizeCombo->AddItem("#GameUI_Auto", "cl_crosshairscale 0");
-	m_pCrosshairSizeCombo->AddItem("#GameUI_Small", "cl_crosshairscale 1200");
-	m_pCrosshairSizeCombo->AddItem("#GameUI_Medium", "cl_crosshairscale 768");
-	m_pCrosshairSizeCombo->AddItem("#GameUI_Large", "cl_crosshairscale 600");
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelSimple::InitCrosshairColorEntries()
-{
-	if (m_pCrosshairColorCombo != NULL)
-	{
-		KeyValues *data = new KeyValues("data");
-
-		// add in the "Default" selection
-		data->Clear();
-
-		// add in the colors for the color list
-		for ( int i = 0; i < NumCrosshairColors; i++ )
-		{
-			data->SetInt("color", i);
-			m_pCrosshairColorCombo->AddItem( s_crosshairColors[ i ].name, data);
-		}
-
-		data->deleteThis();
-	}
-}
-
-
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelSimple::DrawCrosshairRect( int x0, int y0, int x1, int y1, bool bAdditive )
-{
-	if ( bAdditive )
-		vgui::surface()->DrawTexturedRect( x0, y0, x1, y1 );
-	else
-		vgui::surface()->DrawFilledRect( x0, y0, x1, y1 );
-}
-
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelSimple::Paint()
-{
-	int screenWide, screenTall;
-	surface()->GetScreenSize( screenWide, screenTall );;
-
-	BaseClass::Paint();
-
-	if ( !m_pCrosshairTranslucencyCheckbox )
-		return;
-
-	int wide, tall;
-	GetSize( wide, tall );
-
-	bool bAdditive = !m_pCrosshairTranslucencyCheckbox->IsSelected();
-
-	int a = 200;
-	ConVarRef cl_crosshairalpha( "cl_crosshairalpha", true );
-	if ( !bAdditive && cl_crosshairalpha.IsValid() )
-	{
-		a = clamp( cl_crosshairalpha.GetInt(), 0, 255 );
-	}
-	vgui::surface()->DrawSetColor( m_R, m_G, m_B, a );
-
-	if ( bAdditive )
-	{
-		vgui::surface()->DrawSetTexture( m_iCrosshairTextureID );
-	}
-
-	int centerX = wide / 2;
-	int centerY = tall / 2;
-	int iCrosshairDistance = m_barGap;
-
-	int iBarThickness = 1;
-	int iBarSize = m_barSize;
-
-	// draw horizontal crosshair lines
-	int iInnerLeft	= centerX - iCrosshairDistance - iBarThickness / 2;
-	int iInnerRight	= iInnerLeft + 2 * iCrosshairDistance + iBarThickness;
-	int iOuterLeft	= iInnerLeft - iBarSize;
-	int iOuterRight	= iInnerRight + iBarSize;
-	int y0 = centerY - iBarThickness / 2;
-	int y1 = y0 + iBarThickness;
-	DrawCrosshairRect( iOuterLeft, y0, iInnerLeft, y1, bAdditive );
-	DrawCrosshairRect( iInnerRight, y0, iOuterRight, y1, bAdditive );
-
-	// draw vertical crosshair lines
-	int iInnerTop		= centerY - iCrosshairDistance - iBarThickness / 2;
-	int iInnerBottom	= iInnerTop + 2 * iCrosshairDistance + iBarThickness;
-	int iOuterTop		= iInnerTop - iBarSize;
-	int iOuterBottom	= iInnerBottom + iBarSize;
-	int x0 = centerX - iBarThickness / 2;
-	int x1 = x0 + iBarThickness;
-	DrawCrosshairRect( x0, iOuterTop, x1, iInnerTop, bAdditive );
-	DrawCrosshairRect( x0, iInnerBottom, x1, iOuterBottom, bAdditive );
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: takes the settings from the crosshair settings combo boxes and sliders
-//          and apply it to the crosshair illustrations.
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelSimple::UpdateCrosshair()
-{
-	// get the color selected in the combo box.
-	KeyValues *data = m_pCrosshairColorCombo->GetActiveItemUserData();
-	int colorIndex = data->GetInt("color");
-	colorIndex = clamp( colorIndex, 0, NumCrosshairColors );
-
-	int selectedColor = 0;
-	int actualVal = 0;
-	if (m_pCrosshairColorCombo != NULL)
-	{
-		selectedColor = m_pCrosshairColorCombo->GetActiveItem();
-	}
-
-	ConVarRef cl_crosshaircolor( "cl_crosshaircolor", true );
-	if ( cl_crosshaircolor.IsValid() )
-	{
-		actualVal = clamp( cl_crosshaircolor.GetInt(), 0, NumCrosshairColors );
-	}
-
-	m_R = s_crosshairColors[selectedColor].r;
-	m_G = s_crosshairColors[selectedColor].g;
-	m_B = s_crosshairColors[selectedColor].b;
-
-	if ( m_pCrosshairSizeCombo )
-	{
-		int size = m_pCrosshairSizeCombo->GetActiveItem();
-
-		if ( size == 0 )
-		{
-			int screenWide, screenTall;
-			surface()->GetScreenSize( screenWide, screenTall );
-			if ( screenTall <= 600 )
-			{
-				// if the screen height is 600 or less, set the crosshair num to 3 (large)
-				size = 3;
-			}
-			else if ( screenTall <= 768 )
-			{
-				// if the screen height is between 600 and 768, set the crosshair num to 2 (medium)
-				size = 2;
-			}
-			else
-			{
-				// if the screen height is greater than 768, set the crosshair num to 1 (small)
-				size = 1;
-			}
-		}
-
-		int scaleBase;
-		switch( size )
-		{
-		case 1:
-			scaleBase = 1200;
-			break;
-		case 2:
-			scaleBase = 768;
-			break;
-		case 3:
-			scaleBase = 600;
-			break;
-		default:
-			scaleBase = 1200;
-			break;
-		}
-
-		m_barSize = (int) 9 * 1200 / scaleBase;
-		m_barGap = (int) 5 * 1200 / scaleBase;
-	}
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Called whenever color combo changes
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelSimple::OnTextChanged(vgui::Panel *panel)
-{
-	m_pOptionsPanel->OnControlModified();
-	UpdateCrosshair();
-}
-
-
-void CrosshairImagePanelSimple::ResetData()
-{
-	m_pCrosshairTranslucencyCheckbox->Reset();
-
-	// parse out the size value from the cvar and set the initial value.
-	int initialScale = 0;
-	ConVarRef cl_crosshairscale( "cl_crosshairscale", true );
-	if ( cl_crosshairscale.IsValid() )
-	{
-		initialScale = cl_crosshairscale.GetInt();
-		if ( initialScale <= 0 )
-		{
-			initialScale = 0;
-		}
-		else if ( initialScale <= 600 )
-		{
-			initialScale = 3;
-		}
-		else if ( initialScale <= 768 )
-		{
-			initialScale = 2;
-		}
-		else
-		{
-			initialScale = 1;
-		}
-	}
-	m_pCrosshairSizeCombo->SetInitialItem( initialScale );
-
-	// parse the string for the custom color settings and get the initial settings.
-	ConVarRef cl_crosshaircolor( "cl_crosshaircolor", true );
-	int index = 0;
-	if ( cl_crosshaircolor.IsValid() )
-	{
-		index = clamp( cl_crosshaircolor.GetInt(), 0, NumCrosshairColors );
-	}
-	m_pCrosshairColorCombo->ActivateItemByRow(index);
-
-	UpdateCrosshair();
-}
-
-void CrosshairImagePanelSimple::ApplyChanges()
-{
-	m_pCrosshairTranslucencyCheckbox->ApplyChanges();
-
-	char cmd[256];
-	cmd[0] = 0;
-
-	if (m_pCrosshairColorCombo != NULL)
-	{
-		int val = m_pCrosshairColorCombo->GetActiveItem();
-		Q_snprintf( cmd, sizeof(cmd), "cl_crosshaircolor %d\n", val );
-		engine->ClientCmd_Unrestricted( cmd );
-	}
-}
-
-
-//-----------------------------------------------------------------------------
-class CrosshairImagePanelCS : public CrosshairImagePanelBase
-{
-	DECLARE_CLASS_SIMPLE( CrosshairImagePanelCS, CrosshairImagePanelBase );
-
-public:
-	CrosshairImagePanelCS( Panel *parent, const char *name, COptionsSubMultiplayer* pOptionsPanel );
-	virtual void ResetData();
-	virtual void ApplyChanges();
-
-protected:
-	MESSAGE_FUNC_PARAMS( OnSliderMoved, "SliderMoved", data );
-	MESSAGE_FUNC_PTR( OnTextChanged, "TextChanged", panel );
-	MESSAGE_FUNC( OnCheckButtonChecked, "CheckButtonChecked" );
-
-	virtual void Paint();
-	static void DrawCrosshairRect( int x, int y, int w, int h, bool bAdditive );
-	void InitCrosshairColorEntries();
-	void UpdateCrosshair();
-
-private:
-	COptionsSubMultiplayer* m_pOptionsPanel;
-	vgui::ComboBox *m_pColorComboBox;
-	CCvarToggleCheckButton *m_pAlphaCheckbox;
-	CCvarToggleCheckButton *m_pDynamicCheckbox;
-	CCvarToggleCheckButton *m_pDotCheckbox;
-	CCvarSlider *m_pColorAlphaSlider;
-	CCvarSlider *m_pColorRSlider;
-	CCvarSlider *m_pColorGSlider;
-	CCvarSlider *m_pColorBSlider;
-	CCvarSlider *m_pSizeSlider;
-	CCvarSlider *m_pThicknessSlider;
-	int m_R, m_G, m_B;
-	float m_barSize;
-	float m_barThickness;
-	int m_iCrosshairTextureID;
-};
-
-//-----------------------------------------------------------------------------
-CrosshairImagePanelCS::CrosshairImagePanelCS( Panel *parent, const char *name, COptionsSubMultiplayer* pOptionsPanel ) : CrosshairImagePanelBase( parent, name )
-{
-	m_pOptionsPanel = pOptionsPanel;
-	m_pColorComboBox = new ComboBox(m_pOptionsPanel, "CrosshairColorComboBox", 6, false);
-	m_pAlphaCheckbox = new CCvarToggleCheckButton(m_pOptionsPanel, "CrosshairTranslucencyCheckbox", "#GameUI_Crosshair_Blend", "cl_crosshairusealpha");
-	m_pDynamicCheckbox = new CCvarToggleCheckButton(m_pOptionsPanel, "CrosshairDynamicCheckbox", "#GameUI_CrosshairDynamic", "cl_dynamiccrosshair");
-	m_pDotCheckbox = new CCvarToggleCheckButton(m_pOptionsPanel, "CrosshairDotCheckbox", "#GameUI_CrosshairDot", "cl_crosshairdot");
-	m_pColorAlphaSlider = new CCvarSlider( m_pOptionsPanel, "Alpha Slider", "#GameUI_CrosshairColor_Alpha",
-		0.0f, 255.0f, "cl_crosshairalpha" );
-	m_pColorRSlider = new CCvarSlider( m_pOptionsPanel, "Red Color Slider", "#GameUI_CrosshairColor_Red",
-		0.0f, 255.0f, "cl_crosshaircolor_r" );
-	m_pColorGSlider = new CCvarSlider( m_pOptionsPanel, "Green Color Slider", "#GameUI_CrosshairColor_Green",
-		0.0f, 255.0f, "cl_crosshaircolor_g" );
-	m_pColorBSlider = new CCvarSlider( m_pOptionsPanel, "Blue Color Slider", "#GameUI_CrosshairColor_Blue",
-		0.0f, 255.0f, "cl_crosshaircolor_b" );
-	m_pSizeSlider = new CCvarSlider( m_pOptionsPanel, "Size Slider", "#GameUI_Crosshair_Size",
-		0.0f, 12.0f, "cl_crosshairsize" );
-	m_pThicknessSlider = new CCvarSlider( m_pOptionsPanel, "Thickness Slider", "#GameUI_Crosshair_Thickness",
-		0.0f, 3.0f, "cl_crosshairthickness" );
-
-	m_pColorAlphaSlider->SetTickCaptions("", "");
-	m_pColorRSlider->SetTickCaptions("", "");
-	m_pColorGSlider->SetTickCaptions("", "");
-	m_pColorBSlider->SetTickCaptions("", "");
-	m_pSizeSlider->SetTickCaptions("", "");
-	m_pThicknessSlider->SetTickCaptions("", "");
-
-	m_pAlphaCheckbox->AddActionSignalTarget(this);
-	m_pDynamicCheckbox->AddActionSignalTarget(this);
-	m_pDotCheckbox->AddActionSignalTarget(this);
-	m_pColorComboBox->AddActionSignalTarget( this );
-	m_pColorAlphaSlider->AddActionSignalTarget( this );
-	m_pColorRSlider->AddActionSignalTarget( this );
-	m_pColorGSlider->AddActionSignalTarget( this );
-	m_pColorBSlider->AddActionSignalTarget( this );
-	m_pSizeSlider->AddActionSignalTarget( this );
-	m_pThicknessSlider->AddActionSignalTarget( this );
-
-	InitCrosshairColorEntries();
-
-	m_iCrosshairTextureID = vgui::surface()->CreateNewTextureID();
-	vgui::surface()->DrawSetTextureFile( m_iCrosshairTextureID, "vgui/white_additive" , true, false);
-
-	ResetData();
-}
-
-void CrosshairImagePanelCS::InitCrosshairColorEntries()
-{
-	if (m_pColorComboBox != NULL)
-	{
-		KeyValues *data = new KeyValues("data");
-
-		// add in the "Default" selection
-		data->Clear();
-
-		// add in the colors for the color list
-		for ( int i = 0; i < NumCrosshairColors; i++ )
-		{
-			data->SetInt("color", i);
-			m_pColorComboBox->AddItem( s_crosshairColors[ i ].name, data);
-		}
-
-		data->SetInt("color", NumCrosshairColors);
-		m_pColorComboBox->AddItem( "Custom", data);
-
-		data->deleteThis();
-	}
-}
-
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelCS::DrawCrosshairRect( int x0, int y0, int x1, int y1, bool bAdditive )
-{
-	if ( bAdditive )
-		vgui::surface()->DrawTexturedRect( x0, y0, x1, y1 );
-	else
-		vgui::surface()->DrawFilledRect( x0, y0, x1, y1 );
-}
-
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelCS::Paint()
-{
-	int screenWide, screenTall;
-	surface()->GetScreenSize( screenWide, screenTall );;
-
-	BaseClass::Paint();
-
-	int wide, tall;
-	GetSize( wide, tall );
-
-	bool bAdditive = !m_pAlphaCheckbox->IsSelected();
-	bool bDynamic = m_pDynamicCheckbox->IsSelected();
-
-	int a = 255;
-	if ( !bAdditive )
-		a = m_pColorAlphaSlider->GetSliderValue();
-
-	vgui::surface()->DrawSetColor( m_R, m_G, m_B, a );
-
-	if ( bAdditive )
-	{
-		vgui::surface()->DrawSetTexture( m_iCrosshairTextureID );
-	}
-
-	int centerX = wide / 2;
-	int centerY = tall / 2;
-
-	int iBarSize = RoundFloatToInt(m_barSize * screenTall / 480.0f);
-	int iBarThickness = max(1, RoundFloatToInt(m_barThickness * (float)screenTall / 480.0f));
-
-	float fBarGap = 4.0f;
-	if ( bDynamic )
-	{
-		float curtime = system()->GetFrameTime();
-		fBarGap *= (1.0f + cosf(curtime * 1.5f) * 0.5f);
-	}
-
-	int iBarGap = RoundFloatToInt(fBarGap * screenTall / 480.0f);
-
-	// draw horizontal crosshair lines
-	int iInnerLeft	= centerX - iBarGap - iBarThickness / 2;
-	int iInnerRight	= iInnerLeft + 2 * iBarGap + iBarThickness;
-	int iOuterLeft	= iInnerLeft - iBarSize;
-	int iOuterRight	= iInnerRight + iBarSize;
-	int y0 = centerY - iBarThickness / 2;
-	int y1 = y0 + iBarThickness;
-	DrawCrosshairRect( iOuterLeft, y0, iInnerLeft, y1, bAdditive );
-	DrawCrosshairRect( iInnerRight, y0, iOuterRight, y1, bAdditive );
-
-	// draw vertical crosshair lines
-	int iInnerTop		= centerY - iBarGap - iBarThickness / 2;
-	int iInnerBottom	= iInnerTop + 2 * iBarGap + iBarThickness;
-	int iOuterTop		= iInnerTop - iBarSize;
-	int iOuterBottom	= iInnerBottom + iBarSize;
-	int x0 = centerX - iBarThickness / 2;
-	int x1 = x0 + iBarThickness;
-	DrawCrosshairRect( x0, iOuterTop, x1, iInnerTop, bAdditive );
-	DrawCrosshairRect( x0, iInnerBottom, x1, iOuterBottom, bAdditive );
-
-	// draw dot
-	if ( m_pDotCheckbox->IsSelected() )
-	{
-		x0 = centerX - iBarThickness / 2;
-		x1 = x0 + iBarThickness;
-		y0 = centerY - iBarThickness / 2;
-		y1 = y0 + iBarThickness;
-		DrawCrosshairRect( x0, y0, x1, y1, bAdditive );
-	}
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: takes the settings from the crosshair settings combo boxes and sliders
-//          and apply it to the crosshair illustrations.
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelCS::UpdateCrosshair()
-{
-	// get the color selected in the combo box.
-	KeyValues *data = m_pColorComboBox->GetActiveItemUserData();
-	int colorIndex = data->GetInt("color");
-	colorIndex = clamp( colorIndex, 0, NumCrosshairColors + 1 );
-
-	int actualVal = 0;
-	int selectedColor = m_pColorComboBox->GetActiveItem();
-
-	ConVarRef cl_crosshaircolor( "cl_crosshaircolor", true );
-	if ( cl_crosshaircolor.IsValid() )
-	{
-		actualVal = clamp( cl_crosshaircolor.GetInt(), 0, NumCrosshairColors + 1 );
-	}
-
-	if ( selectedColor != NumCrosshairColors )	// not custom
-	{
-		m_R = s_crosshairColors[selectedColor].r;
-		m_G = s_crosshairColors[selectedColor].g;
-		m_B = s_crosshairColors[selectedColor].b;
-		m_pColorRSlider->SetSliderValue(m_R);
-		m_pColorGSlider->SetSliderValue(m_G);
-		m_pColorBSlider->SetSliderValue(m_B);
-	}
-	else
-	{
-		m_R = clamp( m_pColorRSlider->GetSliderValue(), 0, 255 );
-		m_G = clamp( m_pColorGSlider->GetSliderValue(), 0, 255 );
-		m_B = clamp( m_pColorBSlider->GetSliderValue(), 0, 255 );
-	}
-
-	m_barSize = m_pSizeSlider->GetSliderValue();
-	m_barThickness = m_pThicknessSlider->GetSliderValue();
-}
-
-
-void CrosshairImagePanelCS::OnSliderMoved(KeyValues *data)
-{
-	vgui::Panel* pPanel = static_cast<vgui::Panel*>(data->GetPtr("panel"));
-
-	if ( pPanel == m_pColorRSlider || pPanel == m_pColorGSlider || pPanel == m_pColorBSlider )
-	{
-		m_pColorComboBox->ActivateItem(NumCrosshairColors);
-	}
-	m_pOptionsPanel->OnControlModified();
-
-	UpdateCrosshair();
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Called whenever color combo changes
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelCS::OnTextChanged(vgui::Panel *panel)
-{
-	m_pOptionsPanel->OnControlModified();
-	UpdateCrosshair();
-}
-
-void CrosshairImagePanelCS::OnCheckButtonChecked()
-{
-	m_pColorAlphaSlider->SetEnabled(m_pAlphaCheckbox->IsSelected());
-	m_pOptionsPanel->OnControlModified();
-	UpdateCrosshair();
-}
-
-void CrosshairImagePanelCS::ResetData()
-{
-	// parse the string for the custom color settings and get the initial settings.
-	ConVarRef cl_crosshaircolor( "cl_crosshaircolor", true );
-	int index = 0;
-	if ( cl_crosshaircolor.IsValid() )
-	{
-		index = clamp( cl_crosshaircolor.GetInt(), 0, NumCrosshairColors + 1);
-	}
-	m_pColorComboBox->ActivateItemByRow(index);
-
-	m_pAlphaCheckbox->Reset();
-	m_pDynamicCheckbox->Reset();
-	m_pDotCheckbox->Reset();
-	m_pColorRSlider->Reset();
-	m_pColorGSlider->Reset();
-	m_pColorBSlider->Reset();
-	m_pColorAlphaSlider->Reset();
-	m_pSizeSlider->Reset();
-	m_pThicknessSlider->Reset();
-
-	UpdateCrosshair();
-}
-
-void CrosshairImagePanelCS::ApplyChanges()
-{
-	m_pAlphaCheckbox->ApplyChanges();
-	m_pDynamicCheckbox->ApplyChanges();
-	m_pDotCheckbox->ApplyChanges();
-	m_pColorRSlider->ApplyChanges();
-	m_pColorGSlider->ApplyChanges();
- 	m_pColorBSlider->ApplyChanges();
-	m_pColorAlphaSlider->ApplyChanges();
-	m_pSizeSlider->ApplyChanges();
-	m_pThicknessSlider->ApplyChanges();
-
-	char cmd[256];
-	cmd[0] = 0;
-
-	if (m_pColorComboBox != NULL)
-	{
-		int val = m_pColorComboBox->GetActiveItem();
-		Q_snprintf( cmd, sizeof(cmd), "cl_crosshaircolor %d\n", val );
-		engine->ClientCmd_Unrestricted( cmd );
-	}
-}
-
-//-----------------------------------------------------------------------------
-class CrosshairImagePanelAdvanced : public CrosshairImagePanelBase
-{
-	DECLARE_CLASS_SIMPLE( CrosshairImagePanelAdvanced, CrosshairImagePanelBase );
-public:
-	CrosshairImagePanelAdvanced( Panel *parent, const char *name, COptionsSubMultiplayer* pOptionsPanel );
-	virtual ~CrosshairImagePanelAdvanced();
-
-	virtual void ResetData();
-	virtual void ApplyChanges();
-	virtual void UpdateVisibility();
-
-protected:
-	MESSAGE_FUNC_PTR( OnTextChanged, "TextChanged", panel );
-	MESSAGE_FUNC_PARAMS( OnSliderMoved, "SliderMoved", data );
-
-	virtual void Paint();
-	static void DrawCrosshairRect( int x, int y, int w, int h, bool bAdditive );
-	void InitAdvCrosshairStyleList();
-	void SetCrosshairTexture( const char *crosshairname );
-	void UpdateCrosshair();
-
-private:
-	COptionsSubMultiplayer* m_pOptionsPanel;
-
-	// --- advanced crosshair controls
-	CCvarSlider *m_pAdvCrosshairRedSlider;		
-	CCvarSlider *m_pAdvCrosshairBlueSlider;
-	CCvarSlider *m_pAdvCrosshairGreenSlider;
-	CCvarSlider *m_pAdvCrosshairScaleSlider;
-
-	CLabeledCommandComboBox *m_pAdvCrosshairStyle;
-
-	int m_R, m_G, m_B;
-	float m_flScale;
-
-	// material
-	int				m_iCrosshairTextureID;
-	IVguiMatInfo	*m_pAdvCrosshairMaterial;
-
-	// animation
-	IVguiMatInfoVar	*m_pFrameVar;
-	float			m_flNextFrameChange;
-	int				m_nNumFrames;
-	bool			m_bAscending;	// animating forward or in reverse?
-};
-
-//-----------------------------------------------------------------------------
-CrosshairImagePanelAdvanced::CrosshairImagePanelAdvanced( Panel *parent, const char *name, COptionsSubMultiplayer* pOptionsPanel ) : CrosshairImagePanelBase( parent, name )
-{
-	m_pOptionsPanel = pOptionsPanel;
-	m_pAdvCrosshairMaterial = NULL;
-	m_pFrameVar = NULL;
-
-	m_pAdvCrosshairRedSlider = new CCvarSlider( pOptionsPanel, "Red Color Slider", "#GameUI_CrosshairColor_Red",
-		0.0f, 255.0f, "cl_crosshair_red" );
-	m_pAdvCrosshairGreenSlider = new CCvarSlider( pOptionsPanel, "Green Color Slider", "#GameUI_CrosshairColor_Green",
-		0.0f, 255.0f, "cl_crosshair_green" );
-	m_pAdvCrosshairBlueSlider = new CCvarSlider( pOptionsPanel, "Blue Color Slider", "#GameUI_CrosshairColor_Blue",
-		0.0f, 255.0f, "cl_crosshair_blue" );
-
-	m_pAdvCrosshairRedSlider->SetTickCaptions("", "");
-	m_pAdvCrosshairGreenSlider->SetTickCaptions("", "");
-	m_pAdvCrosshairBlueSlider->SetTickCaptions("", "");
-
-	m_pAdvCrosshairScaleSlider = new CCvarSlider( pOptionsPanel, "Scale Slider", "#GameUI_CrosshairScale",
-		16.0f, 48.0f, "cl_crosshair_scale" );
-
-	m_pAdvCrosshairStyle = new CLabeledCommandComboBox( pOptionsPanel, "AdvCrosshairList" );
-
-	m_pAdvCrosshairRedSlider->AddActionSignalTarget( this );
-	m_pAdvCrosshairGreenSlider->AddActionSignalTarget( this );
-	m_pAdvCrosshairBlueSlider->AddActionSignalTarget( this );
-	m_pAdvCrosshairScaleSlider->AddActionSignalTarget( this );
-	m_pAdvCrosshairStyle->AddActionSignalTarget(this);
-
-	InitAdvCrosshairStyleList();
-
-	m_iCrosshairTextureID = vgui::surface()->CreateNewTextureID();
-	SetCrosshairTexture("vgui/crosshairs/crosshair1");
-
-	UpdateCrosshair();
-}
-
-CrosshairImagePanelAdvanced::~CrosshairImagePanelAdvanced()
-{
-	if ( m_pFrameVar )
-	{
-		delete m_pFrameVar;
-		m_pFrameVar = NULL;
-	}
-
-	if ( m_pAdvCrosshairMaterial )
-	{
-		delete m_pAdvCrosshairMaterial;
-		m_pAdvCrosshairMaterial = NULL;
-	}
-}
-
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelAdvanced::SetCrosshairTexture( const char *crosshairname )
-{
-	if ( !crosshairname || !crosshairname[0] )
-	{
-		SetVisible( false );
-		return;
-	}
-
-	SetVisible( true );
-
-	vgui::surface()->DrawSetTextureFile( m_iCrosshairTextureID, crosshairname, true, false );
-
-	if ( m_pAdvCrosshairMaterial )
-	{
-		delete m_pAdvCrosshairMaterial;
-	}
-
-	m_pAdvCrosshairMaterial = vgui::surface()->DrawGetTextureMatInfoFactory( m_iCrosshairTextureID );
-
-	Assert(m_pAdvCrosshairMaterial);
-
-	m_pFrameVar = m_pAdvCrosshairMaterial->FindVarFactory( "$frame", NULL );
-	m_nNumFrames = m_pAdvCrosshairMaterial->GetNumAnimationFrames();
-
-	m_flNextFrameChange = system()->GetFrameTime() + 0.2;
-	m_bAscending = true;
-}
-
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelAdvanced::Paint()
-{
-	BaseClass::Paint();
-
-	int wide, tall;
-	GetSize( wide, tall );
-
-	int iClipX0, iClipY0, iClipX1, iClipY1;
-	ipanel()->GetClipRect(GetVPanel(), iClipX0, iClipY0, iClipX1, iClipY1 );
-
-	// scroll through all frames
-	if ( m_pFrameVar )
-	{	
-		float curtime = system()->GetFrameTime();
-
-		if ( curtime >= m_flNextFrameChange )
-		{
-			m_flNextFrameChange = curtime + 0.2;
-
-			int frame = m_pFrameVar->GetIntValue();
-
-			if ( m_bAscending )
-			{
-				frame++;
-				if ( frame >= m_nNumFrames )
-				{
-					m_bAscending = !m_bAscending;
-					frame--;
-				}
-			}
-			else
-			{
-				frame--;
-				if ( frame < 0 )
-				{
-					m_bAscending = !m_bAscending;
-					frame++;
-				}
-			}
-
-			m_pFrameVar->SetIntValue(frame);
-		}
-	}
-
-	float x, y;
-
-	// assume square
-	float flDrawWidth = ( m_flScale/48.0 ) * (float)wide;	
-	int flHalfWidth = (int)( flDrawWidth / 2 );
-
-	x = wide/2 - flHalfWidth;
-	y = tall/2 - flHalfWidth;
-
-	vgui::surface()->DrawSetColor( m_R, m_G, m_B, 255 );
-	vgui::surface()->DrawSetTexture( m_iCrosshairTextureID );
-	vgui::surface()->DrawTexturedRect( x, y, x+flDrawWidth, y+flDrawWidth );
-	vgui::surface()->DrawSetTexture(0);
-}
-
-void CrosshairImagePanelAdvanced::UpdateCrosshair()
-{
-	// get the color selected in the combo box.
-	m_R = clamp( m_pAdvCrosshairRedSlider->GetSliderValue(), 0, 255 );
-	m_G = clamp( m_pAdvCrosshairGreenSlider->GetSliderValue(), 0, 255 );
-	m_B = clamp( m_pAdvCrosshairBlueSlider->GetSliderValue(), 0, 255 );
-
-	m_flScale = m_pAdvCrosshairScaleSlider->GetSliderValue();
-
-	if ( m_pAdvCrosshairStyle )
-	{
-		char crosshairname[256];
-		m_pAdvCrosshairStyle->GetText( crosshairname, sizeof(crosshairname)	);
-
-		if ( ModInfo().AdvCrosshairLevel() == 1 && m_pAdvCrosshairStyle->GetActiveItem() == 0 ) // this is the "none" selection
-		{
-			SetCrosshairTexture(NULL);
-		}
-		else
-		{
-			char texture[ 256 ];
-			Q_snprintf ( texture, sizeof( texture ), "vgui/crosshairs/%s", crosshairname );
-			SetCrosshairTexture( texture );
-		}
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: initialize the crosshair style list
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelAdvanced::InitAdvCrosshairStyleList()
-{
-	// Find out images
-	FileFindHandle_t fh;
-	char directory[ 512 ];
-
-	ConVarRef cl_crosshair_file( "cl_crosshair_file", true );
-	if ( !cl_crosshair_file.IsValid() )
-		return;
-
-	m_pAdvCrosshairStyle->DeleteAllItems();
-
-	if ( ModInfo().AdvCrosshairLevel() == 1 )
-	{
-		m_pAdvCrosshairStyle->AddItem( "#GameUI_None", "" );
-	}
-
-	char crosshairfile[256];
-	Q_snprintf( crosshairfile, sizeof(crosshairfile), "materials/vgui/crosshairs/%s.vtf", cl_crosshair_file.GetString() );
-
-	Q_snprintf( directory, sizeof( directory ), "materials/vgui/crosshairs/*.vtf" );
-	const char *fn = g_pFullFileSystem->FindFirst( directory, &fh );
-	int i = 0, initialItem = 0; 
-	while (fn)
-	{
-		char filename[ 512 ];
-		Q_snprintf( filename, sizeof(filename), "materials/vgui/crosshairs/%s", fn );
-		if ( strlen( filename ) >= 4 )
-		{
-			filename[ strlen( filename ) - 4 ] = 0;
-			Q_strncat( filename, ".vmt", sizeof( filename ), COPY_ALL_CHARACTERS );
-			if ( g_pFullFileSystem->FileExists( filename ) )
-			{
-				// strip off the extension
-				Q_strncpy( filename, fn, sizeof( filename ) );
-				filename[ strlen( filename ) - 4 ] = 0;
-				m_pAdvCrosshairStyle->AddItem( filename, "" );
-
-				// check to see if this is the one we have set
-				if ( crosshairfile[0] )
-				{
-					Q_snprintf( filename, sizeof(filename), "materials/vgui/crosshairs/%s", fn );
-					if (!stricmp(filename, crosshairfile))
-					{
-						if ( ModInfo().AdvCrosshairLevel() == 1 )
-						{
-							initialItem = i+1;
-						}
-						else
-						{
-							initialItem = i;
-						}
-					}
-				}
-
-				++i;
-			}
-		}
-
-		fn = g_pFullFileSystem->FindNext( fh );
-	}
-
-	g_pFullFileSystem->FindClose( fh );
-	m_pAdvCrosshairStyle->SetInitialItem(initialItem);
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Called whenever style combo changes
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelAdvanced::OnTextChanged(vgui::Panel *panel)
-{
-	m_pOptionsPanel->OnControlModified();
-	UpdateCrosshair();
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Called whenever one of the color or scale sliders move
-//-----------------------------------------------------------------------------
-void CrosshairImagePanelAdvanced::OnSliderMoved(KeyValues *data)
-{
-	m_pOptionsPanel->OnControlModified();
-	UpdateCrosshair();
-}
-
-void CrosshairImagePanelAdvanced::ResetData()
-{
-	m_pAdvCrosshairRedSlider->Reset();
-	m_pAdvCrosshairGreenSlider->Reset();
-	m_pAdvCrosshairBlueSlider->Reset();
-	m_pAdvCrosshairScaleSlider->Reset();
-
-	// TODO: update style combo from cvar
-}
-
-void CrosshairImagePanelAdvanced::ApplyChanges()
-{
-	m_pAdvCrosshairRedSlider->ApplyChanges();
-	m_pAdvCrosshairGreenSlider->ApplyChanges();
-	m_pAdvCrosshairBlueSlider->ApplyChanges();
-	m_pAdvCrosshairScaleSlider->ApplyChanges();
-
-	// save the crosshair
-	char cmd[512];
-	char crosshair[256];
-	m_pAdvCrosshairStyle->GetText(crosshair, sizeof(crosshair));
-
-	if ( ModInfo().AdvCrosshairLevel() == 1 && m_pAdvCrosshairStyle->GetActiveItem() == 0 ) // this is the "none" selection
-	{
-		engine->ClientCmd_Unrestricted("cl_crosshair_file \"\"");
-	}
-	else
-	{
-		Q_snprintf(cmd, sizeof(cmd), "cl_crosshair_file %s\n", crosshair);
-		engine->ClientCmd_Unrestricted(cmd);
-	}
-}
-
-void CrosshairImagePanelAdvanced::UpdateVisibility()
-{
-	SetVisible(true);
-	m_pAdvCrosshairRedSlider->SetVisible(true);
-	m_pAdvCrosshairBlueSlider->SetVisible(true);
-	m_pAdvCrosshairGreenSlider->SetVisible(true);
-	m_pAdvCrosshairScaleSlider->SetVisible(true);
-	m_pAdvCrosshairStyle->SetVisible(true);
-
-	if ( ModInfo().NoCrosshair() )
-	{
-		Panel *pTempPanel = NULL;
-
-		pTempPanel = FindSiblingByName( "CrosshairImage" );
-		pTempPanel->SetVisible( false );
-
-		pTempPanel = FindSiblingByName( "CrosshairLabel" );
-		if ( pTempPanel )
-			pTempPanel->SetVisible( false );
-	}
-}
-
 
 //-----------------------------------------------------------------------------
 // Purpose: Basic help dialog
@@ -1087,7 +116,12 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui::Panel *parent) : vgui::Prop
 	Button *importSprayImage = new Button( this, "ImportSprayImage", "#GameUI_ImportSprayEllipsis" );
 	importSprayImage->SetCommand("ImportSprayImage");
 
+	Button *importAvatarImage = new Button( this, "ImportAvatarImage", "#GameUI_ImportAvatarEllipsis" );
+	importAvatarImage->SetCommand("ImportAvatarImage");
+
 	m_hImportSprayDialog = NULL;
+	m_hImportAvatarDialog = NULL;
+	m_bAvatarImportActive = false;
 
 	m_pPrimaryColorSlider = new CCvarSlider( this, "Primary Color Slider", "#GameUI_PrimaryColor",
 		0.0f, 255.0f, "topcolor" );
@@ -1104,6 +138,12 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui::Panel *parent) : vgui::Prop
 	m_pLogoList = new CLabeledCommandComboBox( this, "SpraypaintList" );
     m_LogoName[0] = 0;
 	InitLogoList( m_pLogoList );
+	m_pLogoList->AddActionSignalTarget( this );
+
+	m_pAvatarList = new CLabeledCommandComboBox( this, "AvatarList" );
+    m_AvatarName[0] = 0;
+	InitAvatarList( m_pAvatarList );
+	m_pAvatarList->AddActionSignalTarget( this );
 
 	m_pModelImage = new CBitmapImagePanel( this, "ModelImage", NULL );
 	m_pModelImage->AddActionSignalTarget( this );
@@ -1111,28 +151,18 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui::Panel *parent) : vgui::Prop
 	m_pLogoImage = new ImagePanel( this, "LogoImage" );
 	m_pLogoImage->AddActionSignalTarget( this );
 
+	m_pAvatarImage = new ImagePanel( this, "AvatarImage" );
+	m_pAvatarImage->AddActionSignalTarget( this );
+
+	m_pPlayerNameText = new CCvarTextEntry( this, "PlayerNameText", "name" );
+	m_pPlayerNameText->AddActionSignalTarget( this );
+
+	m_pClanTagText = new CCvarTextEntry( this, "ClanTagText", "cl_clantag" );
+	m_pClanTagText->AddActionSignalTarget( this );
+
 	m_nLogoR = 255;
 	m_nLogoG = 255;
 	m_nLogoB = 255;
-
-	m_pCrosshairImage = NULL;
-	switch ( ModInfo().AdvCrosshairLevel() )
-	{
-	case 0:
-		if ( !ModInfo().NoCrosshair() )
-			m_pCrosshairImage = new CrosshairImagePanelSimple( this, "CrosshairImage", this );
-		break;
-
-	case 1:	// TF
-	case 2:	// DOD
-		m_pCrosshairImage = new CrosshairImagePanelAdvanced( this, "AdvCrosshairImage", this );
-		break;
-
-	case 3:	// Counter-Strike
-		m_pCrosshairImage = new CrosshairImagePanelCS( this, "CrosshairImage", this );
-		break;
-
-	}
 
 	m_pLockRadarRotationCheckbox = new CCvarToggleCheckButton( this, "LockRadarRotationCheckbox", "#Cstrike_RadarLocked", "cl_radar_locked" );
 
@@ -1145,10 +175,6 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui::Panel *parent) : vgui::Prop
 	//=========
 
 	LoadControlSettings("Resource/OptionsSubMultiplayer.res");
-
-	// this is necessary because some of the game .res files don't have visiblity flags set up correctly for their controls
-	if ( m_pCrosshairImage )
-		m_pCrosshairImage->UpdateVisibility();
 
 	// turn off model selection stuff if the mod specifies "nomodels" in the gameinfo.txt file
 	if ( ModInfo().NoModels() )
@@ -1244,6 +270,29 @@ void COptionsSubMultiplayer::OnCommand( const char *command )
 		}
 		m_hImportSprayDialog->DoModal(false);
 		m_hImportSprayDialog->Activate();
+		m_bAvatarImportActive = false;
+	}
+	else if (!stricmp( command, "ImportAvatarImage" ) )
+	{
+		if (m_hImportAvatarDialog == NULL)
+		{
+			m_hImportAvatarDialog = new FileOpenDialog(NULL, "#GameUI_ImportAvatarImage", true);
+#ifdef WIN32
+			m_hImportAvatarDialog->AddFilter("*.tga,*.jpg,*.bmp,*.vtf", "#GameUI_All_Images", true);
+#else
+			m_hImportAvatarDialog->AddFilter("*.tga,*.jpg,*.vtf", "#GameUI_All_ImagesNoBmp", true);
+#endif
+			m_hImportAvatarDialog->AddFilter("*.tga", "#GameUI_TGA_Images", false);
+			m_hImportAvatarDialog->AddFilter("*.jpg", "#GameUI_JPEG_Images", false);
+#ifdef WIN32
+			m_hImportAvatarDialog->AddFilter("*.bmp", "#GameUI_BMP_Images", false);
+#endif
+			m_hImportAvatarDialog->AddFilter("*.vtf", "#GameUI_VTF_Images", false);
+			m_hImportAvatarDialog->AddActionSignalTarget(this);
+		}
+		m_hImportAvatarDialog->DoModal(false);
+		m_hImportAvatarDialog->Activate();
+		m_bAvatarImportActive = true;
 	}
 
 	else if ( !stricmp( command, "ResetStats" ) )
@@ -1323,6 +372,14 @@ void COptionsSubMultiplayer::ConversionError( ConversionErrorType nError )
 void COptionsSubMultiplayer::OnFileSelected(const char *fullpath)
 {
 #ifndef _XBOX
+	// Check if this is an avatar import
+	if ( m_bAvatarImportActive )
+	{
+		m_bAvatarImportActive = false;
+		OnFileSelectedAvatar( fullpath );
+		return;
+	}
+
 	// this can take a while, put up a waiting cursor
 	surface()->SetCursor(dc_hourglass);
 
@@ -1338,6 +395,39 @@ void COptionsSubMultiplayer::OnFileSelected(const char *fullpath)
 
 		// automatically select the logo that was just imported.
 		SelectLogo(szRootFilename);
+	}
+	else
+	{
+		ConversionError( nErrorCode );
+	}
+
+	// change the cursor back to normal
+	surface()->SetCursor(dc_user);
+#endif
+}
+
+void COptionsSubMultiplayer::OnFileSelectedAvatar(const char *fullpath)
+{
+#ifndef _XBOX
+	// this can take a while, put up a waiting cursor
+	surface()->SetCursor(dc_hourglass);
+
+	// Use same folder as sprays: materials/vgui/logos
+	ConversionErrorType nErrorCode = ImgUtl_ConvertToVTFAndDumpVMT( fullpath, IsPosix() ? "/vgui/logos" : "\\vgui\\logos", 256, 256 );
+	if ( nErrorCode == CE_SUCCESS )
+	{
+		// refresh the avatar list so the new avatar shows up.
+		InitAvatarList(m_pAvatarList);
+
+		// Get the filename
+		char szRootFilename[MAX_PATH];
+		V_FileBase( fullpath, szRootFilename, sizeof( szRootFilename ) );
+
+		// automatically select the avatar that was just imported.
+		SelectAvatar(szRootFilename);
+		
+		// Update the avatar preview
+		RemapAvatar();
 	}
 	else
 	{
@@ -1455,6 +545,94 @@ void COptionsSubMultiplayer::SelectLogo(const char *logoName)
 	{
 		// select the logo.
 		m_pLogoList->ActivateItem(index);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Builds the list of avatars
+//-----------------------------------------------------------------------------
+void COptionsSubMultiplayer::InitAvatarList( CLabeledCommandComboBox *cb )
+{
+	// Find out images - same folder as sprays
+	FileFindHandle_t fh;
+	char directory[ 512 ];
+
+	ConVarRef cl_avatar( "cl_avatar", true );
+	if ( !cl_avatar.IsValid() )
+		return;
+
+	cb->DeleteAllItems();
+
+	const char *avatarfile = cl_avatar.GetString();
+	
+	// Search in materials/vgui/logos/ for available avatars (same as sprays)
+	Q_snprintf( directory, sizeof( directory ), "materials/vgui/logos/*.vtf" );
+	const char *fn = g_pFullFileSystem->FindFirst( directory, &fh );
+	int i = 0, initialItem = 0;
+	while (fn)
+	{
+		char filename[ 512 ];
+		Q_snprintf( filename, sizeof(filename), "materials/vgui/logos/%s", fn );
+		if ( strlen( filename ) >= 4 )
+		{
+			filename[ strlen( filename ) - 4 ] = 0;
+			Q_strncat( filename, ".vmt", sizeof( filename ), COPY_ALL_CHARACTERS );
+			if ( g_pFullFileSystem->FileExists( filename ) )
+			{
+				// strip off the extension - store full relative path
+				Q_strncpy( filename, fn, sizeof( filename ) );
+				filename[ strlen( filename ) - 4 ] = 0;
+				
+				// Store as "vgui/logos/filename" for the combo box
+				char displayPath[512];
+				Q_snprintf( displayPath, sizeof(displayPath), "vgui/logos/%s", filename );
+				cb->AddItem( filename, displayPath );
+
+				// check to see if this is the one we have set
+				Q_snprintf( filename, sizeof(filename), "materials/vgui/logos/%s", fn );
+				if (!Q_stricmp(filename, avatarfile))
+				{
+					initialItem = i;
+				}
+
+				++i;
+			}
+		}
+
+		fn = g_pFullFileSystem->FindNext( fh );
+	}
+
+	g_pFullFileSystem->FindClose( fh );
+	cb->SetInitialItem(initialItem);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Selects the given avatar in the avatar list.
+//-----------------------------------------------------------------------------
+void COptionsSubMultiplayer::SelectAvatar(const char *avatarName)
+{
+	int numEntries = m_pAvatarList->GetItemCount();
+	int index;
+	wchar_t itemText[MAX_PATH];
+	wchar_t itemToSelectText[MAX_PATH];
+
+	// convert the avatar filename to unicode
+	g_pVGuiLocalize->ConvertANSIToUnicode(avatarName, itemToSelectText, sizeof(itemToSelectText));
+
+	// find the index of the avatar we want.
+	for (index = 0; index < numEntries; ++index)
+	{
+		m_pAvatarList->GetItemText(index, itemText, sizeof(itemText));
+		if (!wcscmp(itemText, itemToSelectText))
+		{
+			break;
+		}
+	}
+
+	if (index < numEntries)
+	{
+		// select the avatar.
+		m_pAvatarList->ActivateItem(index);
 	}
 }
 
@@ -1613,7 +791,57 @@ void COptionsSubMultiplayer::RemapLogo()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
+//-----------------------------------------------------------------------------
+void COptionsSubMultiplayer::RemapAvatar()
+{
+	const char *avatarpath = m_pAvatarList->GetActiveItemCommand();
+	
+	// If no avatar selected or no command, show default CT avatar
+	if( !avatarpath || !avatarpath[0] )
+	{
+		m_pAvatarImage->SetImage( "avatar_default_64" );
+		return;
+	}
+
+	char fullAvatarName[512];
+
+	// make sure there is a version with the proper shader in UI folder
+	g_pFullFileSystem->CreateDirHierarchy( "materials/VGUI/logos/UI", "GAME" );
+	
+	// Get just the filename for the UI wrapper
+	char szFileName[MAX_PATH];
+	Q_FileBase( avatarpath, szFileName, sizeof( szFileName ) );
+	
+	Q_snprintf( fullAvatarName, sizeof( fullAvatarName ), "materials/VGUI/logos/UI/%s.vmt", szFileName );
+	if ( !g_pFullFileSystem->FileExists( fullAvatarName ) )
+	{
+		FileHandle_t fp = g_pFullFileSystem->Open( fullAvatarName, "wb" );
+		if ( !fp )
+			return;
+
+		char data[1024];
+		Q_snprintf( data, sizeof( data ), "\"UnlitGeneric\"\n\
+{\n\
+	\"$translucent\" 1\n\
+	\"$basetexture\" \"%s\"\n\
+	\"$vertexcolor\" 1\n\
+	\"$vertexalpha\" 1\n\
+	\"$no_fullbright\" 1\n\
+	\"$ignorez\" 1\n\
+}\n\
+", avatarpath );
+
+		g_pFullFileSystem->Write( data, strlen( data ), fp );
+		g_pFullFileSystem->Close( fp );
+	}
+
+	Q_snprintf( fullAvatarName, sizeof( fullAvatarName ), "logos/UI/%s", szFileName );
+	m_pAvatarImage->SetImage( fullAvatarName );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
 //-----------------------------------------------------------------------------
 void COptionsSubMultiplayer::RemapModel()
 {
@@ -1635,8 +863,18 @@ void COptionsSubMultiplayer::RemapModel()
 //-----------------------------------------------------------------------------
 void COptionsSubMultiplayer::OnTextChanged(vgui::Panel *panel)
 {
-	RemapModel();
-	RemapLogo();
+	if ( panel == m_pModelList )
+	{
+		RemapModel();
+	}
+	else if ( panel == m_pLogoList )
+	{
+		RemapLogo();
+	}
+	else if ( panel == m_pAvatarList )
+	{
+		RemapAvatar();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1760,7 +998,7 @@ void COptionsSubMultiplayer::ColorForName( char const *pszColorName, int&r, int&
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void COptionsSubMultiplayer::OnResetData()
 {
@@ -1788,8 +1026,8 @@ void COptionsSubMultiplayer::OnResetData()
 		}
 	}
 
-	if ( m_pCrosshairImage )
-		m_pCrosshairImage->ResetData();
+	// Initialize avatar preview
+	RemapAvatar();
 }
 
 //-----------------------------------------------------------------------------
@@ -1802,8 +1040,16 @@ void COptionsSubMultiplayer::OnApplyChanges()
 //	m_pModelList->ApplyChanges();
 	m_pLogoList->ApplyChanges();
     m_pLogoList->GetText(m_LogoName, sizeof(m_LogoName));
+	m_pAvatarList->ApplyChanges();
+    m_pAvatarList->GetText(m_AvatarName, sizeof(m_AvatarName));
 	m_pHighQualityModelCheckBox->ApplyChanges();
 
+	// Apply player name and clan tag changes
+	if ( m_pPlayerNameText )
+		m_pPlayerNameText->ApplyChanges();
+	if ( m_pClanTagText )
+		m_pClanTagText->ApplyChanges();
+	
 	for ( int i=0; i<m_cvarToggleCheckButtons.GetCount(); ++i )
 	{
 		CCvarToggleCheckButton *toggleButton = m_cvarToggleCheckButtons[i];
@@ -1818,9 +1064,6 @@ void COptionsSubMultiplayer::OnApplyChanges()
 		m_pLockRadarRotationCheckbox->ApplyChanges();
 	}
 
-	if ( m_pCrosshairImage != NULL )
-		m_pCrosshairImage->ApplyChanges();
-
 	// save the logo name
 	char cmd[512];
 	if ( m_LogoName[ 0 ] )
@@ -1833,11 +1076,23 @@ void COptionsSubMultiplayer::OnApplyChanges()
 	}
 	engine->ClientCmd_Unrestricted(cmd);
 
+	// save the avatar path
+	const char *avatarPath = m_pAvatarList->GetActiveItemCommand();
+	if ( avatarPath && avatarPath[0] )
+	{
+		Q_snprintf(cmd, sizeof(cmd), "cl_avatar materials/%s.vtf\n", avatarPath);
+	}
+	else
+	{
+		Q_strncpy( cmd, "cl_avatar \"\"\n", sizeof( cmd ) );
+	}
+	engine->ClientCmd_Unrestricted(cmd);
+
 	if ( m_pModelList && m_pModelList->IsVisible() && m_pModelList->GetActiveItemCommand() )
 	{
 		Q_strncpy( m_ModelName, m_pModelList->GetActiveItemCommand(), sizeof( m_ModelName ) );
 		Q_StripExtension( m_ModelName, m_ModelName, sizeof ( m_ModelName ) );
-		
+
 		// save the player model name
 		Q_snprintf(cmd, sizeof(cmd), "cl_playermodel models/%s.mdl\n", m_ModelName );
 		engine->ClientCmd_Unrestricted(cmd);
@@ -1851,7 +1106,7 @@ void COptionsSubMultiplayer::OnApplyChanges()
 	if ( m_pDownloadFilterCombo )
 	{
 		ConVarRef  cl_downloadfilter( "cl_downloadfilter" );
-		
+
 		switch ( m_pDownloadFilterCombo->GetActiveItem() )
 		{
 		default:
