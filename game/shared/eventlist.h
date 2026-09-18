@@ -87,6 +87,10 @@ typedef enum
 
 	AE_BEGIN_TAUNT_LOOP,
 	
+	AE_WPN_COMPLETE_RELOAD,       // clip is refilled at this animation event
+	AE_CL_BODYGROUP_SET_TO_CLIP,  // set viewmodel bullet bodygroup to the current clip count
+	AE_CL_BODYGROUP_SET_TO_NEXTCLIP, // set viewmodel bullet bodygroup to the next clip count
+
 	LAST_SHARED_ANIMEVENT,
 } Animevent;
 

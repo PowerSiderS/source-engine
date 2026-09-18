@@ -296,6 +296,11 @@ private:
 
 	float	m_flDecreaseShotsFired;
 
+	// CS:GO reload: set true when the reload animation reaches AE_WPN_COMPLETE_RELOAD
+	bool	m_bReloadVisuallyComplete;
+	// resets the crosshair recoil when the magazine is refilled
+	float	m_flRecoilIndex;
+
 	CWeaponCSBase( const CWeaponCSBase & );
 
 	int		m_iExtraPrimaryAmmo;

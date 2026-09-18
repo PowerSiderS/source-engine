@@ -405,6 +405,9 @@ CWeaponCSBase::CWeaponCSBase()
 	m_fAccuracyPenalty = 0.0f;
 
 	m_weaponMode = Primary_Mode;
+
+	m_bReloadVisuallyComplete = false;
+	m_flRecoilIndex = 0.0f;
 }
 
 
@@ -1639,39 +1642,98 @@ void CWeaponCSBase::DefaultTouch(CBaseEntity *pOther)
 		}
 	}
 
-	void CWeaponCSBase::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator )
-{
-	int nEvent = pEvent->event;
-	
-	 if ( nEvent == AE_BEGIN_TAUNT_LOOP )
+		void CWeaponCSBase::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator )
 	{
+		int nEvent = pEvent->event;
+
+		 if ( nEvent == AE_BEGIN_TAUNT_LOOP )
+		{
 		CCSPlayer *pPlayer = GetPlayerOwner();
 
 		if ( pPlayer && pPlayer->IsLookingAtWeapon() && pPlayer->IsHoldingLookAtWeapon() )
-			{
-				CBaseViewModel *pViewModel = pPlayer->GetViewModel();
+		{
+		CBaseViewModel *pViewModel = pPlayer->GetViewModel();
 
-				float flPrevCycle = pViewModel->GetCycle();
-				float flNewCycle = V_atof( pEvent->options );
-				pViewModel->SetCycle( flNewCycle );
+		float flPrevCycle = pViewModel->GetCycle();
+		float flNewCycle = V_atof( pEvent->options );
+		pViewModel->SetCycle( flNewCycle );
 
-				float flSequenceDuration = pViewModel->SequenceDuration( pViewModel->GetSequence() );
-				pPlayer->ModifyTauntDuration( (flNewCycle - flPrevCycle) * flSequenceDuration );
-			}
+		float flSequenceDuration = pViewModel->SequenceDuration( pViewModel->GetSequence() );
+		pPlayer->ModifyTauntDuration( (flNewCycle - flPrevCycle) * flSequenceDuration );
+		}
 
 		return;
-	
+
+		}
+		else if ( nEvent == AE_WPN_COMPLETE_RELOAD )
+		{
+		// PowerSiderS: refill the magazine when the reload animation reaches this event.
+		m_bReloadVisuallyComplete = true;
+
+		CCSPlayer *pPlayer = GetPlayerOwner();
+		if ( pPlayer )
+		{
+		int j = MIN( GetMaxClip1() - m_iClip1, pPlayer->GetAmmoCount( m_iPrimaryAmmoType ) );
+
+		m_iClip1 += j;
+		pPlayer->RemoveAmmo( j, m_iPrimaryAmmoType );
+
+		m_flRecoilIndex = 0.0f;
+		}
+
+		return;
+		}
+		else if ( nEvent == AE_CL_BODYGROUP_SET_TO_CLIP )
+		{
+		CBasePlayer *pOwner = ToBasePlayer( GetPlayerOwner() );
+		if ( pOwner )
+		{
+		CBaseViewModel *vm = pOwner->GetViewModel( m_nViewModelIndex );
+		if ( vm )
+		{
+		int iNumBodygroupIndices = vm->GetNumBodyGroups();
+
+		for ( int iGroup = 1; iGroup < iNumBodygroupIndices; iGroup++ )
+		{
+		vm->SetBodygroup( iGroup, (m_iClip1 >= iGroup) ? 0 : 1 );
+		}
+		}
+		}
+
+		return;
+		}
+		else if ( nEvent == AE_CL_BODYGROUP_SET_TO_NEXTCLIP )
+		{
+		CBasePlayer *pOwner = ToBasePlayer( GetPlayerOwner() );
+		if ( pOwner )
+		{
+		CBaseViewModel *vm = pOwner->GetViewModel( m_nViewModelIndex );
+		if ( vm )
+		{
+		int iNextClip = MIN( GetMaxClip1(), m_iClip1 + pOwner->GetAmmoCount( m_iPrimaryAmmoType ) );
+		int iNumBodygroupIndices = vm->GetNumBodyGroups();
+
+		for ( int iGroup = 1; iGroup < iNumBodygroupIndices; iGroup++ )
+		{
+		vm->SetBodygroup( iGroup, (iNextClip >= iGroup) ? 0 : 1 );
+		}
+		}
+		}
+
+		return;
+		}
+		BaseClass::Operator_HandleAnimEvent( pEvent, pOperator );
 	}
-	BaseClass::Operator_HandleAnimEvent( pEvent, pOperator );
-}
 			
 		
 
-	bool CWeaponCSBase::Reload()
+		bool CWeaponCSBase::Reload()
 	{
+		m_bReloadVisuallyComplete = false;
+
 		CCSPlayer *pPlayer = GetPlayerOwner();
 		if ( !pPlayer )
-			return false;
+		return false;
 		pPlayer->StopLookingAtWeapon();
 		pPlayer->m_iShotsFired = 0;
 
