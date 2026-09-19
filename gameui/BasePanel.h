@@ -227,6 +227,7 @@ public:
 	void OnOpenPlayerListDialog();
 	void OnOpenBenchmarkDialog();
 	void OnOpenOptionsDialog();
+	void OnOpenModOptionsDialog();
 	void OnOpenOptionsDialog_Xbox();
 	void OnOpenLoadCommentaryDialog();
 	void OpenLoadSingleplayerCommentaryDialog();
@@ -350,13 +351,13 @@ private:
 
 	// menu logo
 	CMainMenuGameLogo *m_pGameLogo;
-	
+
 	// menu buttons
 	CUtlVector< CBackgroundMenuButton * >m_pGameMenuButtons;
 	CGameMenu *m_pGameMenu;
 	bool m_bPlatformMenuInitialized;
 	int m_iGameMenuInset;
-	
+
 	vgui::VPANEL	m_hMainMenuOverridePanel;
 
 	struct coord {
@@ -374,6 +375,7 @@ private:
 	vgui::DHANDLE<vgui::Frame> m_hSaveGameDialog;
 	vgui::DHANDLE<vgui::Frame> m_hSaveGameDialog_Xbox;
 	vgui::DHANDLE<vgui::PropertyDialog> m_hOptionsDialog;
+	vgui::DHANDLE<vgui::PropertyDialog> m_hModOptionsDialog;
 	vgui::DHANDLE<vgui::Frame> m_hOptionsDialog_Xbox;
 	vgui::DHANDLE<vgui::Frame> m_hCreateMultiplayerGameDialog;
 	//vgui::DHANDLE<vgui::Frame> m_hDemoPlayerDialog;

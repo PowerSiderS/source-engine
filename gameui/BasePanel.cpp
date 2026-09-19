@@ -54,6 +54,7 @@ using namespace vgui;
 #include "LoadGameDialog.h"
 #include "SaveGameDialog.h"
 #include "OptionsDialog.h"
+#include "ModOptionsDialog.h"
 #include "CreateMultiplayerGameDialog.h"
 #include "ChangeGameDialog.h"
 #include "BackgroundMenuButton.h"
@@ -129,7 +130,7 @@ VPANEL GetGameUIBasePanel()
 	return BasePanel()->GetVPanel();
 }
 
-CGameMenuItem::CGameMenuItem(vgui::Menu *parent, const char *name)  : BaseClass(parent, name, "GameMenuItem") 
+CGameMenuItem::CGameMenuItem(vgui::Menu *parent, const char *name)  : BaseClass(parent, name, "GameMenuItem")
 {
 	m_bRightAligned = false;
 }
@@ -302,7 +303,7 @@ class CGameMenu : public vgui::Menu
 public:
 	DECLARE_CLASS_SIMPLE( CGameMenu, vgui::Menu );
 
-	CGameMenu(vgui::Panel *parent, const char *name) : BaseClass(parent, name) 
+	CGameMenu(vgui::Panel *parent, const char *name) : BaseClass(parent, name)
 	{
 		if ( GameUI().IsConsoleUI() )
 		{
@@ -882,7 +883,7 @@ CBasePanel::CBasePanel() : Panel(NULL, "BaseGameUIPanel")
 
 		m_hControllerDialog = new CControllerDialog( this );
 		m_hControllerDialog->MarkForDeletion();
-		
+
 		ArmFirstMenuItem();
 		m_pConsoleAnimationController->StartAnimationSequence( "InitializeUILayout" );
 	}
@@ -992,6 +993,7 @@ static const char *g_rgValidCommands[] =
 	"OpenSaveGameDialog",
 	"OpenCustomMapsDialog",
 	"OpenOptionsDialog",
+	"OpenModOptionsDialog",
 	"OpenBenchmarkDialog",
 	"OpenServerBrowser",
 	"OpenFriendsDialog",
@@ -1162,8 +1164,8 @@ void CBasePanel::UpdateBackgroundState()
 	for ( i = 0; i < GetChildCount(); ++i )
 	{
 		VPANEL child = ipanel()->GetChild( GetVPanel(), i );
-		if ( child 
-			&& ipanel()->IsVisible( child ) 
+		if ( child
+			&& ipanel()->IsVisible( child )
 			&& ipanel()->IsPopup( child )
 			&& child != m_pGameMenu->GetVPanel() )
 		{
@@ -1175,8 +1177,8 @@ void CBasePanel::UpdateBackgroundState()
 	for ( i = 0; i < ipanel()->GetChildCount( parent ); ++i )
 	{
 		VPANEL child = ipanel()->GetChild( parent, i );
-		if ( child 
-			&& ipanel()->IsVisible( child ) 
+		if ( child
+			&& ipanel()->IsVisible( child )
 			&& ipanel()->IsPopup( child )
 			&& child != GetVPanel() )
 		{
@@ -1501,7 +1503,7 @@ void CBasePanel::DrawBackgroundImage()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePanel::CreateGameMenu()
 {
@@ -1528,7 +1530,7 @@ void CBasePanel::CreateGameMenu()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePanel::CreateGameLogo()
 {
@@ -1688,7 +1690,7 @@ void CBasePanel::RunFrame()
 		{
 			m_bPlatformMenuInitialized = true;
 		}
-	} 
+	}
 
 	// Check to see if a pending async task has already finished
 	if ( m_pAsyncJob && !m_pAsyncJob->m_hThreadHandle )
@@ -1959,7 +1961,7 @@ void CBasePanel::OnGameUIActivated()
 		m_bEverActivated = true;
 
 #if defined( _X360 )
-		
+
 		// Open all active containers if we have a valid storage device
 		if ( XBX_GetPrimaryUserId() != XBX_INVALID_USER_ID && XBX_GetStorageDeviceId() != XBX_INVALID_STORAGE_ID && XBX_GetStorageDeviceId() != XBX_STORAGE_DECLINED )
 		{
@@ -2089,6 +2091,10 @@ void CBasePanel::RunMenuCommand(const char *command)
 			OnOpenOptionsDialog_Xbox();
 		}
 	}
+	else if ( !Q_stricmp( command, "OpenModOptionsDialog" ) )
+	{
+		OnOpenModOptionsDialog();
+	}
 	else if ( !Q_stricmp( command, "OpenControllerDialog" ) )
 	{
 		if ( GameUI().IsConsoleUI() )
@@ -2122,11 +2128,11 @@ void CBasePanel::RunMenuCommand(const char *command)
 	}
 	else if ( !Q_stricmp( command, "OpenLoadCommentaryDialog" ) )
 	{
-		OnOpenLoadCommentaryDialog();	
+		OnOpenLoadCommentaryDialog();
 	}
 	else if ( !Q_stricmp( command, "OpenLoadSingleplayerCommentaryDialog" ) )
 	{
-		OpenLoadSingleplayerCommentaryDialog();	
+		OpenLoadSingleplayerCommentaryDialog();
 	}
 	else if ( !Q_stricmp( command, "OpenMatchmakingBasePanel" ) )
 	{
@@ -2288,7 +2294,7 @@ void CBasePanel::RunMenuCommand(const char *command)
 		m_bUserRefusedSignIn = true;
 		if ( m_strPostPromptCommand.IsEmpty() == false )
 		{
-			OnCommand( m_strPostPromptCommand );		
+			OnCommand( m_strPostPromptCommand );
 		}
 	}
 	else if ( !Q_stricmp( command, "RequiredSignInDenied" ) )
@@ -2440,7 +2446,7 @@ static uintp PanelJobWrapperFn( void *pvContext )
 	CBasePanel::CAsyncJobContext *pAsync = reinterpret_cast< CBasePanel::CAsyncJobContext * >( pvContext );
 
 	float const flTimeStart = Plat_FloatTime();
-	
+
 	pAsync->ExecuteAsync();
 
 	float const flElapsedTime = Plat_FloatTime() - flTimeStart;
@@ -2714,11 +2720,11 @@ bool CBasePanel::HandleSignInRequest( const char *command )
 		// Blade has returned with nothing
 		if ( m_bUserRefusedSignIn )
 			return true;
-		
+
 		// User has not denied the storage device, so ask
 		ShowMessageDialog( MD_PROMPT_SIGNIN );
 		m_strPostPromptCommand = command;
-		
+
 		// Do not run command
 		return false;
 	}
@@ -2741,15 +2747,15 @@ bool CBasePanel::HandleSignInRequest( const char *command )
 		m_strPostPromptCommand = command;
 		m_bWaitingForUserSignIn = true;
 		m_bUserRefusedSignIn = false;
-		return false;	
+		return false;
 	}
 #endif // _X360
 	return true;
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : *command - 
+// Purpose:
+// Input  : *command -
 //-----------------------------------------------------------------------------
 bool CBasePanel::HandleStorageDeviceRequest( const char *command )
 {
@@ -2763,7 +2769,7 @@ bool CBasePanel::HandleStorageDeviceRequest( const char *command )
 
 	// If we have a post-prompt command, we're coming back into the call from that prompt
 	bool bQueuedCall = ( m_strPostPromptCommand.IsEmpty() == false );
-	
+
 	// Are we returning from a prompt?
 	if ( bQueuedCall && m_bStorageBladeShown )
 	{
@@ -2774,7 +2780,7 @@ bool CBasePanel::HandleStorageDeviceRequest( const char *command )
 		// Prompt them
 		ShowMessageDialog( MD_PROMPT_STORAGE_DEVICE );
 		m_strPostPromptCommand = command;
-		
+
 		// Do not run the command
 		return false;
 	}
@@ -2794,7 +2800,7 @@ bool CBasePanel::HandleStorageDeviceRequest( const char *command )
 			OnDeviceAttached();
 			return true;
 		}
-#endif // 
+#endif //
 
 		// If the message is required first, then do that instead
 		if ( CommandRequiresStorageDevice( command ) )
@@ -2865,7 +2871,7 @@ void CBasePanel::OnCommand( const char *command )
 			// Handle the sign in case
 			if ( HandleSignInRequest( command ) == false )
 				return;
-			
+
 			// Handle storage
 			if ( HandleStorageDeviceRequest( command ) == false )
 				return;
@@ -2878,7 +2884,7 @@ void CBasePanel::OnCommand( const char *command )
 #endif // _X360
 
 		RunAnimationWithCallback( this, command, new KeyValues( "RunMenuCommand", "command", command ) );
-	
+
 		// Clear our pending command if we just executed it
 		ClearPostPromptCommand( command );
 	}
@@ -2890,7 +2896,7 @@ void CBasePanel::OnCommand( const char *command )
 
 //-----------------------------------------------------------------------------
 // Purpose: runs an animation sequence, then calls a message mapped function
-//			when the animation is complete. 
+//			when the animation is complete.
 //-----------------------------------------------------------------------------
 void CBasePanel::RunAnimationWithCallback( vgui::Panel *parent, const char *animName, KeyValues *msgFunc )
 {
@@ -3069,7 +3075,7 @@ void CBasePanel::OnOpenQuitConfirmationDialog()
 		if ( !GameUI().HasSavedThisMenuSession() && GameUI().IsInLevel() && engine->GetMaxClients() == 1 )
 		{
 			// single player, progress will be lost...
-			ShowMessageDialog( MD_SAVE_BEFORE_QUIT ); 
+			ShowMessageDialog( MD_SAVE_BEFORE_QUIT );
 		}
 		else
 		{
@@ -3127,7 +3133,7 @@ void CBasePanel::OnOpenDisconnectConfirmationDialog()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePanel::OnOpenNewGameDialog(const char *chapter )
 {
@@ -3147,7 +3153,7 @@ void CBasePanel::OnOpenNewGameDialog(const char *chapter )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePanel::OnOpenBonusMapsDialog( void )
 {
@@ -3161,7 +3167,7 @@ void CBasePanel::OnOpenBonusMapsDialog( void )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePanel::OnOpenLoadGameDialog()
 {
@@ -3174,7 +3180,7 @@ void CBasePanel::OnOpenLoadGameDialog()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePanel::OnOpenLoadGameDialog_Xbox()
 {
@@ -3187,7 +3193,7 @@ void CBasePanel::OnOpenLoadGameDialog_Xbox()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePanel::OnOpenSaveGameDialog()
 {
@@ -3200,7 +3206,7 @@ void CBasePanel::OnOpenSaveGameDialog()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePanel::OnOpenSaveGameDialog_Xbox()
 {
@@ -3213,18 +3219,32 @@ void CBasePanel::OnOpenSaveGameDialog_Xbox()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePanel::OnOpenOptionsDialog()
 {
 	if ( !m_hOptionsDialog.Get() )
 	{
-		m_hOptionsDialog = new COptionsDialog(this);
-		g_hOptionsDialog = m_hOptionsDialog;
-		PositionDialog( m_hOptionsDialog );
+	m_hOptionsDialog = new COptionsDialog(this);
+	g_hOptionsDialog = m_hOptionsDialog;
+	PositionDialog( m_hOptionsDialog );
 	}
 
 	m_hOptionsDialog->Activate();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CBasePanel::OnOpenModOptionsDialog()
+{
+	if ( !m_hModOptionsDialog.Get() )
+	{
+		m_hModOptionsDialog = new CModOptionsDialog( this );
+		PositionDialog( m_hModOptionsDialog );
+	}
+
+	m_hModOptionsDialog->Activate();
 }
 
 //-----------------------------------------------------------------------------
@@ -3246,11 +3266,15 @@ void CBasePanel::OnOpenOptionsDialog_Xbox()
 //-----------------------------------------------------------------------------
 void CBasePanel::ApplyOptionsDialogSettings()
 {
-	if (m_hOptionsDialog.Get())
-	{
+		if (m_hOptionsDialog.Get())
+		{
 		m_hOptionsDialog->ApplyChanges();
+		}
+		if (m_hModOptionsDialog.Get())
+		{
+			m_hModOptionsDialog->ApplyChanges();
+		}
 	}
-}
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -3782,6 +3806,10 @@ void CBasePanel::OnGameUIHidden()
 	if ( m_hOptionsDialog.Get() )
 	{
 		PostMessage( m_hOptionsDialog.Get(), new KeyValues( "GameUIHidden" ) );
+	}
+	if ( m_hModOptionsDialog.Get() )
+	{
+		PostMessage( m_hModOptionsDialog.Get(), new KeyValues( "GameUIHidden" ) );
 	}
 }
 
