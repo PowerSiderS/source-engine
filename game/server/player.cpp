@@ -8550,16 +8550,36 @@ void CBasePlayer::SetPunchAngle( const QAngle &punchAngle )
 		{
 			CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
 
-			if ( pPlayer && i != index && pPlayer->GetObserverTarget() == this && pPlayer->GetObserverMode() == OBS_MODE_IN_EYE )
-			{
+					if ( pPlayer && i != index && pPlayer->GetObserverTarget() == this && pPlayer->GetObserverMode() == OBS_MODE_IN_EYE )
+				{
 				pPlayer->SetPunchAngle( punchAngle );
+				}
+				}
+				}
 			}
-		}
-	}
-}
 
-//-----------------------------------------------------------------------------
-// Purpose: Apply a movement constraint to the player
+			QAngle CBasePlayer::GetAimPunchAngle()
+			{
+				return m_Local.m_aimPunchAngle.Get();
+			}
+
+			void CBasePlayer::SetAimPunchAngle( const QAngle &punchAngle )
+			{
+				m_Local.m_aimPunchAngle = punchAngle;
+			}
+
+			void CBasePlayer::SetAimPunchAngleVelocity( const QAngle &punchAngleVelocity )
+			{
+				m_Local.m_aimPunchAngleVel = punchAngleVelocity;
+			}
+
+			QAngle CBasePlayer::GetFinalAimAngle()
+			{
+				return EyeAngles() + GetAimPunchAngle();
+			}
+
+			//-----------------------------------------------------------------------------
+			// Purpose: Apply a movement constraint to the player
 //-----------------------------------------------------------------------------
 void CBasePlayer::ActivateMovementConstraint( CBaseEntity *pEntity, const Vector &vecCenter, float flRadius, float flConstraintWidth, float flSpeedFactor )
 {

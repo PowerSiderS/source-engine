@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+﻿//========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -182,7 +182,7 @@ void CWeaponGlock::PrimaryAttack()
 	if ( !pPlayer )
 		return;
 
-	float flCycleTime = m_bBurstMode ? 0.5f : GetCSWpnData().m_flCycleTime;
+	float flCycleTime = m_bBurstMode ? 0.5f : GetCSWpnData().m_flCycleTime[Primary_Mode];
 
 	// Mark the time of this shot and determine the accuracy modifier based on the last shot fired...
 	m_flAccuracy -= (0.275)*(0.325 - (gpGlobals->curtime - m_flLastFire));

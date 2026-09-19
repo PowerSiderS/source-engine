@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+﻿//========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -111,7 +111,7 @@ void CWeaponUMP45::PrimaryAttack()
 	if ( !pPlayer )
 		return;
 
-	if ( !CSBaseGunFire( GetCSWpnData().m_flCycleTime, Primary_Mode ) )
+	if ( !CSBaseGunFire( GetCSWpnData().m_flCycleTime[Primary_Mode], Primary_Mode ) )
 		return;
 
 	// CSBaseGunFire can kill us, forcing us to drop our weapon, if we shoot something that explodes
@@ -119,14 +119,5 @@ void CWeaponUMP45::PrimaryAttack()
 	if ( !pPlayer )
 		return;
 
-	// Kick the gun based on the state of the player.
-	if ( !FBitSet( pPlayer->GetFlags(), FL_ONGROUND ) )
-		pPlayer->KickBack (0.125, 0.65, 0.55, 0.0475, 5.5, 4, 10);
-	else if (pPlayer->GetAbsVelocity().Length2D() > 5)
-		pPlayer->KickBack (0.55, 0.3, 0.225, 0.03, 3.5, 2.5, 10);
-	else if ( FBitSet( pPlayer->GetFlags(), FL_DUCKING ) )
-		pPlayer->KickBack (0.25, 0.175, 0.125, 0.02, 2.25, 1.25, 10);
-	else
-		pPlayer->KickBack (0.275, 0.2, 0.15, 0.0225, 2.5, 1.5, 10);
 }
 

@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+﻿//========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -93,7 +93,7 @@ void CWeaponGalil::PrimaryAttack()
 		return;
 	}
 	
-	if ( !CSBaseGunFire( GetCSWpnData().m_flCycleTime, Primary_Mode ) )
+	if ( !CSBaseGunFire( GetCSWpnData().m_flCycleTime[Primary_Mode], Primary_Mode ) )
 		return;
 
 	// CSBaseGunFire can kill us, forcing us to drop our weapon, if we shoot something that explodes
@@ -101,14 +101,6 @@ void CWeaponGalil::PrimaryAttack()
 	if ( !pPlayer )
 		return;
 
-	if (pPlayer->GetAbsVelocity().Length2D() > 5)
-		pPlayer->KickBack (1.0, 0.45, 0.28, 0.045, 3.75, 3, 7);
-	else if ( !FBitSet( pPlayer->GetFlags(), FL_ONGROUND ) )
-		pPlayer->KickBack (1.2, 0.5, 0.23, 0.15, 5.5, 3.5, 6);
-	else if ( FBitSet( pPlayer->GetFlags(), FL_DUCKING ) )
-		pPlayer->KickBack (0.6, 0.3, 0.2, 0.0125, 3.25, 2, 7);
-	else
-		pPlayer->KickBack (0.65, 0.35, 0.25, 0.015, 3.5, 2.25, 7);
 }
 
 

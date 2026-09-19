@@ -66,6 +66,9 @@ public:
 	// auto-decaying view angle adjustment
 	CNetworkQAngle( m_vecPunchAngle );		
 	CNetworkQAngle( m_vecPunchAngleVel );
+	// recoil aim punch (the pattern-driven punch, separate from the view punch above)
+	CNetworkQAngle( m_aimPunchAngle );
+	CNetworkQAngle( m_aimPunchAngleVel );
 	// Draw view model for the player
 	CNetworkVar( bool, m_bDrawViewmodel );
 

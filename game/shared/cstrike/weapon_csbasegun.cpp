@@ -164,26 +164,31 @@ bool CWeaponCSBaseGun::CSBaseGunFire( float flCycleTime, CSWeaponMode weaponMode
 	// player "shoot" animation
 	pPlayer->SetAnimation( PLAYER_ATTACK1 );
 
-	FX_FireBullets(
+			FX_FireBullets(
 		pPlayer->entindex(),
 		pPlayer->Weapon_ShootPosition(),
-		pPlayer->EyeAngles() + 2.0f * pPlayer->GetPunchAngle(),
+		pPlayer->GetFinalAimAngle(),
 		GetWeaponID(),
 		weaponMode,
 		CBaseEntity::GetPredictionRandomSeed() & 255,
 		GetInaccuracy(),
-		GetSpread(), 
+		GetSpread(),
 		flCurAttack );
 
-	DoFireEffects();
+		DoFireEffects();
 
-	SetWeaponIdleTime( gpGlobals->curtime + GetCSWpnData().m_flTimeToIdleAfterFire );
+		SetWeaponIdleTime( gpGlobals->curtime + GetCSWpnData().m_flTimeToIdleAfterFire );
 
-	// update accuracy
-	m_fAccuracyPenalty += GetCSWpnData().m_fInaccuracyImpulseFire[weaponMode];
+		// update accuracy
+		m_fAccuracyPenalty += GetCSWpnData().m_fInaccuracyImpulseFire[weaponMode];
 
-	return true;
-}
+		// table driven recoil
+		Recoil( weaponMode );
+
+		m_flRecoilIndex += 1.0f;
+
+		return true;
+	}
 
 
 void CWeaponCSBaseGun::DoFireEffects()

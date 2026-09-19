@@ -602,6 +602,12 @@ public:
 	const QAngle& GetPunchAngle();
 	void SetPunchAngle( const QAngle &punchAngle );
 
+	// recoil aim punch
+	virtual QAngle GetAimPunchAngle();
+	void SetAimPunchAngle( const QAngle &angle );
+	void SetAimPunchAngleVelocity( const QAngle &punchAngleVelocity );
+	virtual QAngle GetFinalAimAngle();
+
 	virtual void DoMuzzleFlash();
 
 	const char *GetLastKnownPlaceName( void ) const	{ return m_szLastPlaceName; }	// return the last nav place name the player occupied

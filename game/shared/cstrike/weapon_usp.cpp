@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+﻿//========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -274,7 +274,7 @@ void CWeaponUSP::PrimaryAttack()
 	if ( !pPlayer )
 		return;
 
-	float flCycleTime =  GetCSWpnData().m_flCycleTime;
+	float flCycleTime =  GetCSWpnData().m_flCycleTime[m_weaponMode];
 
 	// Mark the time of this shot and determine the accuracy modifier based on the last shot fired...
 	m_flAccuracy -= (0.275)*(0.3 - (gpGlobals->curtime - m_flLastFire));

@@ -347,7 +347,8 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	m_flRange			= pKeyValuesData->GetFloat( "Range", 8192.0f );
 	m_flRangeModifier	= pKeyValuesData->GetFloat( "RangeModifier", 0.98f );
 	m_iBullets			= pKeyValuesData->GetInt( "Bullets", 1 );
-	m_flCycleTime		= pKeyValuesData->GetFloat( "CycleTime", 0.15 );
+	m_flCycleTime[0]		= pKeyValuesData->GetFloat( "CycleTime", 0.15 );
+	m_flCycleTime[1]		= pKeyValuesData->GetFloat( "CycleTimeAlt", m_flCycleTime[0] );
 	m_bAccuracyQuadratic= pKeyValuesData->GetInt( "AccuracyQuadratic", 0 );
 	m_flAccuracyDivisor	= pKeyValuesData->GetFloat( "AccuracyDivisor", -1 ); // -1 = off
 	m_flAccuracyOffset	= pKeyValuesData->GetFloat( "AccuracyOffset", 0 );
@@ -375,8 +376,24 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	m_fInaccuracyReload			= pKeyValuesData->GetFloat("InaccuracyReload", 0.0f);
 	m_fInaccuracyAltSwitch		= pKeyValuesData->GetFloat("InaccuracyAltSwitch", 0.0f);
 
-	m_fRecoveryTimeCrouch		= pKeyValuesData->GetFloat("RecoveryTimeCrouch", 1.0f);
-	m_fRecoveryTimeStand		= pKeyValuesData->GetFloat("RecoveryTimeStand", 1.0f);
+	m_fInaccuracyJumpInitial[0]	= pKeyValuesData->GetFloat("InaccuracyJumpInitial", 0.0f);
+	m_fInaccuracyJumpInitial[1]	= pKeyValuesData->GetFloat("InaccuracyJumpInitialAlt", m_fInaccuracyJumpInitial[0]);
+
+	m_fRecoveryTimeCrouch	= pKeyValuesData->GetFloat("RecoveryTimeCrouch", 1.0f);
+	m_fRecoveryTimeStand	= pKeyValuesData->GetFloat("RecoveryTimeStand", 1.0f);
+
+	// recoil pattern parameters (per weapon mode: primary / secondary)
+	m_fRecoilAngle[0]		= pKeyValuesData->GetFloat("RecoilAngle", 0.0f);
+	m_fRecoilAngleVariance[0]		= pKeyValuesData->GetFloat("RecoilAngleVariance", 0.0f);
+	m_fRecoilMagnitude[0]		= pKeyValuesData->GetFloat("RecoilMagnitude", 0.0f);
+	m_fRecoilMagnitudeVariance[0]	= pKeyValuesData->GetFloat("RecoilMagnitudeVariance", 0.0f);
+
+	m_fRecoilAngle[1]		= pKeyValuesData->GetFloat("RecoilAngleAlt", m_fRecoilAngle[0]);
+	m_fRecoilAngleVariance[1]		= pKeyValuesData->GetFloat("RecoilAngleVarianceAlt", m_fRecoilAngleVariance[0]);
+	m_fRecoilMagnitude[1]		= pKeyValuesData->GetFloat("RecoilMagnitudeAlt", m_fRecoilMagnitude[0]);
+	m_fRecoilMagnitudeVariance[1]	= pKeyValuesData->GetFloat("RecoilMagnitudeVarianceAlt", m_fRecoilMagnitudeVariance[0]);
+
+	m_iRecoilSeed	= pKeyValuesData->GetInt("RecoilSeed", 0);
 
 	m_flTimeToIdleAfterFire	= pKeyValuesData->GetFloat( "TimeToIdle", 2 );
 	m_flIdleInterval	= pKeyValuesData->GetFloat( "IdleInterval", 20 );
@@ -455,3 +472,135 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 }
 
 
+//--------------------------------------------------------------------------------------------------------
+// CS:GO recoil pattern data
+//--------------------------------------------------------------------------------------------------------
+ConVar weapon_recoil_suppression_shots( "weapon_recoil_suppression_shots", "4", FCVAR_REPLICATED | FCVAR_ARCHIVE, "The number of shots before the recoil magnitude gets its full value" );
+ConVar weapon_recoil_suppression_factor( "weapon_recoil_suppression_factor", "0.35", FCVAR_REPLICATED | FCVAR_ARCHIVE, "The factor that gets applied to the recoil magnitude for the suppressed shots" );
+ConVar weapon_recoil_variance( "weapon_recoil_variance", "0.15", FCVAR_REPLICATED | FCVAR_ARCHIVE, "The interpolation factor between the current and the next recoil offset" );
+
+WeaponRecoilData::WeaponRecoilData()
+{
+	m_mapRecoilTables.SetLessFunc( DefLessFunc( CSWeaponID ) );
+}
+
+WeaponRecoilData::~WeaponRecoilData()
+{
+	m_mapRecoilTables.PurgeAndDeleteElements();
+}
+
+void WeaponRecoilData::GenerateRecoilTable( RecoilData *data )
+{
+	const int iSuppressionShots = weapon_recoil_suppression_shots.GetInt();
+	const float fBaseSuppressionFactor = weapon_recoil_suppression_factor.GetFloat();
+	const float fRecoilVariance = weapon_recoil_variance.GetFloat();
+	CUniformRandomStream recoilRandom;
+
+	if ( !data )
+		return;
+
+	CCSWeaponInfo *pWeaponInfo = GetWeaponInfo( data->iWeaponID );
+
+	// Walk the attributes to determine all things that we need
+	int iSeed = 0;
+	bool bFullAuto = false;
+	float flRecoilAngle[2] = {};
+	float flRecoilAngleVariance[2] = {};
+	float flRecoilMagnitude[2] = {};
+	float flRecoilMagnitudeVariance[2] = {};
+
+	if ( pWeaponInfo )
+	{
+		iSeed = pWeaponInfo->m_iRecoilSeed;
+		bFullAuto = pWeaponInfo->m_bFullAuto;
+		for ( int iMode = 0; iMode < 2; ++iMode )
+	{
+			flRecoilAngle[iMode] = pWeaponInfo->m_fRecoilAngle[iMode];
+			flRecoilAngleVariance[iMode] = pWeaponInfo->m_fRecoilAngleVariance[iMode];
+			flRecoilMagnitude[iMode] = pWeaponInfo->m_fRecoilMagnitude[iMode];
+			flRecoilMagnitudeVariance[iMode] = pWeaponInfo->m_fRecoilMagnitudeVariance[iMode];
+	}
+	}
+
+	for ( int iMode = 0; iMode < 2; ++iMode )
+	{
+	Assert( pWeaponInfo );
+
+	recoilRandom.SetSeed( iSeed );
+
+		float fAngle = 0.0f;
+		float fMagnitude = 0.0f;
+
+		for ( int j = 0; j < ARRAYSIZE( data->recoilTable[iMode] ); ++j )
+	{
+			float fAngleNew = flRecoilAngle[iMode] + recoilRandom.RandomFloat( -flRecoilAngleVariance[iMode], +flRecoilAngleVariance[iMode] );
+			float fMagnitudeNew = flRecoilMagnitude[iMode] + recoilRandom.RandomFloat( -flRecoilMagnitudeVariance[iMode], +flRecoilMagnitudeVariance[iMode] );
+
+			if ( bFullAuto && ( j > 0 ) )
+			{
+				fAngle = Lerp( fRecoilVariance, fAngle, fAngleNew );
+				fMagnitude = Lerp( fRecoilVariance, fMagnitude, fMagnitudeNew );
+			}
+			else
+			{
+				fAngle = fAngleNew;
+				fMagnitude = fMagnitudeNew;
+			}
+
+			if ( bFullAuto && ( j < iSuppressionShots ) )
+			{
+				float fSuppressionFactor = Lerp( (float)j / (float)iSuppressionShots, fBaseSuppressionFactor, 1.0f );
+				fMagnitude *= fSuppressionFactor;
+			}
+
+			data->recoilTable[iMode][j].fAngle = fAngle;
+			data->recoilTable[iMode][j].fMagnitude = fMagnitude;
+	}
+	}
+}
+
+void WeaponRecoilData::GetRecoilOffsets( CWeaponCSBase *pWeapon, int iMode, int iIndex, float& fAngle, float &fMagnitude )
+{
+	// Recoil offset tables are indexed by a weapon's definition index.
+	// Look for the existing table, otherwise generate it.
+
+	CSWeaponID id = pWeapon->GetWeaponID();
+
+	RecoilData *wepData = NULL;
+	CUtlMap< CSWeaponID, RecoilData* >::IndexType_t iMapLocation = m_mapRecoilTables.Find( id );
+	if ( iMapLocation == m_mapRecoilTables.InvalidIndex() )
+	{
+		wepData = new RecoilData;
+		wepData->iWeaponID = id;
+		iMapLocation = m_mapRecoilTables.InsertOrReplace( id, wepData );
+	GenerateRecoilTable( wepData );
+	}
+	else
+	{
+		wepData = m_mapRecoilTables.Element( iMapLocation );
+	Assert( wepData );
+	}
+
+	iIndex = iIndex % ARRAYSIZE( wepData->recoilTable[iMode] );
+	fAngle = wepData->recoilTable[iMode][iIndex].fAngle;
+	fMagnitude = wepData->recoilTable[iMode][iIndex].fMagnitude;
+}
+
+void WeaponRecoilData::GenerateRecoilPattern( CSWeaponID id )
+{
+	CUtlMap< CSWeaponID, RecoilData* >::IndexType_t iMapLocation = m_mapRecoilTables.Find( id );
+	if ( iMapLocation == m_mapRecoilTables.InvalidIndex() )
+	{
+	RecoilData *wepData = new RecoilData;
+		wepData->iWeaponID = id;
+		iMapLocation = m_mapRecoilTables.InsertOrReplace( id, wepData );
+	GenerateRecoilTable( wepData );
+	}
+}
+
+WeaponRecoilData g_WeaponRecoilData;
+
+void GenerateWeaponRecoilPattern( CSWeaponID idx )
+{
+	g_WeaponRecoilData.GenerateRecoilPattern( idx );
+}

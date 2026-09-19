@@ -81,6 +81,44 @@ enum CSWeaponID
 
 void PrepareEquipmentInfo( void );
 
+#if defined( CLIENT_DLL )
+	#define CWeaponCSBase C_WeaponCSBase
+#endif
+class CWeaponCSBase;
+
+class WeaponRecoilData
+{
+public:
+
+	WeaponRecoilData();
+	~WeaponRecoilData();
+
+	void GetRecoilOffsets( CWeaponCSBase *pWeapon, int iMode, int iIndex, float& fAngle, float &fMagnitude );
+	void GenerateRecoilPattern( CSWeaponID id );
+
+private:
+
+	struct RecoilOffset
+	{
+	float	fAngle;
+	float	fMagnitude;
+	};
+
+	struct RecoilData
+	{
+	CSWeaponID		iWeaponID;
+	RecoilOffset		recoilTable[2][64];
+	};
+
+	CUtlMap< CSWeaponID, RecoilData* > m_mapRecoilTables;
+
+	void GenerateRecoilTable( RecoilData *data );
+
+};
+
+extern WeaponRecoilData g_WeaponRecoilData;
+void GenerateWeaponRecoilPattern( CSWeaponID idx );
+
 //--------------------------------------------------------------------------------------------------------
 const char * WeaponClassAsString( CSWeaponType weaponType );
 
@@ -102,9 +140,9 @@ class CCSWeaponInfo : public FileWeaponInfo_t
 {
 public:
 	DECLARE_CLASS_GAMEROOT( CCSWeaponInfo, FileWeaponInfo_t );
-	
+
 	CCSWeaponInfo();
-	
+
 	virtual void Parse( ::KeyValues *pKeyValuesData, const char *szWeaponName );
 
 	int GetRealWeaponPrice( void ) { return m_iWeaponPrice; }
@@ -124,9 +162,9 @@ public:
 
 	int	  m_iCrosshairMinDistance;
 	int	  m_iCrosshairDeltaDistance;
-	
+
 	bool  m_bCanUseWithShield;
-	
+
 	char m_WrongTeamMsg[32];	// Reference to a string describing the error if someone tries to buy
 								// this weapon but they're on the wrong team to have it.
 								// Zero-length if no specific message for this weapon.
@@ -140,14 +178,14 @@ public:
 
 	int	  m_iMuzzleFlashStyle;
 	float m_flMuzzleScale;
-	
+
 	// Parameters for FX_FireBullets:
 	int		m_iPenetration;
 	int		m_iDamage;
 	float	m_flRange;
 	float	m_flRangeModifier;
-	int		m_iBullets;
-	float	m_flCycleTime;
+	int	m_iBullets;
+	float	m_flCycleTime[2];
 
 	// Variables that control how fast the weapon's accuracy changes as it is fired.
 	bool	m_bAccuracyQuadratic;
@@ -164,10 +202,18 @@ public:
 	float m_fInaccuracyLadder[2];
 	float m_fInaccuracyImpulseFire[2];
 	float m_fInaccuracyMove[2];
+	float m_fInaccuracyJumpInitial[2];
 	float m_fRecoveryTimeStand;
 	float m_fRecoveryTimeCrouch;
 	float m_fInaccuracyReload;
 	float m_fInaccuracyAltSwitch;
+
+	// CS:GO recoil pattern data (loaded from the weapon script)
+	float m_fRecoilAngle[2];
+	float m_fRecoilAngleVariance[2];
+	float m_fRecoilMagnitude[2];
+	float m_fRecoilMagnitudeVariance[2];
+	int   m_iRecoilSeed;
 
 	// Delay until the next idle animation after shooting.
 	float	m_flTimeToIdleAfterFire;

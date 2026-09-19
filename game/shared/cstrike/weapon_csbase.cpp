@@ -1825,6 +1825,26 @@ bool CWeaponCSBase::DefaultPistolReload()
 	return true;
 }
 
+// CS:GO recoil: look up this shot's offset from the weapon's recoil pattern and apply the aim punch.
+void CWeaponCSBase::Recoil( CSWeaponMode weaponMode )
+{
+	CCSPlayer *pPlayer = GetPlayerOwner();
+	if ( !pPlayer )
+		return;
+
+	int index;
+	if ( IsFullAuto() )
+	index = m_flRecoilIndex;
+	else
+	index = GetPredictionRandomSeed();
+
+	float angle;
+	float magnitude;
+	g_WeaponRecoilData.GetRecoilOffsets( this, weaponMode, index, angle, magnitude );
+
+	pPlayer->KickBack( angle, magnitude );
+}
+
 bool CWeaponCSBase::IsUseable()
 {
 	CCSPlayer *pPlayer = GetPlayerOwner();

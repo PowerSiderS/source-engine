@@ -190,14 +190,11 @@ public:
 		bool bDoEffects,
 		float xSpread, float ySpread );
 
-	void KickBack(
-		float up_base,
-		float lateral_base,
-		float up_modifier,
-		float lateral_modifier,
-		float up_max,
-		float lateral_max,
-		int direction_change );
+	// table-driven aim punch
+	void KickBack( float fAngle, float fMagnitude );
+
+	virtual QAngle GetAimPunchAngle();
+	QAngle GetRawAimPunchAngle() const;
 
 	// Returns true if the player is allowed to move.
 	bool CanMove() const;

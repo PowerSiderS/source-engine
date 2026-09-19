@@ -182,6 +182,9 @@ public:
 	// shotgun per-shell reload state (0 = not reloading)
 	virtual int GetShotgunReloadState( void ) const	{ return 0; }
 
+	// Applies the table-driven recoil for the given firing mode
+	virtual void Recoil( CSWeaponMode weaponMode );
+
 	virtual void SetWeaponModelIndex( const char *pName );
 	virtual void OnPickedUp( CBaseCombatCharacter *pNewOwner );
 
@@ -292,14 +295,15 @@ protected:
 
 	float	CalculateNextAttackTime( float flCycleTime );
 
+	// CS:GO recoil: advances the spray pattern index for the next shot (used by CWeaponCSBaseGun)
+	float	m_flRecoilIndex;
+
 private:
 
 	float	m_flDecreaseShotsFired;
 
 	// CS:GO reload: set true when the reload animation reaches AE_WPN_COMPLETE_RELOAD
 	bool	m_bReloadVisuallyComplete;
-	// resets the crosshair recoil when the magazine is refilled
-	float	m_flRecoilIndex;
 
 	CWeaponCSBase( const CWeaponCSBase & );
 

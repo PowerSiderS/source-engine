@@ -325,6 +325,12 @@ public:
 	const QAngle& GetPunchAngle();
 	void SetPunchAngle( const QAngle &angle );
 
+	// CS:GO recoil aim punch
+	virtual QAngle GetAimPunchAngle();
+	void SetAimPunchAngle( const QAngle &angle );
+	void SetAimPunchAngleVelocity( const QAngle &punchAngleVelocity );
+	virtual QAngle GetFinalAimAngle();
+
 	float					GetWaterJumpTime() const;
 	void					SetWaterJumpTime( float flWaterJumpTime );
 	float					GetSwimSoundTime( void ) const;

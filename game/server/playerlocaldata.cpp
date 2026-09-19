@@ -40,15 +40,25 @@ BEGIN_SEND_TABLE_NOBASE( CPlayerLocalData, DT_Local )
 	SendPropFloat		( SENDINFO_VECTORELEM(m_vecPunchAngle, 1), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
 	SendPropFloat		( SENDINFO_VECTORELEM(m_vecPunchAngle, 2), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
 
-	SendPropFloat		( SENDINFO_VECTORELEM(m_vecPunchAngleVel, 0), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
-	SendPropFloat		( SENDINFO_VECTORELEM(m_vecPunchAngleVel, 1), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
-	SendPropFloat		( SENDINFO_VECTORELEM(m_vecPunchAngleVel, 2), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
+		SendPropFloat	( SENDINFO_VECTORELEM(m_vecPunchAngleVel, 0), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
+		SendPropFloat	( SENDINFO_VECTORELEM(m_vecPunchAngleVel, 1), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
+		SendPropFloat	( SENDINFO_VECTORELEM(m_vecPunchAngleVel, 2), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
 
-#else
-	SendPropFloat	(SENDINFO(m_flFallVelocity), 17, SPROP_CHANGES_OFTEN, -4096.0f, 4096.0f ),
-	SendPropVector	(SENDINFO(m_vecPunchAngle),      -1,  SPROP_COORD|SPROP_CHANGES_OFTEN),
-	SendPropVector	(SENDINFO(m_vecPunchAngleVel),      -1,  SPROP_COORD),
-#endif
+		SendPropFloat	( SENDINFO_VECTORELEM(m_aimPunchAngle, 0), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
+		SendPropFloat	( SENDINFO_VECTORELEM(m_aimPunchAngle, 1), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
+		SendPropFloat	( SENDINFO_VECTORELEM(m_aimPunchAngle, 2), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
+
+		SendPropFloat	( SENDINFO_VECTORELEM(m_aimPunchAngleVel, 0), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
+		SendPropFloat	( SENDINFO_VECTORELEM(m_aimPunchAngleVel, 1), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
+		SendPropFloat	( SENDINFO_VECTORELEM(m_aimPunchAngleVel, 2), 32, SPROP_NOSCALE|SPROP_CHANGES_OFTEN ),
+
+	#else
+		SendPropFloat	(SENDINFO(m_flFallVelocity), 17, SPROP_CHANGES_OFTEN, -4096.0f, 4096.0f ),
+		SendPropVector	(SENDINFO(m_vecPunchAngle),      -1,  SPROP_COORD|SPROP_CHANGES_OFTEN),
+		SendPropVector	(SENDINFO(m_vecPunchAngleVel),      -1,  SPROP_COORD),
+		SendPropVector	(SENDINFO(m_aimPunchAngle),      -1,  SPROP_COORD|SPROP_CHANGES_OFTEN),
+		SendPropVector	(SENDINFO(m_aimPunchAngleVel),      -1,  SPROP_COORD),
+	#endif
 	SendPropInt		(SENDINFO(m_bDrawViewmodel), 1, SPROP_UNSIGNED ),
 	SendPropInt		(SENDINFO(m_bWearingSuit), 1, SPROP_UNSIGNED ),
 	SendPropBool	(SENDINFO(m_bPoisoned)),

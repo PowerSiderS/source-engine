@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+﻿//========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -214,7 +214,7 @@ void CWeaponFamas::PrimaryAttack()
 	if ( !pPlayer )
 		return;
 
-	float flCycleTime = GetCSWpnData().m_flCycleTime;
+	float flCycleTime = GetCSWpnData().m_flCycleTime[m_weaponMode];
 
 	// change a few things if we're in burst mode
 	if ( m_bBurstMode )
@@ -227,17 +227,6 @@ void CWeaponFamas::PrimaryAttack()
 	if ( !CSBaseGunFire( flCycleTime, m_weaponMode ) )
 		return;
 	
-	if ( pPlayer->GetAbsVelocity().Length2D() > 5 )
-		pPlayer->KickBack ( 1, 0.45, 0.275, 0.05, 4, 2.5, 7 );
-	
-	else if ( !FBitSet( pPlayer->GetFlags(), FL_ONGROUND ) )
-		pPlayer->KickBack ( 1.25, 0.45, 0.22, 0.18, 5.5, 4, 5 );
-	
-	else if ( FBitSet( pPlayer->GetFlags(), FL_DUCKING ) )
-		pPlayer->KickBack ( 0.575, 0.325, 0.2, 0.011, 3.25, 2, 8 );
-	
-	else
-		pPlayer->KickBack ( 0.625, 0.375, 0.25, 0.0125, 3.5, 2.25, 8 );
 }
 
 

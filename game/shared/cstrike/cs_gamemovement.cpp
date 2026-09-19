@@ -46,6 +46,7 @@ public:
 	virtual void AirMove( void );
 	virtual bool LadderMove( void );
 	virtual void DecayPunchAngle( void );
+	virtual void DecayAimPunchAngle( void );
 	virtual void CheckParameters( void );
 
 	// allow overridden versions to respond to jumping
@@ -252,6 +253,7 @@ void CCSGameMovement::CheckParameters( void )
 	}
 
 	DecayPunchAngle();
+	DecayAimPunchAngle();
 
 	// Take angles from command.
 	if ( !IsDead() )
@@ -336,7 +338,7 @@ bool CCSGameMovement::CanAccelerate()
 		return true;
 	}
 	else
-	{	
+	{
 		return false;
 	}
 }
@@ -377,12 +379,12 @@ void CCSGameMovement::PlayerMove()
 
 		Vector vHullMin = GetPlayerMins( player->m_Local.m_bDucked );
 		vHullMin.z = 0.0f;
-		Vector vHullMax = GetPlayerMaxs( player->m_Local.m_bDucked ); 
+		Vector vHullMax = GetPlayerMaxs( player->m_Local.m_bDucked );
 
 		Vector start = player->GetAbsOrigin();
 		start.z += vHullMax.z;
 		Vector end = start;
-		end.z += eyeClearance - vHullMax.z; 
+		end.z += eyeClearance - vHullMax.z;
 		end.z += player->m_Local.m_bDucked ? VEC_DUCK_VIEW_SCALED( player ).z : VEC_VIEW_SCALED( player ).z;
 
 		vHullMax.z = 0.0f;
@@ -433,7 +435,7 @@ void CCSGameMovement::PlayerMove()
 			}
 		}
 	}
-#endif	
+#endif
 }
 
 
@@ -444,9 +446,9 @@ void CCSGameMovement::WalkMove( void )
 		float flRatio;
 
 		flRatio = ( STAMINA_MAX - ( ( m_pCSPlayer->m_flStamina / 1000.0 ) * STAMINA_RECOVER_RATE ) ) / STAMINA_MAX;
-		
+
 		// This Goldsrc code was run with variable timesteps and it had framerate dependencies.
-		// People looking at Goldsrc for reference are usually 
+		// People looking at Goldsrc for reference are usually
 		// (these days) measuring the stoppage at 60fps or greater, so we need
 		// to account for the fact that Goldsrc was applying more stopping power
 		// since it applied the slowdown across more frames.
@@ -642,7 +644,7 @@ void CCSGameMovement::PreventBunnyJumping()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 bool CCSGameMovement::CheckJumpButton( void )
 {
@@ -658,13 +660,13 @@ bool CCSGameMovement::CheckJumpButton( void )
 		m_pCSPlayer->m_flWaterJumpTime -= gpGlobals->frametime;
 		if (m_pCSPlayer->m_flWaterJumpTime < 0)
 			m_pCSPlayer->m_flWaterJumpTime = 0;
-		
+
 		return false;
 	}
 
 	// If we are in the water most of the way...
 	if ( m_pCSPlayer->GetWaterLevel() >= 2 )
-	{	
+	{
 		// swimming, not jumping
 		SetGroundEntity( NULL );
 
@@ -672,7 +674,7 @@ bool CCSGameMovement::CheckJumpButton( void )
 			mv->m_vecVelocity[2] = 100;
 		else if (m_pCSPlayer->GetWaterType() == CONTENTS_SLIME)
 			mv->m_vecVelocity[2] = 80;
-		
+
 		// play swiming sound
 		if ( m_pCSPlayer->m_flSwimSoundTime <= 0 )
 		{
@@ -704,16 +706,16 @@ bool CCSGameMovement::CheckJumpButton( void )
 
 	// In the air now.
 	SetGroundEntity( NULL );
-	
+
 	m_pCSPlayer->PlayStepSound( (Vector &)mv->GetAbsOrigin(), player->m_pSurfaceData, 1.0, true );
-	
+
 	//MoveHelper()->PlayerSetAnimation( PLAYER_JUMP );
 	m_pCSPlayer->DoAnimationEvent( PLAYERANIMEVENT_JUMP );
 
 	float flGroundFactor = 1.0f;
 	if (player->m_pSurfaceData)
 	{
-		flGroundFactor = player->m_pSurfaceData->game.jumpFactor; 
+		flGroundFactor = player->m_pSurfaceData->game.jumpFactor;
 	}
 
 	// if we weren't ducking, bots and hostages do a crouchjump programatically
@@ -734,7 +736,7 @@ bool CCSGameMovement::CheckJumpButton( void )
 		// v = g * sqrt(2.0 * 45 / g )
 		// v^2 = g * g * 2.0 * 45 / g
 		// v = sqrt( g * 2.0 * 45 )
-		
+
 		mv->m_vecVelocity[2] = flGroundFactor * sqrt(2 * 800 * 57.0);  // 2 * gravity * height
 	}
 	else
@@ -752,7 +754,7 @@ bool CCSGameMovement::CheckJumpButton( void )
 	}
 
 	m_pCSPlayer->m_flStamina = ( STAMINA_COST_JUMP / STAMINA_RECOVER_RATE ) * 1000.0;
-	
+
 	FinishGravity();
 
 	mv->m_outWishVel.z += mv->m_vecVelocity[2] - startz;
@@ -785,7 +787,7 @@ void CCSGameMovement::DecayPunchAngle( void )
 	vPunchAngle.x = m_pCSPlayer->m_Local.m_vecPunchAngle->x;
 	vPunchAngle.y = m_pCSPlayer->m_Local.m_vecPunchAngle->y;
 	vPunchAngle.z = m_pCSPlayer->m_Local.m_vecPunchAngle->z;
-	
+
 	len = VectorNormalize ( vPunchAngle );
 	len -= (10.0 + len * 0.5) * gpGlobals->frametime;
 	len = MAX( len, 0.0 );
@@ -794,6 +796,49 @@ void CCSGameMovement::DecayPunchAngle( void )
 	m_pCSPlayer->m_Local.m_vecPunchAngle.Set( 0, vPunchAngle.x );
 	m_pCSPlayer->m_Local.m_vecPunchAngle.Set( 1, vPunchAngle.y );
 	m_pCSPlayer->m_Local.m_vecPunchAngle.Set( 2, vPunchAngle.z );
+}
+
+static ConVar weapon_recoil_decay2_exp( "weapon_recoil_decay2_exp", "10", FCVAR_CHEAT | FCVAR_REPLICATED, "Decay factor for the aim punch angle" );
+static ConVar weapon_recoil_decay2_lin( "weapon_recoil_decay2_lin", "10", FCVAR_CHEAT | FCVAR_REPLICATED, "Decay factor for the aim punch angle" );
+static ConVar weapon_recoil_vel_decay( "weapon_recoil_vel_decay", "4.5", FCVAR_CHEAT | FCVAR_REPLICATED, "Decay factor for the aim punch angle velocity" );
+
+void HybridDecay( QAngle& v, float fExp, float fLin, float dT )
+{
+	fExp *= dT;
+	fLin *= dT;
+
+	v *= expf( -fExp );
+
+	float fMag = v.Length();
+	if ( fMag > fLin )
+	{
+	v *= ( 1.0f - fLin / fMag );
+	}
+	else
+	{
+	v.Init( 0.0f, 0.0f, 0.0f );
+	}
+}
+
+void CCSGameMovement::DecayAimPunchAngle( void )
+{
+	QAngle punchAngle = m_pCSPlayer->m_Local.m_aimPunchAngle;
+	QAngle punchAngleVel = m_pCSPlayer->m_Local.m_aimPunchAngleVel;
+
+	// decay the punch angle
+	HybridDecay( punchAngle, weapon_recoil_decay2_exp.GetFloat(), weapon_recoil_decay2_lin.GetFloat(), TICK_INTERVAL );
+
+	// add in the velocity
+	punchAngle += punchAngleVel * TICK_INTERVAL * 0.5f;
+
+	// decay the punch angle velocity
+	punchAngleVel *= expf( TICK_INTERVAL * -weapon_recoil_vel_decay.GetFloat() );
+
+	punchAngle += punchAngleVel * TICK_INTERVAL * 0.5f;
+
+	// save off the new values
+	m_pCSPlayer->m_Local.m_aimPunchAngle = punchAngle;
+	m_pCSPlayer->m_Local.m_aimPunchAngleVel = punchAngleVel;
 }
 
 

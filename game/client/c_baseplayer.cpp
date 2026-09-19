@@ -162,9 +162,17 @@ BEGIN_RECV_TABLE_NOBASE( CPlayerLocalData, DT_Local )
 	RecvPropFloat	(RECVINFO_NAME( m_vecPunchAngleVel.m_Value[0], m_vecPunchAngleVel[0] )),
 	RecvPropFloat	(RECVINFO_NAME( m_vecPunchAngleVel.m_Value[1], m_vecPunchAngleVel[1] )),
 	RecvPropFloat	(RECVINFO_NAME( m_vecPunchAngleVel.m_Value[2], m_vecPunchAngleVel[2] )),
+	RecvPropFloat	(RECVINFO_NAME( m_aimPunchAngle.m_Value[0], m_aimPunchAngle[0])),
+	RecvPropFloat	(RECVINFO_NAME( m_aimPunchAngle.m_Value[1], m_aimPunchAngle[1])),
+	RecvPropFloat	(RECVINFO_NAME( m_aimPunchAngle.m_Value[2], m_aimPunchAngle[2] )),
+	RecvPropFloat	(RECVINFO_NAME( m_aimPunchAngleVel.m_Value[0], m_aimPunchAngleVel[0] )),
+	RecvPropFloat	(RECVINFO_NAME( m_aimPunchAngleVel.m_Value[1], m_aimPunchAngleVel[1] )),
+	RecvPropFloat	(RECVINFO_NAME( m_aimPunchAngleVel.m_Value[2], m_aimPunchAngleVel[2] )),
 #else
 	RecvPropVector	(RECVINFO(m_vecPunchAngle)),
 	RecvPropVector	(RECVINFO(m_vecPunchAngleVel)),
+	RecvPropVector	(RECVINFO(m_aimPunchAngle)),
+	RecvPropVector	(RECVINFO(m_aimPunchAngleVel)),
 #endif
 
 	RecvPropInt		(RECVINFO(m_bDrawViewmodel)),
@@ -219,7 +227,7 @@ END_RECV_TABLE()
 		RecvPropFloat		( RECVINFO(m_flFriction) ),
 
 		RecvPropArray3		( RECVINFO_ARRAY(m_iAmmo), RecvPropInt( RECVINFO(m_iAmmo[0])) ),
-		
+
 		RecvPropInt			( RECVINFO(m_fOnTarget) ),
 
 		RecvPropInt			( RECVINFO( m_nTickBase ) ),
@@ -247,7 +255,7 @@ END_RECV_TABLE()
 
 	END_RECV_TABLE()
 
-	
+
 // -------------------------------------------------------------------------------- //
 // DT_BasePlayer datatable.
 // -------------------------------------------------------------------------------- //
@@ -289,7 +297,7 @@ END_RECV_TABLE()
 		RecvPropInt		(RECVINFO(m_iObserverMode), 0, RecvProxy_ObserverMode ),
 		RecvPropEHandle	(RECVINFO(m_hObserverTarget), RecvProxy_ObserverTarget ),
 		RecvPropArray	( RecvPropEHandle( RECVINFO( m_hViewModel[0] ) ), m_hViewModel ),
-		
+
 
 		RecvPropString( RECVINFO(m_szLastPlaceName) ),
 
@@ -307,7 +315,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CPlayerState )
 	// DEFINE_FIELD( anglechange, FIELD_FLOAT ),
 	// DEFINE_FIELD( v_angle, FIELD_VECTOR ),
 
-END_PREDICTION_DATA()	
+END_PREDICTION_DATA()
 
 BEGIN_PREDICTION_DATA_NO_BASE( CPlayerLocalData )
 
@@ -320,9 +328,13 @@ BEGIN_PREDICTION_DATA_NO_BASE( CPlayerLocalData )
 #if PREDICTION_ERROR_CHECK_LEVEL > 1
 	DEFINE_PRED_FIELD( m_vecPunchAngle, FIELD_VECTOR, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_vecPunchAngleVel, FIELD_VECTOR, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_aimPunchAngle, FIELD_VECTOR, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_aimPunchAngleVel, FIELD_VECTOR, FTYPEDESC_INSENDTABLE ),
 #else
 	DEFINE_PRED_FIELD_TOL( m_vecPunchAngle, FIELD_VECTOR, FTYPEDESC_INSENDTABLE, 0.125f ),
 	DEFINE_PRED_FIELD_TOL( m_vecPunchAngleVel, FIELD_VECTOR, FTYPEDESC_INSENDTABLE, 0.125f ),
+	DEFINE_PRED_FIELD_TOL( m_aimPunchAngle, FIELD_VECTOR, FTYPEDESC_INSENDTABLE, 0.125f ),
+	DEFINE_PRED_FIELD_TOL( m_aimPunchAngleVel, FIELD_VECTOR, FTYPEDESC_INSENDTABLE, 0.125f ),
 #endif
 	DEFINE_PRED_FIELD( m_bDrawViewmodel, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bWearingSuit, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
@@ -2326,6 +2338,26 @@ const QAngle& C_BasePlayer::GetPunchAngle()
 void C_BasePlayer::SetPunchAngle( const QAngle &angle )
 {
 	m_Local.m_vecPunchAngle = angle;
+}
+
+QAngle C_BasePlayer::GetAimPunchAngle()
+{
+	return m_Local.m_aimPunchAngle.Get();
+}
+
+void C_BasePlayer::SetAimPunchAngle( const QAngle &angle )
+{
+	m_Local.m_aimPunchAngle = angle;
+}
+
+void C_BasePlayer::SetAimPunchAngleVelocity( const QAngle &punchAngleVelocity )
+{
+	m_Local.m_aimPunchAngleVel = punchAngleVelocity;
+}
+
+QAngle C_BasePlayer::GetFinalAimAngle()
+{
+	return EyeAngles() + GetAimPunchAngle();
 }
 
 

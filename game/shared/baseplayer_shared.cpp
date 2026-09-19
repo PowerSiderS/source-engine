@@ -1618,6 +1618,8 @@ void CBasePlayer::CalcPlayerView( Vector& eyeOrigin, QAngle& eyeAngles, float& f
 
 	// Apply punch angle
 	VectorAdd( eyeAngles, m_Local.m_vecPunchAngle, eyeAngles );
+	// Apply the aim punch (scaled) to the view as well
+	VectorAdd( eyeAngles, GetAimPunchAngle(), eyeAngles );
 
 #if defined( CLIENT_DLL )
 	if ( !prediction->InPrediction() )
@@ -1643,9 +1645,9 @@ void CBasePlayer::CalcPlayerView( Vector& eyeOrigin, QAngle& eyeAngles, float& f
 //-----------------------------------------------------------------------------
 // Purpose: The main view setup function for vehicles
 //-----------------------------------------------------------------------------
-void CBasePlayer::CalcVehicleView( 
+void CBasePlayer::CalcVehicleView(
 #if defined( CLIENT_DLL )
-	IClientVehicle *pVehicle, 
+	IClientVehicle *pVehicle,
 #else
 	IServerVehicle *pVehicle,
 #endif
@@ -1674,6 +1676,8 @@ void CBasePlayer::CalcVehicleView(
 
 	// Apply punch angle
 	VectorAdd( eyeAngles, m_Local.m_vecPunchAngle, eyeAngles );
+	// CS:GO recoil: apply the aim punch (scaled) to the view as well
+	VectorAdd( eyeAngles, GetAimPunchAngle(), eyeAngles );
 
 #if defined( CLIENT_DLL )
 	if ( !prediction->InPrediction() )
