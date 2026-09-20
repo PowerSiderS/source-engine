@@ -1,0 +1,54 @@
+name: Windows CStrike Builds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build ${{ matrix.target }}
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-i386-cstrike
+            build_cmd: |
+              ./waf.bat configure -T release --build-games=cstrike -4 --enable-opus --disable-warns --prefix="./output"
+              ./waf.bat install
+
+          - target: windows-amd64-cstrike
+            build_cmd: |
+              ./waf.bat configure -T release --build-games=cstrike --enable-opus --disable-warns --prefix="./output"
+              ./waf.bat install
+
+          - target: windows-i386-dedicated-cstrike
+            build_cmd: |
+              ./waf.bat configure -T release --build-games=cstrike -4 -d --disable-warns --prefix="./output"
+              ./waf.bat install
+
+          - target: windows-amd64-dedicated-cstrike
+            build_cmd: |
+              ./waf.bat configure -T release --build-games=cstrike -d --disable-warns --prefix="./output"
+              ./waf.bat install
+
+    steps:
+      - name: Checkout source and submodules
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Build ${{ matrix.target }}
+        shell: pwsh
+        run: |
+          ${{ matrix.build_cmd }}
+          if (Test-Path "./output") {
+            Get-ChildItem -Path "./output" -Include *.pdb,*.lib -Recurse | Remove-Item -Force
+          }
+
+      - name: Upload ${{ matrix.target }} artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cstrike-${{ matrix.target }}
+          path: ./output/*
