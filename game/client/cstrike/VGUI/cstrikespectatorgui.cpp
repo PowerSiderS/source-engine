@@ -38,6 +38,7 @@ extern ConVar cl_radar_square_with_scoreboard;
 ConVar cl_radaralpha( "cl_radaralpha", "255", FCVAR_CLIENTDLL | FCVAR_ARCHIVE, NULL, true, 0, true, 255 );
 ConVar cl_radar_rotate( "cl_radar_rotate", "1", FCVAR_ARCHIVE, "1" );
 ConVar cl_radar_scale( "cl_radar_scale", "1.5", FCVAR_ARCHIVE, "Sets the radar scale. Valid values are 1.0 to 3.0.", true, 1.0f, true, 3.0f );
+ConVar cl_radar_panel_scale( "cl_radar_panel_scale", "1.0", FCVAR_ARCHIVE, "Scale the radar panel size. 1.0 = default. Range: 0.5 to 2.5.", true, 0.5f, true, 2.5f );
 
 void PreferredOverviewModeChanged( IConVar *pConVar, const char *oldString, float flOldValue )
 {
@@ -2112,8 +2113,9 @@ void CCSMapOverview::UpdateSizeAndPosition()
 				m_vPosition.y += g_pSpectatorGUI->GetTopBarHeight();
 			}
 
-			m_vSize.x = w;
-			m_vSize.y = w;// Intentionally not 't'.  We need to enforce square-ness to prevent people from seeing more of the map by fiddling their HudLayout
+			float flPanelScale = cl_radar_panel_scale.GetFloat();
+            m_vSize.x = (int)( w * flPanelScale );
+            m_vSize.y = m_vSize.x;
 			break;
 		}
 

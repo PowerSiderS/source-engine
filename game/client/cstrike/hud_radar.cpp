@@ -492,5 +492,12 @@ void CHudLocation::OnTick()
 	}
 	SetText( g_pVGuiLocalize->Find( pszLocation ) );
 
-	
+	// Follow The CVar of Radar Scalling
+	if ( g_pMapOverview && g_pMapOverview->GetMode() == CMapOverview::MAP_MODE_RADAR )
+    {
+    	int rx, ry, rw, rt;
+    	g_pMapOverview->GetBounds( rx, ry, rw, rt );
+    	SetPos( rx, ry + rt + YRES(2) );
+    	SetWide( rw );
+    }
 }
