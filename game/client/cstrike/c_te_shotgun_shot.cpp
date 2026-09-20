@@ -28,6 +28,7 @@ public:
 	int		m_iSeed;
 	float	m_fInaccuracy;
 	float	m_fSpread;
+	int		m_iTracerFreq;
 };
 
 
@@ -45,7 +46,9 @@ void C_TEFireBullets::PostDataUpdate( DataUpdateType_t updateType )
 		m_iMode,
 		m_iSeed,
 		m_fInaccuracy,
-		m_fSpread
+		m_fSpread,
+		0.0f,
+		m_iTracerFreq
 		);
 }
 
@@ -63,6 +66,7 @@ BEGIN_RECV_TABLE_NOBASE(C_TEFireBullets, DT_TEFireBullets)
 	RecvPropInt( RECVINFO( m_iPlayer ) ),
 	RecvPropFloat( RECVINFO( m_fInaccuracy ) ),
 	RecvPropFloat( RECVINFO( m_fSpread ) ),
+	RecvPropInt( RECVINFO( m_iTracerFreq ) ),
 END_RECV_TABLE()
 
 

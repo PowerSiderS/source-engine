@@ -39,6 +39,7 @@ public:
 	CNetworkVar( int, m_iSeed );
 	CNetworkVar( float, m_fInaccuracy );
 	CNetworkVar( float, m_fSpread );
+	CNetworkVar( int, m_iTracerFreq );
 };
 
 //-----------------------------------------------------------------------------
@@ -67,6 +68,7 @@ IMPLEMENT_SERVERCLASS_ST_NOBASE(CTEFireBullets, DT_TEFireBullets)
 	SendPropInt( SENDINFO( m_iPlayer ), 6, SPROP_UNSIGNED ), 	// max 64 players, see MAX_PLAYERS
 	SendPropFloat( SENDINFO( m_fInaccuracy ), 10, 0, 0, 1 ),	
 	SendPropFloat( SENDINFO( m_fSpread ), 8, 0, 0, 0.1f ),	
+	SendPropInt( SENDINFO( m_iTracerFreq ), 4, SPROP_UNSIGNED ),
 END_SEND_TABLE()
 
 
@@ -82,7 +84,8 @@ void TE_FireBullets(
 	int	iMode,
 	int iSeed,
 	float fInaccuracy,
-	float fSpread
+	float fSpread,
+	int iTracerFreq
 	)
 {
 	CPASFilter filter( vOrigin );
@@ -96,7 +99,8 @@ void TE_FireBullets(
 	g_TEFireBullets.m_fSpread = fSpread;
 	g_TEFireBullets.m_iMode = iMode;
 	g_TEFireBullets.m_iWeaponID = iWeaponID;
-
+	g_TEFireBullets.m_iTracerFreq = iTracerFreq;
+	
 	Assert( iSeed < (1 << NUM_BULLET_SEED_BITS) );
 	
 	g_TEFireBullets.Create( filter, 0 );

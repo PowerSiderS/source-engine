@@ -30,7 +30,8 @@ void FX_FireBullets(
 	int iSeed,
 	float fInaccuracy,
 	float fSpread,
-	float flSoundTime = 0.0f
+	float flSoundTime = 0.0f,
+	int iTracerFreq = 4
 	);
 
 // This runs on both the client and the server.

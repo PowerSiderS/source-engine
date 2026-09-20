@@ -19,7 +19,8 @@ void TE_FireBullets(
 	int	iMode,
 	int iSeed,
 	float fInaccuracy,
-	float fSpread
+	float fSpread,
+	int iTracerFreq = 4
 	);
 
 void TE_PlantBomb( int iPlayerIndex, const Vector &vOrigin, PlantBombOption_t option );

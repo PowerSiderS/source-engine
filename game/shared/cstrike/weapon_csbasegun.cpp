@@ -173,7 +173,8 @@ bool CWeaponCSBaseGun::CSBaseGunFire( float flCycleTime, CSWeaponMode weaponMode
 		CBaseEntity::GetPredictionRandomSeed() & 255,
 		GetInaccuracy(),
 		GetSpread(),
-		flCurAttack );
+		flCurAttack,
+		2 );
 
 		DoFireEffects();
 
