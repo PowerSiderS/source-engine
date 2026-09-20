@@ -401,6 +401,9 @@ void CCSPlayer::FireBullet(
 
 	bool bFirstHit = true;
 
+	// how many objects (walls/players) the bullet passed through when it hits a target.
+	const int iPenetrationMax = iPenetration;
+
 	CBasePlayer *lastPlayerHit = NULL;
 
 	if( sv_showplayerhitboxes.GetInt() > 0 )
@@ -567,10 +570,12 @@ void CCSPlayer::FireBullet(
 		// [pfreese] Check if enemy players were killed by this bullet, and if so,
 		// add them to the iPenetrationKills count
 		//=============================================================================
-		
-		CBaseEntity *pEntity = tr.m_pEnt;
+
+			CBaseEntity *pEntity = tr.m_pEnt;
 
 		CTakeDamageInfo info( pevAttacker, pevAttacker, fCurrentDamage, iDamageType );
+		// number of objects this bullet has penetrated before hitting this entity
+		info.SetObjectsPenetrated( iPenetrationMax - iPenetration );
 		CalculateBulletDamageForce( &info, iBulletType, vecDir, tr.endpos );
 		pEntity->DispatchTraceAttack( info, vecDir, &tr );
 

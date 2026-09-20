@@ -495,6 +495,8 @@ CCSPlayer::CCSPlayer()
 	m_iIgnoreGlobalChat = 0;
 	m_bIgnoreRadio = false;
 
+	m_iAssists = 0;
+
 	m_pHintMessageQueue = new CHintMessageQueue(this);
 	m_iDisplayHistoryBits = 0;
 	m_bShowHints = true;
@@ -543,7 +545,7 @@ CCSPlayer::CCSPlayer()
 	m_vLastHitLocationObjectSpace = Vector(0,0,0);
 
 	m_wasNotKilledNaturally = false;
-	 
+
 	//=============================================================================
 	// HPE_END
 	//=============================================================================
@@ -694,7 +696,7 @@ if ( IsLookingAtWeapon() )
 			}
 		}
 	}
-	
+
 	BaseClass::PlayerRunCommand( ucmd, moveHelper );
 }
 
@@ -802,14 +804,14 @@ void CCSPlayer::InitialSpawn( void )
 	// HPE_BEGIN:
 	// [tj] We reset the stats at the beginning of the map (including domination tracking)
 	//=============================================================================
-	 
+
 	CCS_GameStats.ResetPlayerStats(this);
 	RemoveNemesisRelationships();
-	 
+
 	//=============================================================================
 	// HPE_END
 	//=============================================================================
-	
+
 }
 
 void CCSPlayer::SetModelFromClass( void )
@@ -858,9 +860,9 @@ void CCSPlayer::Spawn()
 	// HPE_BEGIN:
 	// [pfreese] Clear the last known nav area (used to be done by CBasePlayer)
 	//=============================================================================
-	
+
 	m_lastNavArea = NULL;
-	
+
 	//=============================================================================
 	// HPE_END
 	//=============================================================================
@@ -889,7 +891,7 @@ void CCSPlayer::Spawn()
 	m_bInjuredAHostage = false;
 	m_iNumFollowers = 0;
 
-	
+
 	// [tj] Reset this flag if the player is not in observer mode (as happens when a player spawns late)
 	if (m_iPlayerState != STATE_OBSERVER_MODE)
 	{
@@ -957,7 +959,7 @@ void CCSPlayer::Spawn()
 	m_bIsInAutoBuy = false;
 	m_bIsInRebuy = false;
 	m_bAutoReload = false;
-	
+
 	// Read CVar from Client And Apply (cl_clantag)
 	const char *pClanTag = engine->GetClientConVarValue( engine->IndexOfEdict( edict() ), "cl_clantag" );
     if ( pClanTag )
@@ -966,7 +968,7 @@ void CCSPlayer::Spawn()
             Q_strncpy( szClanTag, pClanTag, sizeof(szClanTag) );
             SetClanTag( szClanTag );
     }
-    
+
 	SetContextThink( &CCSPlayer::PushawayThink, gpGlobals->curtime + PUSHAWAY_THINK_INTERVAL, CS_PUSHAWAY_THINK_CONTEXT );
 
 	if ( GetActiveWeapon() && !IsObserver() )
@@ -1198,7 +1200,7 @@ void CCSPlayer::Event_Killed( const CTakeDamageInfo &info )
 	// HPE_BEGIN:
 	// [pfreese] Process on-death achievements
 	//=============================================================================
-	
+
 	ProcessPlayerDeathAchievements(ToCSPlayer(info.GetAttacker()), this, info);
 
 	//=============================================================================
@@ -1212,17 +1214,17 @@ void CCSPlayer::Event_Killed( const CTakeDamageInfo &info )
 	// [tj] Added a parameter so we know if it was death that caused the drop
 	// [menglish] Keep track of what the player has dropped for the freeze panel callouts
 	//=============================================================================
-	 
+
 	CBaseEntity* pAttacker = info.GetAttacker();
 	bool friendlyFire = pAttacker && pAttacker->GetTeamNumber() == GetTeamNumber();
 
 	//Only count the drop if it was not friendly fire
 	DropWeapons(true, !friendlyFire);
-	 
+
 	//=============================================================================
 	// HPE_END
 	//=============================================================================
-	
+
 
 	// Just in case the progress bar is on screen, kill it.
 	SetProgressBarTime( 0 );
@@ -1298,7 +1300,7 @@ void CCSPlayer::Event_Killed( const CTakeDamageInfo &info )
 	// [pfreese] If this kill ended the round, award the MVP to someone on the
 	// winning team.
 	// TODO - move this code somewhere else more MVP related
-	//=============================================================================	 
+	//=============================================================================
 
 	bool roundWasAlreadyWon = (CSGameRules()->m_iRoundWinStatus != WINNER_NONE);
 	bool roundIsWonNow = CSGameRules()->CheckWinConditions();
@@ -1748,7 +1750,7 @@ bool CCSPlayer::Weapon_CanSwitchTo( CBaseCombatWeapon *pWeapon )
  	{
  		StopLookingAtWeapon();
 	}
-	
+
 	if ( !pWeapon->CanDeploy() )
 		return false;
 
@@ -1873,7 +1875,7 @@ int CCSPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 	// HPE_BEGIN:
 	// [tj] Added properties for goose chase achievement
 	//=============================================================================
- 
+
 	CSGameRules()->PlayerTookDamage(this, inputInfo);
 
 	//Check "Goose Chase" achievement
@@ -1892,7 +1894,7 @@ int CCSPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 				continue;
 
 			Assert( pPlayer->GetTeamNumber() == pAttackerTeam->GetTeamNumber() );
-			
+
 			if ( pPlayer->m_lifeState == LIFE_ALIVE )
 			{
 				livingEnemies++;
@@ -1906,7 +1908,7 @@ int CCSPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 			m_pGooseChaseDistractingPlayer = pAttacker;
 		}
 	}
- 
+
 	//=============================================================================
 	// HPE_END
 	//=============================================================================
@@ -2024,7 +2026,7 @@ int CCSPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 				}
 			}
 		}
- 
+
 //=============================================================================
 // HPE_END
 //=============================================================================
@@ -2064,9 +2066,9 @@ int CCSPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 			if (m_LastHitGroup == HITGROUP_HEAD && flDamage > m_iHealth && fDamageToHealth < m_iHealth)
 			{
 				m_bSurvivedHeadshotDueToHelmet = true;
-			}			
+			}
 			//=============================================================================
-			// HPE_END			
+			// HPE_END
 			//=============================================================================
 
 			flDamage = fDamageToHealth;
@@ -2111,7 +2113,7 @@ int CCSPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 				WRITE_LONG( m_LastHitBox );
 			}
 			WRITE_VEC3COORD( m_vLastHitLocationObjectSpace );
-			 
+
 //=============================================================================
 // HPE_END
 //=============================================================================
@@ -2165,7 +2167,7 @@ int CCSPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 			Q_strncat(dmgtype, "HEADSHOT", sizeof(dmgtype));
 
 		char outputString[256];
-		Q_snprintf( outputString, sizeof(outputString), "%f: Player %s incoming %f damage from %s, type %s; applied %d health and %d armor\n", 
+		Q_snprintf( outputString, sizeof(outputString), "%f: Player %s incoming %f damage from %s, type %s; applied %d health and %d armor\n",
 			gpGlobals->curtime, GetPlayerName(),
 			inputInfo.GetDamage(), info.GetInflictor()->GetDebugName(), dmgtype,
 			m_lastDamageHealth, m_lastDamageArmor);
@@ -2175,7 +2177,7 @@ int CCSPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 
 
 		if ( pPlayer )
-		{		
+		{
 			// Record for the shooter
 			pPlayer->RecordDamageGiven( GetPlayerName(), info.GetDamage() );
 
@@ -2286,12 +2288,12 @@ void CCSPlayer::TraceAttack( const CTakeDamageInfo &info, const Vector &vecDir, 
 // HPE_BEGIN:
 // [menglish] Calculate the position this player was hit at in the bone space
 //=============================================================================
-		 
+
 		matrix3x4_t boneTransformToWorld, boneTransformToObject;
 		GetBoneTransform(GetHitboxBone(ptr->hitbox), boneTransformToWorld);
 		MatrixInvert(boneTransformToWorld, boneTransformToObject);
 		VectorTransform(ptr->endpos, boneTransformToObject, m_vLastHitLocationObjectSpace);
-		 
+
 //=============================================================================
 // HPE_END
 //=============================================================================
@@ -2430,6 +2432,7 @@ void CCSPlayer::Reset()
 {
 	ResetFragCount();
 	ResetDeathCount();
+	ResetAssistsCount();
 	m_iAccount = 0;
 	AddAccount( -16000, false );
 
@@ -7277,6 +7280,19 @@ void CCSPlayer::ResetDamageCounters()
 {
 	m_DamageGivenList.PurgeAndDeleteElements();
 	m_DamageTakenList.PurgeAndDeleteElements();
+}
+
+//=======================================================
+// Kill assists
+//=======================================================
+void CCSPlayer::IncrementAssistsCount( int nCount )
+{
+	m_iAssists += nCount;
+}
+
+void CCSPlayer::ResetAssistsCount()
+{
+	m_iAssists = 0;
 }
 
 //=======================================================

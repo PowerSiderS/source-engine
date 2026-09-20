@@ -29,6 +29,7 @@ BEGIN_SIMPLE_DATADESC( CTakeDamageInfo )
 	DEFINE_FIELD( m_iDamageStats, FIELD_INTEGER),
 	DEFINE_FIELD( m_iAmmoType, FIELD_INTEGER),
 	DEFINE_FIELD( m_iDamagedOtherPlayers, FIELD_INTEGER),
+	DEFINE_FIELD( m_iObjectsPenetrated, FIELD_INTEGER),
 END_DATADESC()
 
 void CTakeDamageInfo::Init( CBaseEntity *pInflictor, CBaseEntity *pAttacker, CBaseEntity *pWeapon, const Vector &damageForce, const Vector &damagePosition, const Vector &reportedPosition, float flDamage, int bitsDamageType, int iCustomDamage )
@@ -59,6 +60,7 @@ void CTakeDamageInfo::Init( CBaseEntity *pInflictor, CBaseEntity *pAttacker, CBa
 	m_iAmmoType = -1;
 	m_iDamagedOtherPlayers = 0;
 	m_iPlayerPenetrationCount = 0;
+	m_iObjectsPenetrated = 0;
 	m_flDamageBonus = 0.f;
 	m_bForceFriendlyFire = false;
 }
@@ -247,7 +249,12 @@ void AddMultiDamage( const CTakeDamageInfo &info, CBaseEntity *pEntity )
 
 	if ( g_MultiDamage.GetPlayerPenetrationCount() == 0 )
 	{
-		g_MultiDamage.SetPlayerPenetrationCount( info.GetPlayerPenetrationCount() );
+	g_MultiDamage.SetPlayerPenetrationCount( info.GetPlayerPenetrationCount() );
+	}
+
+	if ( g_MultiDamage.GetObjectsPenetrated() == 0 )
+	{
+		g_MultiDamage.SetObjectsPenetrated( info.GetObjectsPenetrated() );
 	}
 
 	bool bHasPhysicsForceDamage = !g_pGameRules->Damage_NoPhysicsForce( info.GetDamageType() );

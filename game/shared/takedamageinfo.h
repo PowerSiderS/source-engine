@@ -84,9 +84,12 @@ public:
 	void			SetAmmoType( int iAmmoType );
 	const char *	GetAmmoName() const;
 
-	int				GetPlayerPenetrationCount() const { return m_iPlayerPenetrationCount; }
-	void			SetPlayerPenetrationCount( int iPlayerPenetrationCount ) { m_iPlayerPenetrationCount = iPlayerPenetrationCount; }
-	
+	int	GetPlayerPenetrationCount() const { return m_iPlayerPenetrationCount; }
+	void	SetPlayerPenetrationCount( int iPlayerPenetrationCount ) { m_iPlayerPenetrationCount = iPlayerPenetrationCount; }
+
+	int	GetObjectsPenetrated() const { return m_iObjectsPenetrated; }
+	void	SetObjectsPenetrated( int iObjectsPenetrated ) { m_iObjectsPenetrated = iObjectsPenetrated; }
+
 	int				GetDamagedOtherPlayers() const     { return m_iDamagedOtherPlayers; }
 	void			SetDamagedOtherPlayers( int iVal ) { m_iDamagedOtherPlayers = iVal; }
 
@@ -122,9 +125,10 @@ protected:
 	int				m_iDamageCustom;
 	int				m_iDamageStats;
 	int				m_iAmmoType;			// AmmoType of the weapon used to cause this damage, if any
-	int				m_iDamagedOtherPlayers;
-	int				m_iPlayerPenetrationCount;
-	float			m_flDamageBonus;		// Anything that increases damage (crit) - store the delta
+	int	m_iDamagedOtherPlayers;
+	int	m_iPlayerPenetrationCount;
+	int	m_iObjectsPenetrated;	// Objects penetrated before hitting target)
+	float	m_flDamageBonus;		// Anything that increases damage (crit) - store the delta
 	bool			m_bForceFriendlyFire;	// Ideally this would be a dmg type, but we can't add more
 
 	DECLARE_SIMPLE_DATADESC();

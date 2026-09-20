@@ -24,6 +24,7 @@
 	#include "bot.h"
 	#include "utldict.h"
 	#include "cs_player.h"
+	#include "util.h"
 	#include "cs_team.h"
 	#include "cs_gamerules.h"
 	#include "voice_gamemgr.h"
@@ -1290,14 +1291,49 @@ ConVar cl_autohelp(
 		//=============================================================================
 	}
 
-	//-----------------------------------------------------------------------------
-	// Purpose: 
-	// Input  : *pVictim - 
-	//			*pKiller - 
-	//			*pInflictor - 
-	//-----------------------------------------------------------------------------
-	void CCSGameRules::DeathNotice( CBasePlayer *pVictim, const CTakeDamageInfo &info )
-	{
+	#ifndef CLIENT_DLL
+		static CCSPlayer *GetAssisterFromDamageList( CCSPlayer *pCSVictim, CBaseEntity *pKiller )
+		{
+		if ( !pCSVictim )
+		return NULL;
+
+		CUtlLinkedList< CDamageRecord *, int > &damageTakenList = pCSVictim->GetDamageTakenList();
+
+		int iMaxDamage = 0;
+		CCSPlayer *pBestAssister = NULL;
+
+		FOR_EACH_LL( damageTakenList, ii )
+		{
+		CDamageRecord *pRecord = damageTakenList[ii];
+		if ( !pRecord )
+		continue;
+
+		if ( pRecord->GetDamage() <= iMaxDamage )
+		continue;
+
+			CCSPlayer *pAttacker = ToCSPlayer( UTIL_PlayerByName( pRecord->GetPlayerName() ) );
+		if ( !pAttacker )
+		continue;
+
+			// don't record self-damage or the actual killer as the assister
+		if ( pAttacker == pCSVictim || (CBaseEntity *)pAttacker == pKiller )
+		continue;
+
+			iMaxDamage = pRecord->GetDamage();
+		pBestAssister = pAttacker;
+		}
+
+		return pBestAssister;
+		}
+	#endif // !CLIENT_DLL
+		//-----------------------------------------------------------------------------
+		// Purpose:
+		// Input  : *pVictim -
+		//	*pKiller -
+		//	*pInflictor -
+		//-----------------------------------------------------------------------------
+		void CCSGameRules::DeathNotice( CBasePlayer *pVictim, const CTakeDamageInfo &info )
+		{
 		// Work out what killed the player, and send a message to all clients about it
 		const char *killer_weapon_name = "world";		// by default, the player is killed by the world
 		int killer_ID = 0;
@@ -1305,29 +1341,58 @@ ConVar cl_autohelp(
 		// Find the killer & the scorer
 		CBaseEntity *pInflictor = info.GetInflictor();
 		CBaseEntity *pKiller = info.GetAttacker();
-		CBasePlayer *pScorer = GetDeathScorer( pKiller, pInflictor );
-		CCSPlayer *pCSVictim = (CCSPlayer*)(pVictim);
+				CBasePlayer *pScorer = GetDeathScorer( pKiller, pInflictor );
+			CCSPlayer *pCSVictim = (CCSPlayer*)(pVictim);
 
-		bool bHeadshot = false;
+			bool bHeadshot = false;
+			bool bNoScope = false;
+			bool bBlindKill = false;
 
-		if ( pScorer )	// Is the killer a client?
+			#ifndef CLIENT_DLL
+		CCSPlayer *pAssiter = GetAssisterFromDamageList( pCSVictim, pKiller );
+		if ( pAssiter )
+		{
+		pAssiter->IncrementAssistsCount( 1 );
+		}
+		#else
+		CCSPlayer *pAssiter = NULL;
+		#endif
+			if ( pScorer )	// Is the killer a client?
 		{
 			killer_ID = pScorer->GetUserID();
-		
+
 			if( info.GetDamageType() & DMG_HEADSHOT )
 			{
-				//to enable drawing the headshot icon as well as the weapon icon, 
+				//to enable drawing the headshot icon as well as the weapon icon,
 				bHeadshot = true;
 			}
-			
+
 			if ( pInflictor )
 			{
 				if ( pInflictor == pScorer )
 				{
 					// If the inflictor is the killer,  then it must be their current weapon doing the damage
-					if ( pScorer->GetActiveWeapon() )
+						if ( pScorer->GetActiveWeapon() )
 					{
-						killer_weapon_name = pScorer->GetActiveWeapon()->GetClassname(); //GetDeathNoticeName();
+					killer_weapon_name = pScorer->GetActiveWeapon()->GetClassname(); //GetDeathNoticeName();
+
+					// detect noscope and blind kills for the killfeed icons
+					CCSPlayer *pCSScorerTemp = ToCSPlayer( pScorer );
+					if ( pCSScorerTemp )
+					{
+					CWeaponCSBase *pActiveWeapon = pCSScorerTemp->GetActiveCSWeapon();
+					if ( pActiveWeapon && pActiveWeapon->IsKindOf( WEAPONTYPE_SNIPER_RIFLE ) && pCSScorerTemp->GetFOV() == pCSScorerTemp->GetDefaultFOV() )
+					{
+						// scoped-out sniper rifle kill
+						bNoScope = true;
+					}
+
+					if ( pCSScorerTemp->IsBlind() )
+					{
+						// we are flashed - flag a blind kill
+						bBlindKill = true;
+					}
+					}
 					}
 				}
 				else
@@ -1354,7 +1419,7 @@ ConVar cl_autohelp(
 		{
 			killer_weapon_name += 5;
 		}
-		else if( strncmp( killer_weapon_name, "hegrenade", 9 ) == 0 )	//"hegrenade_projectile"	
+		else if( strncmp( killer_weapon_name, "hegrenade", 9 ) == 0 )	//"hegrenade_projectile"
 		{
 			killer_weapon_name = "hegrenade";
 		}
@@ -1367,10 +1432,14 @@ ConVar cl_autohelp(
 
 		if ( event )
 		{
-			event->SetInt("userid", pVictim->GetUserID() );
+				event->SetInt("userid", pVictim->GetUserID() );
+			event->SetInt("assister", pAssiter ? pAssiter->GetUserID() : 0 );
 			event->SetInt("attacker", killer_ID );
 			event->SetString("weapon", killer_weapon_name );
 			event->SetInt("headshot", bHeadshot ? 1 : 0 );
+			event->SetInt("noscope", bNoScope ? 1 : 0 );
+			event->SetInt("blind", bBlindKill ? 1 : 0 );
+			event->SetInt("penetrated", info.GetObjectsPenetrated() );
 			event->SetInt("priority", bHeadshot ? 8 : 7 );	// HLTV event priority, not transmitted
 			if ( pCSVictim->GetDeathFlags() & CS_DEATH_DOMINATION )
 			{

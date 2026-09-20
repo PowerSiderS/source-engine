@@ -288,7 +288,7 @@ void CounterStrikeViewport::CreateDefaultPanels( void )
 
 int CounterStrikeViewport::GetDeathMessageStartHeight( void )
 {
-	int x = YRES(2);
+	int x = YRES(7);
 
 	if ( g_pSpectatorGUI && g_pSpectatorGUI->IsVisible() )
 	{

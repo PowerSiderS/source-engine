@@ -895,9 +895,17 @@ public:
 	CUtlLinkedList< CDamageRecord *, int >& GetDamageGivenList() {return m_DamageGivenList;}
 	CUtlLinkedList< CDamageRecord *, int >& GetDamageTakenList() {return m_DamageTakenList;}
 
+	// Assists
+	int AssistsCount() const { return m_iAssists; }
+	virtual void IncrementAssistsCount( int nCount );
+	void ResetAssistsCount();
+
 private:
 	//A list of damage given
 	CUtlLinkedList< CDamageRecord *, int >	m_DamageGivenList;
+
+	// number of kill assists awarded this player
+	int	m_iAssists;
 
 	//A list of damage taken
 	CUtlLinkedList< CDamageRecord *, int >	m_DamageTakenList;
