@@ -798,9 +798,9 @@ void CCSGameMovement::DecayPunchAngle( void )
 	m_pCSPlayer->m_Local.m_vecPunchAngle.Set( 2, vPunchAngle.z );
 }
 
-static ConVar weapon_recoil_decay2_exp( "weapon_recoil_decay2_exp", "10", FCVAR_CHEAT | FCVAR_REPLICATED, "Decay factor for the aim punch angle" );
-static ConVar weapon_recoil_decay2_lin( "weapon_recoil_decay2_lin", "10", FCVAR_CHEAT | FCVAR_REPLICATED, "Decay factor for the aim punch angle" );
-static ConVar weapon_recoil_vel_decay( "weapon_recoil_vel_decay", "4.5", FCVAR_CHEAT | FCVAR_REPLICATED, "Decay factor for the aim punch angle velocity" );
+static ConVar weapon_recoil_decay2_exp( "weapon_recoil_decay2_exp", "8", FCVAR_CHEAT | FCVAR_REPLICATED, "Decay factor exponent for weapon recoil" );
+static ConVar weapon_recoil_decay2_lin( "weapon_recoil_decay2_lin", "18", FCVAR_CHEAT | FCVAR_REPLICATED, "Decay factor (linear term) for weapon recoil" );
+static ConVar weapon_recoil_vel_decay( "weapon_recoil_vel_decay", "4.5", FCVAR_CHEAT | FCVAR_REPLICATED, "Decay factor for weapon recoil velocity" );
 
 void HybridDecay( QAngle& v, float fExp, float fLin, float dT )
 {

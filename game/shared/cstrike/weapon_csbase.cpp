@@ -1,4 +1,4 @@
-﻿//========= Copyright Valve Corporation, All rights reserved. ============//
+//========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Purpose: Laser Rifle & Shield combo
 //
@@ -42,6 +42,7 @@
 
 
 ConVar weapon_accuracy_model( "weapon_accuracy_model", "2", FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY | FCVAR_ARCHIVE );
+ConVar weapon_recoil_decay_coefficient( "weapon_recoil_decay_coefficient", "2.0", FCVAR_CHEAT | FCVAR_REPLICATED, "" );
 
 
 // ----------------------------------------------------------------------------- //
@@ -279,6 +280,7 @@ BEGIN_NETWORK_TABLE( CWeaponCSBase, DT_WeaponCSBase )
 #if !defined( CLIENT_DLL )
 SendPropInt( SENDINFO( m_weaponMode ), 1, SPROP_UNSIGNED ),
 SendPropFloat(SENDINFO(m_fAccuracyPenalty) ),
+SendPropFloat(SENDINFO(m_fLastShotTime) ),
 // world weapon models have no aminations
 SendPropExclude( "DT_AnimTimeMustBeFirst", "m_flAnimTime" ),
 SendPropExclude( "DT_BaseAnimating", "m_nSequence" ),
@@ -286,6 +288,7 @@ SendPropExclude( "DT_BaseAnimating", "m_nSequence" ),
 #else
 RecvPropInt( RECVINFO( m_weaponMode ) ),
 RecvPropFloat( RECVINFO(m_fAccuracyPenalty)),
+RecvPropFloat( RECVINFO(m_fLastShotTime) ),
 #endif
 END_NETWORK_TABLE()
 
@@ -298,6 +301,7 @@ BEGIN_PREDICTION_DATA( CWeaponCSBase )
 	DEFINE_PRED_FIELD( m_flAccuracy, FIELD_FLOAT, 0 ),
 	DEFINE_PRED_FIELD( m_weaponMode, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD_TOL( m_fAccuracyPenalty, FIELD_FLOAT, FTYPEDESC_INSENDTABLE, 0.00005f ),
+	DEFINE_PRED_FIELD( m_fLastShotTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 END_PREDICTION_DATA()
 #endif
 
@@ -403,6 +407,7 @@ CWeaponCSBase::CWeaponCSBase()
 #endif
 
 	m_fAccuracyPenalty = 0.0f;
+	m_fLastShotTime = 0.0f;
 
 	m_weaponMode = Primary_Mode;
 
@@ -522,13 +527,14 @@ void CWeaponCSBase::SecondaryAttack( void )
 		else
 			 SendWeaponAnim( ACT_SHIELD_DOWN );
 
-		m_flNextSecondaryAttack = gpGlobals->curtime + 0.4;
-		m_flNextPrimaryAttack = gpGlobals->curtime + 0.4;
-	}
-#endif
-}
+				m_flNextSecondaryAttack = gpGlobals->curtime + 0.4;
+			m_flNextPrimaryAttack = gpGlobals->curtime + 0.4;
+			}
+		#endif
+			m_fLastShotTime = gpGlobals->curtime;
+		}
 
-bool CWeaponCSBase::SendWeaponAnim( int iActivity )
+		bool CWeaponCSBase::SendWeaponAnim( int iActivity )
 {
 #ifdef CS_SHIELD_ENABLED
 	CCSPlayer *pPlayer = GetPlayerOwner();
@@ -549,7 +555,7 @@ bool CWeaponCSBase::SendWeaponAnim( int iActivity )
 			vm->SendViewModelMatchingSequence( idealSequence );
 		}
 	}
-	
+
 #endif
 
 #ifndef CLIENT_DLL
@@ -630,14 +636,14 @@ void CWeaponCSBase::ItemPostFrame()
 		if ( pPlayer->State_Get() != STATE_ACTIVE )
 			return;
 
-		if ( pPlayer->IsShieldDrawn() ) 
+		if ( pPlayer->IsShieldDrawn() )
 			return;
 
 		// we have to reset the FireOnEmpty flag before we can fire on an empty clip
 		if ( m_iClip1 == 0 && !m_bFireOnEmpty )
 			return;
 
-		// don't repeat fire if this is not a full auto weapon 
+		// don't repeat fire if this is not a full auto weapon
 		if ( pPlayer->m_iShotsFired > 0 && !IsFullAuto() )
 			return;
 
@@ -660,7 +666,8 @@ void CWeaponCSBase::ItemPostFrame()
 			}
 		}
 #endif
-		PrimaryAttack();
+	PrimaryAttack();
+	m_fLastShotTime = gpGlobals->curtime;
 	}
 	else if ( pPlayer->m_nButtons & IN_RELOAD && GetMaxClip1() != WEAPON_NOCLIP && !m_bInReload && m_flNextPrimaryAttack < gpGlobals->curtime)
 	{
@@ -808,7 +815,7 @@ void CWeaponCSBase::CallWeaponIronsight()
   pPlayer->SetFOV( pPlayer, pPlayer->GetDefaultFOV(), 0.06f );
   m_weaponMode = Primary_Mode;
  }
- else 
+ else
  {
   pPlayer->SetFOV( pPlayer, pPlayer->GetDefaultFOV() );
   m_weaponMode = Primary_Mode;
@@ -838,9 +845,9 @@ float CWeaponCSBase::GetInaccuracy() const
 	if ( fMaxSpeed == 0.0f )
 		fMaxSpeed = GetCSWpnData().m_flMaxSpeed;
 
-	return m_fAccuracyPenalty + 
-		RemapValClamped(pPlayer->GetAbsVelocity().Length2D(), 
-		fMaxSpeed * CS_PLAYER_SPEED_DUCK_MODIFIER, 
+	return m_fAccuracyPenalty +
+		RemapValClamped(pPlayer->GetAbsVelocity().Length2D(),
+		fMaxSpeed * CS_PLAYER_SPEED_DUCK_MODIFIER,
 		fMaxSpeed * 0.95f,							// max out at 95% of run speed to avoid jitter near max speed
 		0.0f, weaponInfo.m_fInaccuracyMove[m_weaponMode]);
 }
@@ -1052,6 +1059,7 @@ bool CWeaponCSBase::Deploy()
 #endif
 
 	m_fAccuracyPenalty = 0.0f;
+	m_fLastShotTime = 0.0f;
 
 	return BaseClass::Deploy();
 }
@@ -2388,8 +2396,17 @@ void CWeaponCSBase::UpdateAccuracyPenalty()
 		}
 		m_fAccuracyPenalty = Lerp(expf(TICK_INTERVAL * -fDecayFactor), fNewPenalty, (float)m_fAccuracyPenalty);
 	}
-}
 
+	#define WEAPON_RECOIL_DECAY_THRESHOLD 1.10
+	// Decay the recoil index if a little more than cycle time has elapsed since the last shot. In other words,
+	// don't decay if we're firing full-auto.
+	if ( gpGlobals->curtime > m_fLastShotTime + ( weaponInfo.m_flCycleTime[m_weaponMode] * WEAPON_RECOIL_DECAY_THRESHOLD ) )
+	{
+		float fDecayFactor = logf( 10.0f ) * weapon_recoil_decay_coefficient.GetFloat();
+
+		m_flRecoilIndex = Lerp( expf( TICK_INTERVAL * -fDecayFactor ), 0.0f, ( float ) m_flRecoilIndex );
+	}
+}
 
 const float kJumpVelocity = sqrtf(2.0f * 800.0f * 57.0f);	// see CCSGameMovement::CheckJumpButton()
 

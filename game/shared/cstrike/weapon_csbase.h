@@ -259,6 +259,9 @@ public:
 
 	CNetworkVar( float, m_fAccuracyPenalty );
 
+	// time of the last shot, used to decay the spray pattern index
+	CNetworkVar( float, m_fLastShotTime );
+
 	// Client-side viewmodel accuracy shift position (used by CS:GO head bob)
 	float m_flGunAccuracyPosition;
 

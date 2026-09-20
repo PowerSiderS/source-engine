@@ -475,9 +475,9 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 //--------------------------------------------------------------------------------------------------------
 // CS:GO recoil pattern data
 //--------------------------------------------------------------------------------------------------------
-ConVar weapon_recoil_suppression_shots( "weapon_recoil_suppression_shots", "4", FCVAR_REPLICATED | FCVAR_ARCHIVE, "The number of shots before the recoil magnitude gets its full value" );
-ConVar weapon_recoil_suppression_factor( "weapon_recoil_suppression_factor", "0.35", FCVAR_REPLICATED | FCVAR_ARCHIVE, "The factor that gets applied to the recoil magnitude for the suppressed shots" );
-ConVar weapon_recoil_variance( "weapon_recoil_variance", "0.15", FCVAR_REPLICATED | FCVAR_ARCHIVE, "The interpolation factor between the current and the next recoil offset" );
+ConVar weapon_recoil_suppression_shots( "weapon_recoil_suppression_shots", "4", FCVAR_CHEAT | FCVAR_REPLICATED, "Number of shots before weapon uses full recoil" );
+ConVar weapon_recoil_suppression_factor( "weapon_recoil_suppression_factor", "0.75", FCVAR_CHEAT | FCVAR_REPLICATED, "Initial recoil suppression factor (first suppressed shot will use this factor * standard recoil, lerping to 1 for later shots" );
+ConVar weapon_recoil_variance( "weapon_recoil_variance", "0.55", FCVAR_CHEAT | FCVAR_REPLICATED, "Amount of variance per recoil impulse", true, 0.0f, true, 1.0f );
 
 WeaponRecoilData::WeaponRecoilData()
 {
