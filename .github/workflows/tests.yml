@@ -27,7 +27,10 @@ jobs:
 
           - target: linux-i386-dedicated-cstrike
             os: ubuntu-22.04
-            configure: ./waf configure -T release --build-games=cstrike -4 -d --disable-warns --prefix="./output"
+            build_script: |
+              chmod +x scripts/build-ubuntu-i386.sh
+              scripts/build-ubuntu-i386.sh -T release --build-games=cstrike -d --disable-warns --prefix="./output"
+              ./waf install
             platform: linux
 
     steps:
