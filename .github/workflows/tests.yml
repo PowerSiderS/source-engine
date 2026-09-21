@@ -51,4 +51,24 @@ jobs:
           name: cstrike-${{ matrix.target }}
           path: ./output
           if-no-files-found: error
-          
+      build-linux:
+    name: Build linux-i386-dedicated-cstrike
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout source and submodules
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: recursive
+      - name: Build linux-i386-dedicated-cstrike
+        run: |
+          ./waf configure -T release --build-games=cstrike -4 -d --disable-warns --prefix="./output"
+          ./waf install
+      - name: Upload linux-i386-dedicated-cstrike artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cstrike-linux-i386-dedicated-cstrike
+          path: ./output
+          if-no-files-found: error
