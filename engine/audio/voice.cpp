@@ -1043,8 +1043,6 @@ void Voice_UserDesiresStop()
 
 bool Voice_RecordStop()
 {
-	bool bWasVoiceRecording = g_bVoiceRecording;
-	
 	// Write the files out for debugging.
 	if(g_pMicInputFileData)
 	{
@@ -1081,12 +1079,6 @@ bool Voice_RecordStop()
 
 	g_bVoiceRecording = false;
 	g_bVoiceRecordStopping = false;
-	
-	if ( bWasVoiceRecording )
-	{
-		g_pSoundServices->OnChangeVoiceStatus( -1, false );
-	}
-	
 	return(true);
 }
 
