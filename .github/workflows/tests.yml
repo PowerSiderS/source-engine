@@ -20,17 +20,8 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - target: windows-i386-cstrike
-            configure: ./waf.bat configure -T release --build-games=cstrike -4 --enable-opus --disable-warns --prefix="./output"
-
           - target: windows-amd64-cstrike
             configure: ./waf.bat configure -T release --build-games=cstrike --enable-opus --disable-warns --prefix="./output"
-
-          - target: windows-i386-dedicated-cstrike
-            configure: ./waf.bat configure -T release --build-games=cstrike -4 -d --disable-warns --prefix="./output"
-
-          - target: windows-amd64-dedicated-cstrike
-            configure: ./waf.bat configure -T release --build-games=cstrike -d --disable-warns --prefix="./output"
 
     steps:
       - name: Checkout source and submodules
