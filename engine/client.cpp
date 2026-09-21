@@ -126,57 +126,7 @@ A LAN server will know not to allows more then xxx users with the same CD Key
 */
 const char *CClientState::GetCDKeyHash( void )
 {
-	if ( IsPC() )
-	{
-		char szKeyBuffer[256]; // Keys are about 13 chars long.	
-		static char szHashedKeyBuffer[64];
-		int nKeyLength;
-		bool bDedicated = false;
-
-		MD5Context_t ctx;
-		unsigned char digest[16]; // The MD5 Hash
-
-		nKeyLength = Q_snprintf( szKeyBuffer, sizeof( szKeyBuffer ), "%s", registry->ReadString( "key", "" ) );
-
-		if (bDedicated)
-		{
-			ConMsg("Key has no meaning on dedicated server...\n");
-			return "";
-		}
-
-		if ( nKeyLength == 0 )
-		{
-			nKeyLength = 13;
-			Q_strncpy( szKeyBuffer, "1234567890123", sizeof( szKeyBuffer ) );
-			Assert( Q_strlen( szKeyBuffer ) == nKeyLength );
-
-			DevMsg( "Missing CD Key from registry, inserting blank key\n" );
-
-			registry->WriteString( "key", szKeyBuffer );
-		}
-
-		if (nKeyLength <= 0 ||
-			nKeyLength >= 256 )
-		{
-			ConMsg("Bogus key length on CD Key...\n");
-			return "";
-		}
-
-		// Now get the md5 hash of the key
-		memset( &ctx, 0, sizeof( ctx ) );
-		memset( digest, 0, sizeof( digest ) );
-		
-		MD5Init(&ctx);
-		MD5Update(&ctx, (unsigned char*)szKeyBuffer, nKeyLength);
-		MD5Final(digest, &ctx);
-		Q_strncpy ( szHashedKeyBuffer, MD5_Print ( digest, sizeof( digest ) ), sizeof( szHashedKeyBuffer ) );
-		return szHashedKeyBuffer;
-	}
-
-	return "12345678901234567890123456789012";
-
-        return GetDeviceUUID();
-
+	return GetDeviceUUID();
 }
 
 void CClientState::SendClientInfo( void )
