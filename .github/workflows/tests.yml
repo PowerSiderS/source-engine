@@ -25,14 +25,6 @@ jobs:
             configure: ./waf.bat configure -T release --build-games=cstrike --enable-opus --disable-warns --prefix="./output"
             platform: windows
 
-          - target: linux-i386-dedicated-cstrike
-            os: ubuntu-22.04
-            build_script: |
-              chmod +x scripts/build-ubuntu-i386.sh
-              scripts/build-ubuntu-i386.sh -T release --build-games=cstrike -d --disable-warns --prefix="./output"
-              ./waf install
-            platform: linux
-
     steps:
       - name: Checkout source and submodules
         uses: actions/checkout@v4
@@ -46,12 +38,6 @@ jobs:
         run: |
           ${{ matrix.configure }}
           ./waf.bat install
-
-      - name: Build ${{ matrix.target }}
-        if: matrix.platform == 'linux'
-        run: |
-          ${{ matrix.configure }}
-          ./waf install
 
       - name: Remove debug artifacts
         if: success() && matrix.platform == 'windows'
