@@ -1,4 +1,4 @@
-name: Test Building
+name: Test Builds
 
 on: [push, pull_request]
 
@@ -10,9 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  build-windows:
+  build:
     name: Build ${{ matrix.target }}
-    runs-on: windows-2022
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 90
 
     strategy:
@@ -21,7 +21,14 @@ jobs:
       matrix:
         include:
           - target: windows-amd64-cstrike
+            os: windows-2022
             configure: ./waf.bat configure -T release --build-games=cstrike --enable-opus --disable-warns --prefix="./output"
+            platform: windows
+
+          - target: linux-i386-dedicated-cstrike
+            os: ubuntu-22.04
+            configure: ./waf configure -T release --build-games=cstrike -4 -d --disable-warns --prefix="./output"
+            platform: linux
 
     steps:
       - name: Checkout source and submodules
@@ -31,13 +38,20 @@ jobs:
           submodules: recursive
 
       - name: Build ${{ matrix.target }}
+        if: matrix.platform == 'windows'
         shell: pwsh
         run: |
           ${{ matrix.configure }}
           ./waf.bat install
 
+      - name: Build ${{ matrix.target }}
+        if: matrix.platform == 'linux'
+        run: |
+          ${{ matrix.configure }}
+          ./waf install
+
       - name: Remove debug artifacts
-        if: success()
+        if: success() && matrix.platform == 'windows'
         shell: pwsh
         run: |
           if (Test-Path "./output") {
@@ -51,24 +65,4 @@ jobs:
           name: cstrike-${{ matrix.target }}
           path: ./output
           if-no-files-found: error
-      build-linux:
-    name: Build linux-i386-dedicated-cstrike
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    steps:
-      - name: Checkout source and submodules
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Build linux-i386-dedicated-cstrike
-        run: |
-          ./waf configure -T release --build-games=cstrike -4 -d --disable-warns --prefix="./output"
-          ./waf install
-      - name: Upload linux-i386-dedicated-cstrike artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cstrike-linux-i386-dedicated-cstrike
-          path: ./output
-          if-no-files-found: error
+          
