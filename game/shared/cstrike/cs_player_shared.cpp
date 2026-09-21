@@ -422,9 +422,11 @@ void CCSPlayer::FireBullet(
 	MDLCACHE_CRITICAL_SECTION();
 	while ( fCurrentDamage > 0 )
 	{
-		Vector vecEnd = vecSrc + vecDir * flDistance;
+	const int iPenetrationBeforeHit = iPenetration;
 
-		trace_t tr; // main enter bullet trace
+	Vector vecEnd = vecSrc + vecDir * flDistance;
+
+	trace_t tr; // main enter bullet trace
 
 		UTIL_TraceLineIgnoreTwoEntities( vecSrc, vecEnd, CS_MASK_SHOOT|CONTENTS_HITBOX, this, lastPlayerHit, COLLISION_GROUP_NONE, &tr );
 		{
@@ -574,8 +576,8 @@ void CCSPlayer::FireBullet(
 			CBaseEntity *pEntity = tr.m_pEnt;
 
 		CTakeDamageInfo info( pevAttacker, pevAttacker, fCurrentDamage, iDamageType );
-		// number of objects this bullet has penetrated before hitting this entity
-		info.SetObjectsPenetrated( iPenetrationMax - iPenetration );
+			// number of objects this bullet has penetrated before hitting this entity
+		info.SetObjectsPenetrated( iPenetrationMax - iPenetrationBeforeHit );
 		CalculateBulletDamageForce( &info, iBulletType, vecDir, tr.endpos );
 		pEntity->DispatchTraceAttack( info, vecDir, &tr );
 
