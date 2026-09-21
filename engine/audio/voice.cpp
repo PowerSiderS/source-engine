@@ -1032,11 +1032,13 @@ void Voice_UserDesiresStop()
 	// received all the data.
 	if ( g_bUsingSteamVoice )
 	{
-		steamapicontext->SteamUser()->StopVoiceRecording();
+		//steamapicontext->SteamUser()->StopVoiceRecording();
 	}
 	else
 	{
 		VoiceRecord_Stop();
+		g_bVoiceRecording = false;
+		g_bVoiceRecordStopping = false;
 	}
 }
 
