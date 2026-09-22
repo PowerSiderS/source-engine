@@ -17,9 +17,9 @@
 #endif
 
 ConVar weapon_accuracy_logging( "weapon_accuracy_logging", "0", FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY | FCVAR_ARCHIVE );
+ConVar r_drawtracers( "r_drawtracers", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL, "Enable/disable weapon tracers" );
 
 #ifdef CLIENT_DLL
-
 #include "fx_impact.h"
 
 	// this is a cheap ripoff from CBaseCombatWeapon::WeaponSound():
@@ -293,8 +293,8 @@ void FX_FireBullets(
 	int iTracerCount = 0;
 	for ( int iBullet=0; iBullet < pWeaponInfo->m_iBullets; iBullet++ )
 	{
-		// Draw tracer effects on the client (like hl2mp's m_iTracerFreq system)
-		if ( bDoEffects && iTracerFreq != 0 && ( iTracerCount++ % iTracerFreq ) == 0 )
+			// Draw tracer effects on the client (like hl2mp's m_iTracerFreq system)
+		if ( bDoEffects && r_drawtracers.GetBool() && iTracerFreq != 0 && ( iTracerCount++ % iTracerFreq ) == 0 )
 		{
 			Vector vecDirShooting, vecRight, vecUp;
 			AngleVectors( vAngles, &vecDirShooting, &vecRight, &vecUp );
