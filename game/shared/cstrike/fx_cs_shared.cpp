@@ -17,7 +17,10 @@
 #endif
 
 ConVar weapon_accuracy_logging( "weapon_accuracy_logging", "0", FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY | FCVAR_ARCHIVE );
-ConVar r_drawtracers( "r_drawtracers", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL, "Enable/disable weapon tracers" );
+
+#ifdef CLIENT_DLL
+ConVar r_drawtracers( "r_drawtracers", "0", FCVAR_ARCHIVE | FCVAR_CLIENTDLL, "Enable/disable weapon tracers" );
+#endif
 
 #ifdef CLIENT_DLL
 #include "fx_impact.h"
@@ -294,6 +297,7 @@ void FX_FireBullets(
 	for ( int iBullet=0; iBullet < pWeaponInfo->m_iBullets; iBullet++ )
 	{
 			// Draw tracer effects on the client (like hl2mp's m_iTracerFreq system)
+#ifdef CLIENT_DLL
 		if ( bDoEffects && r_drawtracers.GetBool() && iTracerFreq != 0 && ( iTracerCount++ % iTracerFreq ) == 0 )
 		{
 			Vector vecDirShooting, vecRight, vecUp;
@@ -344,6 +348,7 @@ void FX_FireBullets(
 				}
 			}
 		}
+#endif // CLIENT_DLL
 
 		pPlayer->FireBullet(
 			vOrigin,
