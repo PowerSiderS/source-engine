@@ -22,6 +22,9 @@
 #include "c_cs_player.h"
 #include "cs_ammodef.h"
 
+extern ConVar touch_enable;
+extern ConVar touch_disabled_on_buymenu;
+static CCSBaseBuyMenu *s_pTouchDisabledBuyMenu = NULL;
 
 using namespace vgui;
 
@@ -236,7 +239,7 @@ CCSBaseBuyMenu::CCSBaseBuyMenu(IViewPort *pViewPort, const char *subPanelName) :
 void CCSBaseBuyMenu::SetVisible(bool state)
 {
 	BaseClass::SetVisible(state);
-
+	
 	if ( state )
 	{
 		Panel *defaultButton = FindChildByName( "CancelButton" );
@@ -244,8 +247,18 @@ void CCSBaseBuyMenu::SetVisible(bool state)
 		{
 			defaultButton->RequestFocus();
 		}
+		if ( touch_disabled_on_buymenu.GetBool() && !s_pTouchDisabledBuyMenu )
+		{
+			touch_enable.SetValue( 0 );
+			s_pTouchDisabledBuyMenu = this;
+		}
 		SetMouseInputEnabled( true );
 		m_pMainMenu->SetMouseInputEnabled( true );
+	}
+	else if ( s_pTouchDisabledBuyMenu == this )
+	{
+		touch_enable.SetValue( 1 );
+		s_pTouchDisabledBuyMenu = NULL;
 	}
 }
 
