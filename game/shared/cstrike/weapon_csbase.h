@@ -257,6 +257,9 @@ public:
 
 	virtual void UpdateAccuracyPenalty();
 
+	// Accuracy recovery time, ramped by the spray pattern index
+	float GetRecoveryTime( void );
+
 	CNetworkVar( float, m_fAccuracyPenalty );
 
 	// time of the last shot, used to decay the spray pattern index
@@ -299,7 +302,9 @@ protected:
 	float	CalculateNextAttackTime( float flCycleTime );
 
 	// CS:GO recoil: advances the spray pattern index for the next shot (used by CWeaponCSBaseGun)
-	float	m_flRecoilIndex;
+	// NOTE: must be a networked/predicted var so the client's predicted recoil pattern stays in sync
+	// with the server, otherwise recoil desyncs (and effectively breaks) on a real (non-listen) server.
+	CNetworkVar( float, m_flRecoilIndex );
 
 private:
 

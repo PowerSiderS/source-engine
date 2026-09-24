@@ -1399,9 +1399,10 @@ void CBasePlayer::PlayerUse ( void )
 }
 
 ConVar	sv_suppress_viewpunch( "sv_suppress_viewpunch", "0", FCVAR_REPLICATED | FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
+ConVar	view_recoil_tracking( "view_recoil_tracking", "0.45", FCVAR_CHEAT | FCVAR_REPLICATED, "How closely the view tracks with the aim punch from weapon recoil" );
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePlayer::ViewPunch( const QAngle &angleOffset )
 {
@@ -1417,7 +1418,7 @@ void CBasePlayer::ViewPunch( const QAngle &angleOffset )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CBasePlayer::ViewPunchReset( float tolerance )
 {
@@ -1524,17 +1525,17 @@ void CBasePlayer::ResetObserverMode()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : eyeOrigin - 
-//			eyeAngles - 
-//			zNear - 
-//			zFar - 
-//			fov - 
+// Purpose:
+// Input  : eyeOrigin -
+//			eyeAngles -
+//			zNear -
+//			zFar -
+//			fov -
 //-----------------------------------------------------------------------------
 void CBasePlayer::CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNear, float &zFar, float &fov )
 {
 #if defined( CLIENT_DLL )
-	IClientVehicle *pVehicle; 
+	IClientVehicle *pVehicle;
 #else
 	IServerVehicle *pVehicle;
 #endif
@@ -1575,7 +1576,7 @@ void CBasePlayer::CalcViewModelView( const Vector& eyeOrigin, const QAngle& eyeA
 		CBaseViewModel *vm = GetViewModel( i );
 		if ( !vm )
 			continue;
-	
+
 		vm->CalcViewModelView( this, eyeOrigin, eyeAngles );
 	}
 }
@@ -1618,8 +1619,8 @@ void CBasePlayer::CalcPlayerView( Vector& eyeOrigin, QAngle& eyeAngles, float& f
 
 	// Apply punch angle
 	VectorAdd( eyeAngles, m_Local.m_vecPunchAngle, eyeAngles );
-	// Apply the aim punch (scaled) to the view as well
-	VectorAdd( eyeAngles, GetAimPunchAngle(), eyeAngles );
+	// Apply the aim punch to the view
+	VectorAdd( eyeAngles, GetAimPunchAngle() * view_recoil_tracking.GetFloat(), eyeAngles );
 
 #if defined( CLIENT_DLL )
 	if ( !prediction->InPrediction() )
@@ -1676,8 +1677,8 @@ void CBasePlayer::CalcVehicleView(
 
 	// Apply punch angle
 	VectorAdd( eyeAngles, m_Local.m_vecPunchAngle, eyeAngles );
-	// CS:GO recoil: apply the aim punch (scaled) to the view as well
-	VectorAdd( eyeAngles, GetAimPunchAngle(), eyeAngles );
+	// CS:GO recoil: apply the aim punch to the view, scaled by view_recoil_tracking
+	VectorAdd( eyeAngles, GetAimPunchAngle() * view_recoil_tracking.GetFloat(), eyeAngles );
 
 #if defined( CLIENT_DLL )
 	if ( !prediction->InPrediction() )

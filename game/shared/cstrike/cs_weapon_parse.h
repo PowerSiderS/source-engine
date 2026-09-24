@@ -204,7 +204,9 @@ public:
 	float m_fInaccuracyMove[2];
 	float m_fInaccuracyJumpInitial[2];
 	float m_fRecoveryTimeStand;
+	float m_fRecoveryTimeStandFinal;
 	float m_fRecoveryTimeCrouch;
+	float m_fRecoveryTimeCrouchFinal;
 	float m_fInaccuracyReload;
 	float m_fInaccuracyAltSwitch;
 
@@ -214,6 +216,10 @@ public:
 	float m_fRecoilMagnitude[2];
 	float m_fRecoilMagnitudeVariance[2];
 	int   m_iRecoilSeed;
+
+	// CS:GO recoil: recovery time ramps between a start and end value as the spray progresses
+	int   m_iRecoveryTransitionStartBullet;
+	int   m_iRecoveryTransitionEndBullet;
 
 	// Delay until the next idle animation after shooting.
 	float	m_flTimeToIdleAfterFire;

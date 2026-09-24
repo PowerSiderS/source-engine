@@ -70,6 +70,7 @@ int g_nKillCamTarget1 = 0;
 int g_nKillCamTarget2 = 0;
 
 extern ConVar mp_forcecamera; // in gamevars_shared.h
+extern ConVar view_recoil_tracking; // in baseplayer_shared.cpp
 
 #define FLASHLIGHT_DISTANCE		1000
 #define MAX_VGUI_INPUT_MODE_SPEED 30
@@ -90,10 +91,10 @@ static C_BasePlayer *s_pLocalPlayer = NULL;
 static ConVar	cl_customsounds ( "cl_customsounds", "1", 0, "Enable customized player sound playback" );
 static ConVar	spec_track		( "spec_track", "0", 0, "Tracks an entity in spec mode" );
 static ConVar	cl_smooth		( "cl_smooth", "1", 0, "Smooth view/eye origin after prediction errors" );
-static ConVar	cl_smoothtime	( 
-	"cl_smoothtime", 
-	"0.1", 
-	0, 
+static ConVar	cl_smoothtime	(
+	"cl_smoothtime",
+	"0.1",
+	0,
 	"Smooth client's view after prediction error over this many seconds",
 	true, 0.01,	// min/max is 0.01/2.0
 	true, 2.0
@@ -144,9 +145,9 @@ BEGIN_RECV_TABLE_NOBASE( CPlayerLocalData, DT_Local )
 	RecvPropInt(RECVINFO(m_iHideHUD)),
 
 	// View
-	
+
 	RecvPropFloat(RECVINFO(m_flFOVRate)),
-	
+
 	RecvPropInt		(RECVINFO(m_bDucked)),
 	RecvPropInt		(RECVINFO(m_bDucking)),
 	RecvPropInt		(RECVINFO(m_bInDuckJump)),
@@ -155,7 +156,7 @@ BEGIN_RECV_TABLE_NOBASE( CPlayerLocalData, DT_Local )
 	RecvPropFloat	(RECVINFO(m_flJumpTime)),
 	RecvPropFloat	(RECVINFO(m_flFallVelocity)),
 
-#if PREDICTION_ERROR_CHECK_LEVEL > 1 
+#if PREDICTION_ERROR_CHECK_LEVEL > 1
 	RecvPropFloat	(RECVINFO_NAME( m_vecPunchAngle.m_Value[0], m_vecPunchAngle[0])),
 	RecvPropFloat	(RECVINFO_NAME( m_vecPunchAngle.m_Value[1], m_vecPunchAngle[1])),
 	RecvPropFloat	(RECVINFO_NAME( m_vecPunchAngle.m_Value[2], m_vecPunchAngle[2] )),
@@ -353,7 +354,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CPlayerLocalData )
 	DEFINE_PRED_FIELD( m_flStepSize, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_FIELD( m_flFOVRate, FIELD_FLOAT ),
 
-END_PREDICTION_DATA()	
+END_PREDICTION_DATA()
 
 BEGIN_PREDICTION_DATA( C_BasePlayer )
 
@@ -374,7 +375,7 @@ BEGIN_PREDICTION_DATA( C_BasePlayer )
 	DEFINE_PRED_FIELD( m_nNextThinkTick, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_lifeState, FIELD_CHARACTER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_nWaterLevel, FIELD_CHARACTER, FTYPEDESC_INSENDTABLE ),
-	
+
 	DEFINE_PRED_FIELD_TOL( m_vecBaseVelocity, FIELD_VECTOR, FTYPEDESC_INSENDTABLE, 0.05 ),
 
 	DEFINE_FIELD( m_nButtons, FIELD_INTEGER ),
@@ -416,8 +417,8 @@ LINK_ENTITY_TO_CLASS( player, C_BasePlayer );
 C_BasePlayer::C_BasePlayer() : m_iv_vecViewOffset( "C_BasePlayer::m_iv_vecViewOffset" )
 {
 	AddVar( &m_vecViewOffset, &m_iv_vecViewOffset, LATCH_SIMULATION_VAR );
-	
-#ifdef _DEBUG																
+
+#ifdef _DEBUG
 	m_vecLadderNormal.Init();
 	m_vecOldViewAngles.Init();
 #endif
@@ -432,7 +433,7 @@ C_BasePlayer::C_BasePlayer() : m_iv_vecViewOffset( "C_BasePlayer::m_iv_vecViewOf
 	m_bWasFrozen = false;
 
 	m_bResampleWaterSurface = true;
-	
+
 	ResetObserverMode();
 
 	m_vecPredictionError.Init();
@@ -453,7 +454,7 @@ C_BasePlayer::C_BasePlayer() : m_iv_vecViewOffset( "C_BasePlayer::m_iv_vecViewOf
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 C_BasePlayer::~C_BasePlayer()
 {
@@ -468,7 +469,7 @@ C_BasePlayer::~C_BasePlayer()
 
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void C_BasePlayer::Spawn( void )
 {
@@ -495,7 +496,7 @@ void C_BasePlayer::Spawn( void )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 bool C_BasePlayer::AudioStateIsUnderwater( Vector vecMainViewOrigin )
 {
@@ -511,7 +512,7 @@ bool C_BasePlayer::AudioStateIsUnderwater( Vector vecMainViewOrigin )
 
 bool C_BasePlayer::IsHLTV() const
 {
-	return ( IsLocalPlayer() && engine->IsHLTV() );	
+	return ( IsLocalPlayer() && engine->IsHLTV() );
 }
 
 bool C_BasePlayer::IsReplay() const
@@ -537,7 +538,7 @@ CBaseEntity	*C_BasePlayer::GetObserverTarget() const	// returns players target o
 	}
 #endif
 #endif
-	
+
 	if ( GetObserverMode() == OBS_MODE_ROAMING )
 	{
 		return NULL;	// no target in roaming mode
@@ -623,8 +624,8 @@ void C_BasePlayer::SetObserverMode ( int iNewMode )
 }
 
 
-int C_BasePlayer::GetObserverMode() const 
-{ 
+int C_BasePlayer::GetObserverMode() const
+{
 #ifndef _XBOX
 	if ( IsHLTV() )
 	{
@@ -661,7 +662,7 @@ int C_BasePlayer::GetObserverMode() const
 		}
 	}
 
-	return m_iObserverMode; 
+	return m_iObserverMode;
 }
 
 bool C_BasePlayer::ViewModel_IsTransparent( void )
@@ -683,8 +684,8 @@ void C_BasePlayer::SetLocalViewAngles( const QAngle &viewAngles )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : ang - 
+// Purpose:
+// Input  : ang -
 //-----------------------------------------------------------------------------
 void C_BasePlayer::SetViewAngles( const QAngle& ang )
 {
@@ -706,7 +707,7 @@ surfacedata_t* C_BasePlayer::GetGroundSurface()
 	end.z -= 64;
 
 	// Fill in default values, just in case.
-	
+
 	Ray_t ray;
 	ray.Init( start, end, GetPlayerMins(), GetPlayerMaxs() );
 
@@ -715,7 +716,7 @@ surfacedata_t* C_BasePlayer::GetGroundSurface()
 
 	if ( trace.fraction == 1.0f )
 		return NULL;	// no ground
-	
+
 	return physprops->GetSurfaceData( trace.surface.surfaceProps );
 }
 
@@ -769,7 +770,7 @@ void C_BasePlayer::SetVehicleRole( int nRole )
 
 //-----------------------------------------------------------------------------
 // Purpose: Store original ammo data to see what has changed
-// Input  : bnewentity - 
+// Input  : bnewentity -
 //-----------------------------------------------------------------------------
 void C_BasePlayer::OnPreDataChanged( DataUpdateType_t updateType )
 {
@@ -790,8 +791,8 @@ void C_BasePlayer::PreDataUpdate( DataUpdateType_t updateType )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : updateType - 
+// Purpose:
+// Input  : updateType -
 //-----------------------------------------------------------------------------
 void C_BasePlayer::PostDataUpdate( DataUpdateType_t updateType )
 {
@@ -840,7 +841,7 @@ void C_BasePlayer::PostDataUpdate( DataUpdateType_t updateType )
 	}
 
 	BaseClass::PostDataUpdate( updateType );
-			 
+
 	// Only care about this for local player
 	if ( IsLocalPlayer() )
 	{
@@ -858,7 +859,7 @@ void C_BasePlayer::PostDataUpdate( DataUpdateType_t updateType )
 				haptics->SetNavigationClass("on_foot");
 				haptics->ProcessHapticEvent(2,"Movement","BasePlayer");
 			}
-		
+
 		}
 		SetLocalAngles( angles );
 
@@ -920,7 +921,7 @@ void C_BasePlayer::PostDataUpdate( DataUpdateType_t updateType )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 bool C_BasePlayer::CanSetSoundMixer( void )
 {
@@ -1104,7 +1105,7 @@ void C_BasePlayer::DetermineVguiInputMode( CUserCmd *pCmd )
 	//	(pCmd->buttons & IN_JUMP) ||
 	//	(bAttacking) )
 	if ( bAttacking || IsInAVehicle() )
-	{ 
+	{
 		DeactivateVguiScreen( m_pCurrentVguiScreen.Get() );
 		m_pCurrentVguiScreen.Set( NULL );
 		return;
@@ -1153,7 +1154,7 @@ bool C_BasePlayer::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 			engine->SetViewAngles( pCmd->viewangles );
 		}
 	}
-	else 
+	else
 	{
 #ifndef _X360
 		if ( joy_autosprint.GetBool() )
@@ -1193,7 +1194,7 @@ bool C_BasePlayer::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 	}
 
 	m_vecOldViewAngles = pCmd->viewangles;
-	
+
 	// Check to see if we're in vgui input mode...
 	DetermineVguiInputMode( pCmd );
 
@@ -1232,7 +1233,7 @@ void C_BasePlayer::UpdateFlashlight()
 		Vector vecForward, vecRight, vecUp;
 		EyeVectors( &vecForward, &vecRight, &vecUp );
 
-		// Update the light with the new position and direction.		
+		// Update the light with the new position and direction.
 		m_pFlashlight->UpdateLight( EyePosition(), vecForward, vecRight, vecUp, FLASHLIGHT_DISTANCE );
 	}
 	else if (m_pFlashlight)
@@ -1265,7 +1266,7 @@ void C_BasePlayer::Flashlight( void )
 //-----------------------------------------------------------------------------
 void C_BasePlayer::AddEntity( void )
 {
-	// FIXME/UNDONE:  Should the local player say yes to adding itself now 
+	// FIXME/UNDONE:  Should the local player say yes to adding itself now
 	// and then, when it ges time to render and it shouldn't still do the render with
 	// STUDIO_EVENTS set so that its attachment points will get updated even if not
 	// in third person?
@@ -1276,7 +1277,7 @@ void C_BasePlayer::AddEntity( void )
 		CreateWaterEffects();
 	}
 
-	// If set to invisible, skip. Do this before resetting the entity pointer so it has 
+	// If set to invisible, skip. Do this before resetting the entity pointer so it has
 	// valid data to decide whether it's visible.
 	if ( !IsVisible() || !g_pClientMode->ShouldDrawLocalPlayer( this ) )
 	{
@@ -1296,7 +1297,7 @@ void C_BasePlayer::AddEntity( void )
 extern float UTIL_WaterLevel( const Vector &position, float minz, float maxz );
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void C_BasePlayer::CreateWaterEffects( void )
 {
@@ -1312,7 +1313,7 @@ void C_BasePlayer::CreateWaterEffects( void )
 	{
 		// Reset our particle timer
 		m_tWaterParticleTimer.Init( 32 );
-		
+
 		// Find the surface of the water to clip against
 		m_flWaterSurfaceZ = UTIL_WaterLevel( WorldSpaceCenter(), WorldSpaceCenter().z, WorldSpaceCenter().z + 256 );
 		m_bResampleWaterSurface = false;
@@ -1365,10 +1366,10 @@ void C_BasePlayer::CreateWaterEffects( void )
 
 		pParticle->m_uchStartSize	= 1;
 		pParticle->m_uchEndSize		= 1;
-		
+
 		pParticle->m_uchStartAlpha	= 255;
 		pParticle->m_uchEndAlpha	= 0;
-		
+
 		pParticle->m_flRoll			= random->RandomInt( 0, 360 );
 		pParticle->m_flRollDelta	= random->RandomFloat( -0.5f, 0.5f );
 	}
@@ -1414,12 +1415,12 @@ int C_BasePlayer::DrawModel( int flags )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 Vector C_BasePlayer::GetChaseCamViewOffset( CBaseEntity *target )
 {
 	C_BasePlayer *player = ToBasePlayer( target );
-	
+
 	if ( player )
 	{
 		if ( player->IsAlive() )
@@ -1446,7 +1447,7 @@ void C_BasePlayer::CalcChaseCamView(Vector& eyeOrigin, QAngle& eyeAngles, float&
 {
 	C_BaseEntity *target = GetObserverTarget();
 
-	if ( !target ) 
+	if ( !target )
 	{
 		// just copy a save in-map position
 		VectorCopy( EyePosition(), eyeOrigin );
@@ -1483,7 +1484,7 @@ void C_BasePlayer::CalcChaseCamView(Vector& eyeOrigin, QAngle& eyeAngles, float&
 		engine->GetViewAngles( viewangles );
 		if ( UseVR() )
 		{
-			// Don't let people play with the pitch - they drive it into the ground or into the air and 
+			// Don't let people play with the pitch - they drive it into the ground or into the air and
 			// it's distracting at best, nauseating at worst (e.g. when it clips through the ground plane).
 			viewangles[PITCH] = 20.0f;
 		}
@@ -1515,7 +1516,7 @@ void C_BasePlayer::CalcChaseCamView(Vector& eyeOrigin, QAngle& eyeAngles, float&
 
 	float flMinDistance = CHASE_CAM_DISTANCE_MIN;
 	float flMaxDistance = CHASE_CAM_DISTANCE_MAX;
-	
+
 	if ( target && target->IsBaseTrain() )
 	{
 		// if this is a train, we want to be back a little further so we can see more of it
@@ -1542,7 +1543,7 @@ void C_BasePlayer::CalcChaseCamView(Vector& eyeOrigin, QAngle& eyeAngles, float&
 	}
 
 	m_flObserverChaseDistance = clamp( m_flObserverChaseDistance, flMinDistance, flMaxDistance );
-	
+
 	AngleVectors( viewangles, &forward );
 
 	VectorNormalize( forward );
@@ -1560,7 +1561,7 @@ void C_BasePlayer::CalcChaseCamView(Vector& eyeOrigin, QAngle& eyeAngles, float&
 		viewpoint = trace.endpos;
 		m_flObserverChaseDistance = VectorLength(origin - eyeOrigin);
 	}
-	
+
 	VectorCopy( viewangles, eyeAngles );
 	VectorCopy( viewpoint, eyeOrigin );
 
@@ -1570,8 +1571,8 @@ void C_BasePlayer::CalcChaseCamView(Vector& eyeOrigin, QAngle& eyeAngles, float&
 void C_BasePlayer::CalcRoamingView(Vector& eyeOrigin, QAngle& eyeAngles, float& fov)
 {
 	C_BaseEntity *target = GetObserverTarget();
-	
-	if ( !target ) 
+
+	if ( !target )
 	{
 		target = this;
 	}
@@ -1580,7 +1581,7 @@ void C_BasePlayer::CalcRoamingView(Vector& eyeOrigin, QAngle& eyeAngles, float& 
 
 	eyeOrigin = target->EyePosition();
 	eyeAngles = target->EyeAngles();
-	
+
 	if ( spec_track.GetInt() > 0 )
 	{
 		C_BaseEntity *target =  ClientEntityList().GetBaseEntity( spec_track.GetInt() );
@@ -1671,7 +1672,7 @@ void C_BasePlayer::CalcFreezeCamView( Vector& eyeOrigin, QAngle& eyeAngles, floa
 	vecToTarget = vecCamTarget - vecTargetPos;
 	VectorNormalize( vecToTarget );
 	VectorAngles( vecToTarget, eyeAngles );
-	
+
 	VectorLerp( m_vecFreezeFrameStart, vecTargetPos, flBlendPerc, eyeOrigin );
 
 	if ( flCurTime >= spec_freeze_traveltime.GetFloat() && !m_bSentFreezeFrame )
@@ -1691,7 +1692,7 @@ void C_BasePlayer::CalcInEyeCamView(Vector& eyeOrigin, QAngle& eyeAngles, float&
 {
 	C_BaseEntity *target = GetObserverTarget();
 
-	if ( !target ) 
+	if ( !target )
 	{
 		// just copy a save in-map position
 		VectorCopy( EyePosition(), eyeOrigin );
@@ -1715,6 +1716,9 @@ void C_BasePlayer::CalcInEyeCamView(Vector& eyeOrigin, QAngle& eyeAngles, float&
 
 	// Apply punch angle
 	VectorAdd( eyeAngles, GetPunchAngle(), eyeAngles );
+
+	// Apply aim punch angle (scaled by view_recoil_tracking, matching the first-person view)
+	VectorAdd( eyeAngles, GetAimPunchAngle() * view_recoil_tracking.GetFloat(), eyeAngles );
 
 #if defined( REPLAY_ENABLED )
 	if( engine->IsHLTV() || g_pEngineClientReplay->IsPlayingReplayDemo() )

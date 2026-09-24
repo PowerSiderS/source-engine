@@ -274,6 +274,16 @@ CCSWeaponInfo::CCSWeaponInfo()
 {
 	m_flMaxSpeed = 1; // This should always be set in the script.
 	m_szAddonModel[0] = 0;
+
+	m_fRecoilAngle[0] = m_fRecoilAngle[1] = 0.0f;
+	m_fRecoilAngleVariance[0] = m_fRecoilAngleVariance[1] = 0.0f;
+	m_fRecoilMagnitude[0] = m_fRecoilMagnitude[1] = 0.0f;
+	m_fRecoilMagnitudeVariance[0] = m_fRecoilMagnitudeVariance[1] = 0.0f;
+	m_iRecoilSeed = 0;
+	m_fRecoveryTimeStand = m_fRecoveryTimeStandFinal = 1.0f;
+	m_fRecoveryTimeCrouch = m_fRecoveryTimeCrouchFinal = 1.0f;
+	m_iRecoveryTransitionStartBullet = 0;
+	m_iRecoveryTransitionEndBullet = 0;
 }
 
 int	CCSWeaponInfo::GetWeaponPrice( void ) const
@@ -380,7 +390,9 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	m_fInaccuracyJumpInitial[1]	= pKeyValuesData->GetFloat("InaccuracyJumpInitialAlt", m_fInaccuracyJumpInitial[0]);
 
 	m_fRecoveryTimeCrouch	= pKeyValuesData->GetFloat("RecoveryTimeCrouch", 1.0f);
+	m_fRecoveryTimeCrouchFinal = pKeyValuesData->GetFloat("RecoveryTimeCrouchFinal", m_fRecoveryTimeCrouch);
 	m_fRecoveryTimeStand	= pKeyValuesData->GetFloat("RecoveryTimeStand", 1.0f);
+	m_fRecoveryTimeStandFinal = pKeyValuesData->GetFloat("RecoveryTimeStandFinal", m_fRecoveryTimeStand);
 
 	// recoil pattern parameters (per weapon mode: primary / secondary)
 	m_fRecoilAngle[0]		= pKeyValuesData->GetFloat("RecoilAngle", 0.0f);
@@ -394,6 +406,9 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	m_fRecoilMagnitudeVariance[1]	= pKeyValuesData->GetFloat("RecoilMagnitudeVarianceAlt", m_fRecoilMagnitudeVariance[0]);
 
 	m_iRecoilSeed	= pKeyValuesData->GetInt("RecoilSeed", 0);
+
+	m_iRecoveryTransitionStartBullet	= pKeyValuesData->GetInt("RecoveryTransitionStartBullet", 0);
+	m_iRecoveryTransitionEndBullet		= pKeyValuesData->GetInt("RecoveryTransitionEndBullet", 0);
 
 	m_flTimeToIdleAfterFire	= pKeyValuesData->GetFloat( "TimeToIdle", 2 );
 	m_flIdleInterval	= pKeyValuesData->GetFloat( "IdleInterval", 20 );

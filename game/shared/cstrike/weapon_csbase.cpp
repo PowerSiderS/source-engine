@@ -280,6 +280,7 @@ BEGIN_NETWORK_TABLE( CWeaponCSBase, DT_WeaponCSBase )
 #if !defined( CLIENT_DLL )
 SendPropInt( SENDINFO( m_weaponMode ), 1, SPROP_UNSIGNED ),
 SendPropFloat(SENDINFO(m_fAccuracyPenalty) ),
+SendPropFloat(SENDINFO(m_flRecoilIndex) ),
 SendPropFloat(SENDINFO(m_fLastShotTime) ),
 // world weapon models have no aminations
 SendPropExclude( "DT_AnimTimeMustBeFirst", "m_flAnimTime" ),
@@ -288,6 +289,7 @@ SendPropExclude( "DT_BaseAnimating", "m_nSequence" ),
 #else
 RecvPropInt( RECVINFO( m_weaponMode ) ),
 RecvPropFloat( RECVINFO(m_fAccuracyPenalty)),
+RecvPropFloat( RECVINFO(m_flRecoilIndex) ),
 RecvPropFloat( RECVINFO(m_fLastShotTime) ),
 #endif
 END_NETWORK_TABLE()
@@ -301,6 +303,7 @@ BEGIN_PREDICTION_DATA( CWeaponCSBase )
 	DEFINE_PRED_FIELD( m_flAccuracy, FIELD_FLOAT, 0 ),
 	DEFINE_PRED_FIELD( m_weaponMode, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD_TOL( m_fAccuracyPenalty, FIELD_FLOAT, FTYPEDESC_INSENDTABLE, 0.00005f ),
+	DEFINE_PRED_FIELD( m_flRecoilIndex, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_fLastShotTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 END_PREDICTION_DATA()
 #endif
@@ -920,6 +923,9 @@ void CWeaponCSBase::Precache( void )
 	PrecacheScriptSound( "Default.ClipEmpty_Rifle" );
 
 	PrecacheScriptSound( "Default.Zoom" );
+
+	extern void GenerateWeaponRecoilPattern( CSWeaponID id );
+	GenerateWeaponRecoilPattern( GetWeaponID() );
 }
 
 Activity CWeaponCSBase::GetDeployActivity( void )
@@ -2374,26 +2380,7 @@ void CWeaponCSBase::UpdateAccuracyPenalty()
 	}
 	else
 	{
-		float fDecayFactor;
-
-		if ( pPlayer->GetMoveType() == MOVETYPE_LADDER )
-		{
-			fDecayFactor = logf(10.0f) / weaponInfo.m_fRecoveryTimeStand;
-		}
-		else if ( !FBitSet(pPlayer->GetFlags(), FL_ONGROUND) )	// in air
-		{
-			// enforce a large recovery speed penalty (300%) for players in the air; this helps to provide
-			// comparable in-air accuracy to the old weapon model
-			fDecayFactor = logf(10.0f) / (weaponInfo.m_fRecoveryTimeCrouch * 3.0f);
-		}
-		else if ( FBitSet(pPlayer->GetFlags(), FL_DUCKING) )
-		{
-			fDecayFactor = logf(10.0f) / weaponInfo.m_fRecoveryTimeCrouch;
-		}
-		else
-		{
-			fDecayFactor = logf(10.0f) / weaponInfo.m_fRecoveryTimeStand;
-		}
+		float fDecayFactor = logf(10.0f) / GetRecoveryTime();
 		m_fAccuracyPenalty = Lerp(expf(TICK_INTERVAL * -fDecayFactor), fNewPenalty, (float)m_fAccuracyPenalty);
 	}
 
@@ -2408,6 +2395,62 @@ void CWeaponCSBase::UpdateAccuracyPenalty()
 	}
 }
 
+// returns the current accuracy recovery time, ramped between the base and "final"
+// values as the spray pattern index advances. In-air recovery is heavily penalised.
+float CWeaponCSBase::GetRecoveryTime( void )
+{
+	CCSPlayer *pPlayer = GetPlayerOwner();
+	if ( !pPlayer )
+		return -1.0f;
+
+	const CCSWeaponInfo& weaponInfo = GetCSWpnData();
+
+	if ( pPlayer->GetMoveType() == MOVETYPE_LADDER )
+	{
+		return weaponInfo.m_fRecoveryTimeStand;
+	}
+	else if ( !FBitSet( pPlayer->GetFlags(), FL_ONGROUND ) )	// in air
+	{
+		// comparable in-air accuracy to the old weapon model
+		return weaponInfo.m_fRecoveryTimeCrouch * 4.0f;
+	}
+	else if ( FBitSet( pPlayer->GetFlags(), FL_DUCKING ) )
+	{
+		float flRecoveryTime = weaponInfo.m_fRecoveryTimeCrouch;
+		float flRecoveryTimeFinal = weaponInfo.m_fRecoveryTimeCrouchFinal;
+
+		if ( flRecoveryTimeFinal != -1.0f )	// uninitialized final recovery values are set to -1.0 from the weapon_base prefab in schema
+		{
+			int nRecoilIndex = m_flRecoilIndex;
+
+			if ( weaponInfo.m_iRecoveryTransitionEndBullet > weaponInfo.m_iRecoveryTransitionStartBullet )
+				flRecoveryTime = RemapValClamped( nRecoilIndex, weaponInfo.m_iRecoveryTransitionStartBullet, weaponInfo.m_iRecoveryTransitionEndBullet, flRecoveryTime, flRecoveryTimeFinal );
+			else
+				flRecoveryTime = flRecoveryTimeFinal;
+		}
+
+		return flRecoveryTime;
+	}
+	else
+	{
+		float flRecoveryTime = weaponInfo.m_fRecoveryTimeStand;
+		float flRecoveryTimeFinal = weaponInfo.m_fRecoveryTimeStandFinal;
+
+		if ( flRecoveryTimeFinal != -1.0f )	// uninitialized final recovery values are set to -1.0 from the weapon_base prefab in schema
+		{
+			int nRecoilIndex = m_flRecoilIndex;
+
+			// If the script did not provide a valid transition range, just use the final value.
+			if ( weaponInfo.m_iRecoveryTransitionEndBullet > weaponInfo.m_iRecoveryTransitionStartBullet )
+				flRecoveryTime = RemapValClamped( nRecoilIndex, weaponInfo.m_iRecoveryTransitionStartBullet, weaponInfo.m_iRecoveryTransitionEndBullet, flRecoveryTime, flRecoveryTimeFinal );
+			else
+				flRecoveryTime = flRecoveryTimeFinal;
+		}
+
+		return flRecoveryTime;
+	}
+}
+
 const float kJumpVelocity = sqrtf(2.0f * 800.0f * 57.0f);	// see CCSGameMovement::CheckJumpButton()
 
 void CWeaponCSBase::OnJump( float fImpulse )
@@ -2417,22 +2460,22 @@ void CWeaponCSBase::OnJump( float fImpulse )
 
 void CWeaponCSBase::OnLand( float fVelocity )
 {
-	float fPenalty = GetCSWpnData().m_fInaccuracyLand[m_weaponMode] * fVelocity / kJumpVelocity;
+	float fPenalty = GetCSWpnData().m_fInaccuracyLand[m_weaponMode] * fVelocity;
 	m_fAccuracyPenalty += fPenalty;
-
-/*
-	// this bit of code is only if we want to punch the player view on all landings
+	fPenalty = clamp( fPenalty, -1.0f, 1.0f );
 
 	CCSPlayer *pPlayer = GetPlayerOwner();
 	if ( !pPlayer )
 		return;
 
-	QAngle angle = pPlayer->GetPunchAngle();
-	float fVKick = RAD2DEG(asinf(fPenalty)) * 0.4f;
+	// NOTE: do NOT call GetAimPunchAngle() here because it may be adjusted by some recoil scalar.
+	// We just want to update the raw punch angle.
+	QAngle angle = pPlayer->GetRawAimPunchAngle();
+	float fVKick = RAD2DEG(asinf(fPenalty)) * 0.2f;
 	float fHKick = SharedRandomFloat("LandPunchAngleYaw", -1.0f, +1.0f) * fVKick * 0.1f;
 
 	angle.x += fVKick;	// pitch
 	angle.y += fHKick;	// yaw
-	pPlayer->SetPunchAngle( angle );
-*/
+
+	pPlayer->SetAimPunchAngle( angle );
 }
