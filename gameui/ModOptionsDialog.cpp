@@ -19,6 +19,7 @@
 #include "vgui/IVGui.h"
 
 #include "KeyValues.h"
+#include "ModOptionsSubGameplay.h"
 #include "ModOptionsSubCrosshair.h"
 #ifdef ANDROID
 #include "ModOptionsSubGyro.h"
@@ -40,7 +41,8 @@ CModOptionsDialog::CModOptionsDialog(vgui::Panel *parent) : PropertyDialog(paren
 	SetSizeable( false );
 
 	SetTitle("#GameUI_Mod_Options", true);
-
+	
+	AddPage(new CModOptionsSubGameplay(this), "#GameUI_Main");
 	AddPage(new CModOptionsSubCrosshair(this), "#GameUI_Crosshair");
 #ifdef ANDROID
 	AddPage(new CModOptionsSubGyro(this), "#GameUI_Gyro");

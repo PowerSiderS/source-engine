@@ -84,6 +84,7 @@ def build(bld):
 		'matchmaking/welcomedialog.cpp',
 		'OptionsDialog.cpp',
 		'ModOptionsDialog.cpp',
+		'ModOptionsSubGameplay.cpp',
 		'ModOptionsSubCrosshair.cpp',
 		'ModOptionsSubGyro.cpp',
 		'OptionsSubAudio.cpp',
