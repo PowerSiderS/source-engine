@@ -138,7 +138,7 @@ void CWeaponM3::PrimaryAttack()
 	FX_FireBullets( 
 		pPlayer->entindex(),
 		pPlayer->Weapon_ShootPosition(), 
-		pPlayer->EyeAngles() + 2.0f * pPlayer->GetPunchAngle(), 
+		pPlayer->GetFinalAimAngle(),
 		GetWeaponID(),
 		Primary_Mode,
 		CBaseEntity::GetPredictionRandomSeed() & 255, // wrap it for network traffic so it's the same between client and server
@@ -164,19 +164,9 @@ void CWeaponM3::PrimaryAttack()
 	// update accuracy
 	m_fAccuracyPenalty += GetCSWpnData().m_fInaccuracyImpulseFire[Primary_Mode];
 
-	// Update punch angles.
-	QAngle angle = pPlayer->GetPunchAngle();
-
-	if ( pPlayer->GetFlags() & FL_ONGROUND )
-	{
-		angle.x -= SharedRandomInt( "M3PunchAngleGround", 4, 6 );
-	}
-	else
-	{
-		angle.x -= SharedRandomInt( "M3PunchAngleAir", 8, 11 );
-	}
-
-	pPlayer->SetPunchAngle( angle );
+	// table driven recoil
+	Recoil( Primary_Mode );
+	m_flRecoilIndex += 1.0f;
 }
 
 

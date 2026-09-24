@@ -170,14 +170,14 @@ void CWeaponFamas::FireRemaining()
 	FX_FireBullets(
 		pPlayer->entindex(),
 		pPlayer->Weapon_ShootPosition(),
-		pPlayer->EyeAngles() + 2.0f * pPlayer->GetPunchAngle(),
+		pPlayer->GetFinalAimAngle(),
 		GetWeaponID(),
 		Secondary_Mode,
 		CBaseEntity::GetPredictionRandomSeed() & 255,
 		GetInaccuracy(),
 		GetSpread(),
 		m_fNextBurstShot);
-	
+
 	SendWeaponAnim( ACT_VM_PRIMARYATTACK );
 
 	pPlayer->DoMuzzleFlash();
@@ -193,6 +193,10 @@ void CWeaponFamas::FireRemaining()
 
 	// update accuracy
 	m_fAccuracyPenalty += GetCSWpnData().m_fInaccuracyImpulseFire[Secondary_Mode];
+
+	// table driven recoil
+	Recoil( Secondary_Mode );
+	m_flRecoilIndex += 1.0f;
 }
 
 

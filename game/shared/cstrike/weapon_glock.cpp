@@ -225,7 +225,7 @@ void CWeaponGlock::PrimaryAttack()
 	FX_FireBullets( 
 		pPlayer->entindex(),
 		pPlayer->Weapon_ShootPosition(), 
-		pPlayer->EyeAngles() + 2.0f * pPlayer->GetPunchAngle(), 
+		pPlayer->GetFinalAimAngle(),
 		GetWeaponID(),
 		Primary_Mode,
 		CBaseEntity::GetPredictionRandomSeed() & 255, // wrap it for network traffic so it's the same between client and server
@@ -259,7 +259,9 @@ void CWeaponGlock::PrimaryAttack()
 	// update accuracy
 	m_fAccuracyPenalty += GetCSWpnData().m_fInaccuracyImpulseFire[m_weaponMode];
 
-	//ResetPlayerShieldAnim();
+	// table driven recoil
+	Recoil( m_weaponMode );
+	m_flRecoilIndex += 1.0f;
 }
 
 
@@ -292,14 +294,14 @@ void CWeaponGlock::FireRemaining( float fSpread )
 	FX_FireBullets( 
 		pPlayer->entindex(),
 		pPlayer->Weapon_ShootPosition(), 
-		pPlayer->EyeAngles() + 2.0f * pPlayer->GetPunchAngle(), 
+		pPlayer->GetFinalAimAngle(),
 		GetWeaponID(),
 		Secondary_Mode,
 		CBaseEntity::GetPredictionRandomSeed() & 255, // wrap it for network traffic so it's the same between client and server
 		fInaccuracy,
 		GetSpread(),
 		m_fNextBurstShot);
-	
+
 	pPlayer->SetAnimation( PLAYER_ATTACK1 );
 	pPlayer->m_iShotsFired++;
 
@@ -312,6 +314,10 @@ void CWeaponGlock::FireRemaining( float fSpread )
 
 	// update accuracy
 	m_fAccuracyPenalty += GetCSWpnData().m_fInaccuracyImpulseFire[Secondary_Mode];
+
+	// table driven recoil
+	Recoil( Secondary_Mode );
+	m_flRecoilIndex += 1.0f;
 }
 
 

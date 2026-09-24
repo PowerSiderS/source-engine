@@ -318,7 +318,7 @@ void CWeaponUSP::PrimaryAttack()
 	FX_FireBullets(
 		pPlayer->entindex(),
 		pPlayer->Weapon_ShootPosition(),
-		pPlayer->EyeAngles() + 2.0f * pPlayer->GetPunchAngle(),
+		pPlayer->GetFinalAimAngle(),
 		GetWeaponID(),
 		m_weaponMode,
 		CBaseEntity::GetPredictionRandomSeed() & 255,
@@ -330,15 +330,15 @@ void CWeaponUSP::PrimaryAttack()
 		// HEV suit - indicate out of ammo condition
 		pPlayer->SetSuitUpdate("!HEV_AMO0", false, 0);
 	}
- 
+
 	SetWeaponIdleTime( gpGlobals->curtime + 2 );
 
 	// update accuracy
 	m_fAccuracyPenalty += GetCSWpnData().m_fInaccuracyImpulseFire[m_weaponMode];
 
-	QAngle angle = pPlayer->GetPunchAngle();
-	angle.x -= 2;
-	pPlayer->SetPunchAngle( angle );
+	// table driven recoil
+	Recoil( m_weaponMode );
+	m_flRecoilIndex += 1.0f;
 }
 
 

@@ -210,15 +210,15 @@ void CWeaponElite::PrimaryAttack()
 	FX_FireBullets(
 		pPlayer->entindex(),
 		pPlayer->Weapon_ShootPosition(),
-		pPlayer->EyeAngles() + 2.0f * pPlayer->GetPunchAngle(),
+		pPlayer->GetFinalAimAngle(),
 		GetWeaponID(),
 		FiringLeft() ? Secondary_Mode : Primary_Mode,
 		CBaseEntity::GetPredictionRandomSeed() & 255,
 		GetInaccuracy(),
 		GetSpread());
-		
+
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = gpGlobals->curtime + GetCSWpnData().m_flCycleTime[m_weaponMode];
-	
+
 	if (!m_iClip1 && pPlayer->GetAmmoCount( m_iPrimaryAmmoType ) <= 0)
 	{
 		// HEV suit - indicate out of ammo condition
@@ -245,11 +245,10 @@ void CWeaponElite::PrimaryAttack()
 	// update accuracy
 	m_fAccuracyPenalty += GetCSWpnData().m_fInaccuracyImpulseFire[Primary_Mode];
 
-	QAngle punchAngle = pPlayer->GetPunchAngle();
-	punchAngle.x -= 2;
-	pPlayer->SetPunchAngle( punchAngle );
+	// table driven recoil
+	Recoil( m_weaponMode );
 
-	//ResetPlayerShieldAnim();
+	m_flRecoilIndex += 1.0f;
 }
 
 

@@ -237,10 +237,6 @@ void CWeaponAWP::PrimaryAttack()
 			m_weaponMode = Primary_Mode;
 		#endif
 	}
-
-	QAngle angle = pPlayer->GetPunchAngle();
-	angle.x -= 2;
-	pPlayer->SetPunchAngle( angle );
 }
 
 #ifdef AWP_UNZOOM

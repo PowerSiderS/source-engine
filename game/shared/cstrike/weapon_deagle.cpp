@@ -180,7 +180,7 @@ void CDEagle::PrimaryAttack()
 	FX_FireBullets(
 		pPlayer->entindex(),
 		pPlayer->Weapon_ShootPosition(),
-		pPlayer->EyeAngles() + 2.0f * pPlayer->GetPunchAngle(),
+		pPlayer->GetFinalAimAngle(),
 		GetWeaponID(),
 		Primary_Mode,
 		CBaseEntity::GetPredictionRandomSeed() & 255,
@@ -200,11 +200,10 @@ void CDEagle::PrimaryAttack()
 	// update accuracy
 	m_fAccuracyPenalty += GetCSWpnData().m_fInaccuracyImpulseFire[Primary_Mode];
 
-	QAngle punchAngle = pPlayer->GetPunchAngle();
-	punchAngle.x -= 2;
-	pPlayer->SetPunchAngle( punchAngle );
+	// table driven recoil
+	Recoil( m_weaponMode );
 
-	//ResetPlayerShieldAnim();
+	m_flRecoilIndex += 1.0f;
 }
 
 

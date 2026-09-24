@@ -186,10 +186,6 @@ void CWeaponScout::PrimaryAttack( void )
 			m_weaponMode = Primary_Mode;
 // 		#endif
 	}
-
-	QAngle angle = pPlayer->GetPunchAngle();
-	angle.x -= 2;
-	pPlayer->SetPunchAngle( angle );
 }
 
 

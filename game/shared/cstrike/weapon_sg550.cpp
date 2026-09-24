@@ -179,11 +179,6 @@ void CWeaponSG550::PrimaryAttack()
 
 	if ( !CSBaseGunFire( GetCSWpnData().m_flCycleTime[m_weaponMode], m_weaponMode ) )
 		return;
-
-	QAngle angle = pPlayer->GetPunchAngle();
-	angle.x -= SharedRandomFloat("SG550PunchAngleX", 0.75, 1.25 ) + ( angle.x / 4 );
-	angle.y += SharedRandomFloat("SG550PunchAngleY", -0.75, 0.75 );
-	pPlayer->SetPunchAngle( angle );
 }
 
 bool CWeaponSG550::Reload()
