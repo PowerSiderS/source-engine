@@ -30,7 +30,7 @@ extern ConVar sv_lan;
 
 static char g_MasterServers[][64] =
 {
-	"157.173.106.37:27010", 
+	"ms.workbench.network:27010", 
 	"oreo922.cn:27010"
 };
 
