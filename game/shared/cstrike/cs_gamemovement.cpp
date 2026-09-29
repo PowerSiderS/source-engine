@@ -179,9 +179,9 @@ void CCSGameMovement::CheckParameters( void )
 		}
 	}
 
-	// it would be nice to put this into the player->GetPlayerMaxSpeed() method, but
-	// this flag is only stored in the move!
-	if ( mv->m_nButtons & IN_SPEED )
+	// CS:GO behavior: walking speed penalty only applies when not crouching/ducking
+	// so holding CTRL + SHIFT maintains normal crouch speed instead of double-penalizing
+	if ( ( mv->m_nButtons & IN_SPEED ) && !( ( mv->m_nButtons & IN_DUCK ) || ( player->m_Local.m_bDucking ) || ( player->GetFlags() & FL_DUCKING ) ) )
 	{
 		mv->m_flMaxSpeed *= CS_PLAYER_SPEED_WALK_MODIFIER;
 	}
