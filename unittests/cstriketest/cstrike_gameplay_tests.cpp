@@ -52,16 +52,17 @@ DEFINE_TESTCASE( LegacyAirInaccuracyTest, CStrikeGameplayTestSuite )
 
 DEFINE_TESTCASE( KnifeModelWhitelistTest, CStrikeGameplayTestSuite )
 {
-	Shipping_Assert( CS_KNIFE_MODEL_COUNT == 4 );
+	Shipping_Assert( CS_KNIFE_MODEL_COUNT == 17 );
 	Shipping_Assert( !Q_stricmp( s_KnifeModels[0].name, "default" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[1].name, "gut" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[2].name, "karambit" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[3].name, "m9" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[1].v_model, "models/codex_knives/gut/v_knife_t.mdl" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[2].v_model, "models/codex_knives/karambit/v_knife_t.mdl" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[3].v_model, "models/codex_knives/m9/v_knife_t.mdl" ) );
+	Shipping_Assert( !Q_stricmp( s_KnifeModels[7].name, "gut" ) );
+	Shipping_Assert( !Q_stricmp( s_KnifeModels[9].name, "karambit" ) );
+	Shipping_Assert( !Q_stricmp( s_KnifeModels[11].name, "m9" ) );
+	Shipping_Assert( !Q_stricmp( s_KnifeModels[13].name, "skeleton" ) );
+	Shipping_Assert( !Q_stricmp( s_KnifeModels[7].v_model, "models/codex_knives/gut/v_knife_t.mdl" ) );
+	Shipping_Assert( !Q_stricmp( s_KnifeModels[9].v_model, "models/codex_knives/karambit/v_knife_t.mdl" ) );
+	Shipping_Assert( !Q_stricmp( s_KnifeModels[11].v_model, "models/codex_knives/m9/v_knife_t.mdl" ) );
 	Shipping_Assert( CSClampKnifeChoice( -1 ) == 0 );
 	Shipping_Assert( CSClampKnifeChoice( 0 ) == 0 );
-	Shipping_Assert( CSClampKnifeChoice( 3 ) == 3 );
-	Shipping_Assert( CSClampKnifeChoice( 99 ) == 3 );
+	Shipping_Assert( CSClampKnifeChoice( 16 ) == 16 );
+	Shipping_Assert( CSClampKnifeChoice( 99 ) == 16 );
 }

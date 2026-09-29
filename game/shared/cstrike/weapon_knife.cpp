@@ -96,7 +96,7 @@ PRECACHE_WEAPON_REGISTER( weapon_knife );
 
 #endif
 
-ConVar cl_knife_choice( "cl_knife_choice", "0", FCVAR_USERINFO | FCVAR_ARCHIVE, "Current knife skin index (0=Default, 1=Gut, 2=Karambit, 3=M9)" );
+ConVar cl_knife_choice( "cl_knife_choice", "0", FCVAR_USERINFO | FCVAR_ARCHIVE, "Current knife inventory selection (0-16)" );
 
 // ----------------------------------------------------------------------------- //
 // CKnife implementation.
@@ -585,11 +585,11 @@ bool CKnife::CanDrop()
 }
 
 #ifdef CLIENT_DLL
-CON_COMMAND( knife_select, "Select a knife skin by index (0-3) or name" )
+CON_COMMAND( knife_select, "Select a knife inventory item by index (0-16) or name" )
 {
 	if ( args.ArgC() < 2 )
 	{
-		Msg( "Uso: knife_select <numero 0-3 ou nome>\n" );
+		Msg( "Uso: knife_select <numero 0-16 ou nome>\n" );
 		int cur = CSClampKnifeChoice( cl_knife_choice.GetInt() );
 		Msg( "Faca atual: %s (%d)\n", s_KnifeModels[cur].displayName, cur );
 		return;
