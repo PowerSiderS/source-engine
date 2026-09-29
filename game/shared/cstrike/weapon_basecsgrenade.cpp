@@ -65,6 +65,7 @@ CBaseCSGrenade::CBaseCSGrenade()
 	m_bRedraw = false;
 	m_bPinPulled = false;
 	m_fThrowTime = 0;
+	m_nThrowStrength = 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -141,46 +142,42 @@ void CBaseCSGrenade::PrimaryAttack()
 	if ( !pPlayer || pPlayer->GetAmmoCount( m_iPrimaryAmmoType ) <= 0 )
 		return;
 
-	// The pull pin animation has to finish, then we wait until they aren't holding the primary
-	// attack button, then throw the grenade.
 	SendWeaponAnim( ACT_VM_PULLPIN );
 	m_bPinPulled = true;
+	m_nThrowStrength = 0;
 
-	// Don't let weapon idle interfere in the middle of a throw!
 	MDLCACHE_CRITICAL_SECTION();
 	SetWeaponIdleTime( gpGlobals->curtime + SequenceDuration() );
 
 	m_flNextPrimaryAttack	= gpGlobals->curtime + SequenceDuration();
+	m_flNextSecondaryAttack	= gpGlobals->curtime + SequenceDuration();
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
 void CBaseCSGrenade::SecondaryAttack()
 {
-	if ( m_bRedraw )
+	if ( m_bRedraw || m_bPinPulled || m_fThrowTime > 0.0f )
 		return;
 
 	CCSPlayer *pPlayer = GetPlayerOwner();
-	
-	if ( pPlayer == NULL )
+	if ( !pPlayer || pPlayer->GetAmmoCount( m_iPrimaryAmmoType ) <= 0 )
 		return;
 
-	//See if we're ducking
 	if ( pPlayer->GetFlags() & FL_DUCKING )
 	{
-		//Send the weapon animation
 		SendWeaponAnim( ACT_VM_SECONDARYATTACK );
 	}
 	else
 	{
-		//Send the weapon animation
 		SendWeaponAnim( ACT_VM_HAULBACK );
 	}
 
-	// Don't let weapon idle interfere in the middle of a throw!
+	m_bPinPulled = true;
+	m_nThrowStrength = 1;
+
+	MDLCACHE_CRITICAL_SECTION();
 	SetWeaponIdleTime( gpGlobals->curtime + SequenceDuration() );
 
+	m_flNextPrimaryAttack	= gpGlobals->curtime + SequenceDuration();
 	m_flNextSecondaryAttack	= gpGlobals->curtime + SequenceDuration();
 }
 
@@ -221,8 +218,17 @@ void CBaseCSGrenade::ItemPostFrame()
 	if ( !vm )
 		return;
 
-	// If they let go of the fire button, they want to throw the grenade.
-	if ( m_bPinPulled && !(pPlayer->m_nButtons & IN_ATTACK) ) 
+	if ( m_bPinPulled )
+	{
+		bool bAttack1 = (pPlayer->m_nButtons & IN_ATTACK) != 0;
+		bool bAttack2 = (pPlayer->m_nButtons & IN_ATTACK2) != 0;
+		if ( bAttack1 && bAttack2 )
+		{
+			m_nThrowStrength = 2;
+		}
+	}
+
+	if ( m_bPinPulled && !(pPlayer->m_nButtons & (IN_ATTACK | IN_ATTACK2)) ) 
 	{
 		pPlayer->DoAnimationEvent( PLAYERANIMEVENT_THROW_GRENADE );
 
@@ -361,9 +367,17 @@ void CBaseCSGrenade::ItemPostFrame()
 		}
 
 		float flVel = (90 - angThrow.x) * 6;
-
 		if (flVel > 750)
 			flVel = 750;
+
+		if ( m_nThrowStrength == 1 )
+		{
+			flVel = 350.0f;
+		}
+		else if ( m_nThrowStrength == 2 )
+		{
+			flVel = 520.0f;
+		}
 
 		AngleVectors( angThrow, &vForward, &vRight, &vUp );
 

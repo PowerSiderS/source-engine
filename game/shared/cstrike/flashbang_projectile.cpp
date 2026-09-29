@@ -168,22 +168,23 @@ void RadiusFlash(
 				// if target is facing the bomb, the effect lasts longer
 				if( flDot >= 0.5 )
 				{
-					// looking at the flashbang
+					// looking directly at the flashbang (full blind)
 					fadeTime = flAdjustedDamage * 2.5f;
 					fadeHold = flAdjustedDamage * 1.25f;
 				}
-				else if( flDot >= -0.5 )
+				else if( flDot >= 0.0 )
 				{
-					// looking to the side
-					fadeTime = flAdjustedDamage * 1.75f;
-					fadeHold = flAdjustedDamage * 0.8f;
+					// looking to the side (partial blind)
+					fadeTime = flAdjustedDamage * 1.0f;
+					fadeHold = flAdjustedDamage * 0.4f;
+					startingAlpha = 150;
 				}
 				else
 				{
-					// facing away
-					fadeTime = flAdjustedDamage * 1.0f;
-					fadeHold = flAdjustedDamage * 0.75f;
-					startingAlpha = 200;
+					// Cores: facing away (CS:GO curve)
+					fadeTime = 0.0f;
+					fadeHold = 0.0f;
+					startingAlpha = 0;
 				}
 
 				fadeTime *= percentageOfFlash;

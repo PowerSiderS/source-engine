@@ -4571,7 +4571,8 @@ bool CCSPlayer::ClientCommand( const CCommand &args )
 
 			CSWeaponType type = pWeapon->GetCSWpnData().m_WeaponType;
 
-			if( type != WEAPONTYPE_KNIFE && type != WEAPONTYPE_GRENADE )
+			// Cores: allow grenade drop and pickup
+			if( type != WEAPONTYPE_KNIFE )
 			{
 				if (CSGameRules()->GetCanDonateWeapon() && !pWeapon->GetDonated())
 				{
@@ -4579,7 +4580,6 @@ bool CCSPlayer::ClientCommand( const CCommand &args )
 					pWeapon->SetDonor(this);
 				}
 				CSWeaponDrop( pWeapon, true, true );
-
 			}
 		}
 
@@ -6693,7 +6693,12 @@ bool CCSPlayer::IsUseableEntity( CBaseEntity *pEntity, unsigned int requiredCaps
 
 	if( pCSWepaon )
 	{
-		// we can't USE dropped weapons
+			// Cores: allow grenade drop and pickup
+		if ( pCSWepaon->IsA( "weapon_basecsgrenade" ) || pCSWepaon->GetCSWpnData().m_WeaponType == WEAPONTYPE_GRENADE || pCSWepaon->GetSlot() == WEAPON_SLOT_GRENADES )
+		{
+			BumpWeapon( pCSWepaon );
+			return true;
+		}
 		return true;
 	}
 

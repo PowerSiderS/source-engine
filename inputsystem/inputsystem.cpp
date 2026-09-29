@@ -209,7 +209,7 @@ InitReturnVal_t CInputSystem::Init()
         // Check if this version of windows supports raw mouse input (later than win2k)
         m_bRawInputSupported = false;
 
-        CSysModule *m_pRawInputDLL = Sys_LoadModule( "USER32.dll" );
+        m_pRawInputDLL = Sys_LoadModule( "USER32.dll" );
         if ( m_pRawInputDLL )
         {
                 pfnRegisterRawInputDevices = (RegisterRawInputDevices_t)GetProcAddress( (HMODULE)m_pRawInputDLL, "RegisterRawInputDevices" );
@@ -1462,23 +1462,27 @@ LRESULT CInputSystem::WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 
 #if defined( PLATFORM_WINDOWS_PC )
         case WM_INPUT:
-                {
-                        if ( m_bRawInputSupported )
-                        {
-                                UINT dwSize = 40;
-                                static BYTE lpb[40];
-
-                                pfnGetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
-
-                                RAWINPUT* raw = (RAWINPUT*)lpb;
-                                if (raw->header.dwType == RIM_TYPEMOUSE) 
-                                {
-                                        m_mouseRawAccumX += raw->data.mouse.lLastX;
-                                        m_mouseRawAccumY += raw->data.mouse.lLastY;
-                                } 
-                        }
-                }
-                break;
+		{
+			if ( m_bRawInputSupported && pfnGetRawInputData )
+			{
+				UINT dwSize = 0;
+				pfnGetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
+				if ( dwSize > 0 )
+				{
+					BYTE *lpb = (BYTE*)_alloca(dwSize);
+					if ( pfnGetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != (UINT)-1 )
+					{
+						RAWINPUT* raw = (RAWINPUT*)lpb;
+						if (raw->header.dwType == RIM_TYPEMOUSE) 
+						{
+							m_mouseRawAccumX += raw->data.mouse.lLastX;
+							m_mouseRawAccumY += raw->data.mouse.lLastY;
+						}
+					}
+				}
+			}
+		}
+		break;
 #endif
 
 #endif // !USE_SDL

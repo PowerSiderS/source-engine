@@ -60,6 +60,8 @@ public:
 	virtual bool IsAwp() const;
 	virtual bool Reload();
 	virtual bool Deploy();
+	virtual int GetMaxClip1() const { return 5; }
+	virtual int GetDefaultClip1() const { return 5; }
 
 	virtual CSWeaponID GetWeaponID( void ) const		{ return WEAPON_AWP; }
 
@@ -102,6 +104,7 @@ void CWeaponAWP::Spawn()
 	Precache();
 
 	BaseClass::Spawn();
+	m_iClip1 = 5;
 }
 
 
