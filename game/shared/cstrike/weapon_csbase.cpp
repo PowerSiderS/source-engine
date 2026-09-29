@@ -14,6 +14,7 @@
 #include "basegrenade_shared.h"
 #include "npcevent.h"
 #include "eventlist.h"
+#include "cs_legacy_gameplay.h"
 
 #define ALLOW_WEAPON_SPREAD_DISPLAY	0
 
@@ -44,9 +45,6 @@
 ConVar weapon_accuracy_model( "weapon_accuracy_model", "2", FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY | FCVAR_ARCHIVE );
 ConVar weapon_recoil_decay_coefficient( "weapon_recoil_decay_coefficient", "2.0", FCVAR_CHEAT | FCVAR_REPLICATED, "" );
 ConVar weapon_air_spread_scale( "weapon_air_spread_scale", "1.0", FCVAR_CHEAT | FCVAR_REPLICATED, "Scale factor for jumping inaccuracy", true, 0.0f, false, 1.0f );
-
-static const float kCSGOLegacyJumpImpulse = sqrtf( 2.0f * 800.0f * 57.0f );
-
 
 // ----------------------------------------------------------------------------- //
 // Global functions.
@@ -852,18 +850,12 @@ float CWeaponCSBase::GetInaccuracy() const
 		fMaxSpeed = GetCSWpnData().m_flMaxSpeed;
 
 	float fAccuracy = m_fAccuracyPenalty;
-	float flMovementInaccuracyScale = RemapValClamped( pPlayer->GetAbsVelocity().Length2D(),
-		fMaxSpeed * CS_PLAYER_SPEED_DUCK_MODIFIER,
-		fMaxSpeed * 0.95f,
-		0.0f, 1.0f );
+	float flMovementInaccuracyScale = CSLegacyMovementInaccuracyScale(
+		pPlayer->GetAbsVelocity().Length2D(), fMaxSpeed, CS_PLAYER_SPEED_DUCK_MODIFIER,
+		( pPlayer->m_nButtons & IN_SPEED ) != 0 );
 
 	if ( flMovementInaccuracyScale > 0.0f )
 	{
-		// CS:GO Legacy uses a sharp fourth-root curve while running. Walking keeps
-		// the linear curve so counter-strafing and shift-walking remain predictable.
-		if ( !( pPlayer->m_nButtons & IN_SPEED ) )
-			flMovementInaccuracyScale = powf( flMovementInaccuracyScale, 0.25f );
-
 		fAccuracy += flMovementInaccuracyScale * weaponInfo.m_fInaccuracyMove[m_weaponMode];
 	}
 
@@ -871,12 +863,7 @@ float CWeaponCSBase::GetInaccuracy() const
 	{
 		const float flVerticalSpeed = fabsf( pPlayer->GetAbsVelocity().z );
 		const float flInitialJumpPenalty = weaponInfo.m_fInaccuracyJumpInitial[m_weaponMode] * weapon_air_spread_scale.GetFloat();
-		const float flSqrtJumpSpeed = sqrtf( kCSGOLegacyJumpImpulse );
-		const float flSqrtVerticalSpeed = sqrtf( flVerticalSpeed );
-		float flAirSpeedInaccuracy = RemapVal( flSqrtVerticalSpeed,
-			flSqrtJumpSpeed * 0.25f, flSqrtJumpSpeed, 0.0f, flInitialJumpPenalty );
-		flAirSpeedInaccuracy = clamp( flAirSpeedInaccuracy, 0.0f, flInitialJumpPenalty * 2.0f );
-		fAccuracy += flAirSpeedInaccuracy;
+		fAccuracy += CSLegacyAirSpeedInaccuracy( flVerticalSpeed, flInitialJumpPenalty );
 	}
 
 	return MIN( fAccuracy, 1.0f );

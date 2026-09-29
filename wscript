@@ -106,6 +106,7 @@ projects={
 		'vstdlib',
 		'filesystem',
 		'vpklib',
+		'unittests/cstriketest',
 		'unittests/tier0test',
 		'unittests/tier1test',
 		'unittests/tier2test',

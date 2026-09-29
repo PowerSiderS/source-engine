@@ -7,6 +7,7 @@
 #include "cbase.h"
 #include "weapon_knife.h"
 #include "cs_gamerules.h"
+#include "cs_knife_models.h"
 
 #if defined( CLIENT_DLL )
 	#include "c_cs_player.h"
@@ -94,22 +95,6 @@ PRECACHE_WEAPON_REGISTER( weapon_knife );
 	END_DATADESC()
 
 #endif
-
-struct KnifeModelInfo_t
-{
-	const char *name;
-	const char *displayName;
-	const char *v_model;
-	const char *w_model;
-};
-
-static const KnifeModelInfo_t s_KnifeModels[] =
-{
-	{ "default",        "Default Knife",     "models/weapons/v_knife_t.mdl",                      "models/weapons/w_knife_t.mdl" },
-	{ "gut",            "Gut Knife",         "models/codex_knives/gut/v_knife_t.mdl",             "models/weapons/w_knife_t.mdl" },
-	{ "karambit",       "Karambit",          "models/codex_knives/karambit/v_knife_t.mdl",        "models/weapons/w_knife_t.mdl" },
-	{ "m9",             "M9 Bayonet",        "models/codex_knives/m9/v_knife_t.mdl",              "models/weapons/w_knife_t.mdl" }
-};
 
 ConVar cl_knife_choice( "cl_knife_choice", "0", FCVAR_USERINFO | FCVAR_ARCHIVE, "Current knife skin index (0=Default, 1=Gut, 2=Karambit, 3=M9)" );
 
@@ -532,11 +517,11 @@ const char *CKnife::GetViewModel( int viewmodelindex ) const
 	{
 		int choice = 0;
 #ifdef CLIENT_DLL
-		choice = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+		choice = CSClampKnifeChoice( cl_knife_choice.GetInt() );
 #else
 		const char *val = engine->GetClientConVarValue( pOwner->entindex(), "cl_knife_choice" );
 		if ( val )
-			choice = clamp( atoi( val ), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+			choice = CSClampKnifeChoice( atoi( val ) );
 #endif
 		if ( choice >= 0 && choice < ARRAYSIZE(s_KnifeModels) )
 		{
@@ -578,11 +563,11 @@ void CKnife::ItemPostFrame( void )
 	{
 		int nChoice = 0;
 #ifdef CLIENT_DLL
-		nChoice = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+		nChoice = CSClampKnifeChoice( cl_knife_choice.GetInt() );
 #else
 		const char *val = engine->GetClientConVarValue( pOwner->entindex(), "cl_knife_choice" );
 		if ( val )
-			nChoice = clamp( atoi( val ), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+			nChoice = CSClampKnifeChoice( atoi( val ) );
 #endif
 		if ( m_nActiveKnifeChoice != nChoice )
 		{
@@ -605,7 +590,7 @@ CON_COMMAND( knife_select, "Select a knife skin by index (0-3) or name" )
 	if ( args.ArgC() < 2 )
 	{
 		Msg( "Uso: knife_select <numero 0-3 ou nome>\n" );
-		int cur = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+		int cur = CSClampKnifeChoice( cl_knife_choice.GetInt() );
 		Msg( "Faca atual: %s (%d)\n", s_KnifeModels[cur].displayName, cur );
 		return;
 	}
@@ -641,7 +626,7 @@ CON_COMMAND( knife_select, "Select a knife skin by index (0-3) or name" )
 
 CON_COMMAND( knife_next, "Equip next knife skin" )
 {
-	int currentChoice = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+	int currentChoice = CSClampKnifeChoice( cl_knife_choice.GetInt() );
 	int nextChoice = ( currentChoice + 1 ) % ARRAYSIZE(s_KnifeModels);
 	cl_knife_choice.SetValue( nextChoice );
 	Msg( "Faca alterada para: %s\n", s_KnifeModels[nextChoice].displayName );
@@ -649,7 +634,7 @@ CON_COMMAND( knife_next, "Equip next knife skin" )
 
 CON_COMMAND( knife_prev, "Equip previous knife skin" )
 {
-	int currentChoice = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+	int currentChoice = CSClampKnifeChoice( cl_knife_choice.GetInt() );
 	int prevChoice = currentChoice - 1;
 	if ( prevChoice < 0 )
 		prevChoice = ARRAYSIZE(s_KnifeModels) - 1;
@@ -659,7 +644,7 @@ CON_COMMAND( knife_prev, "Equip previous knife skin" )
 
 CON_COMMAND( knife_menu, "Open in-game knife switcher" )
 {
-	int currentChoice = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+	int currentChoice = CSClampKnifeChoice( cl_knife_choice.GetInt() );
 	int nextIndex = ( currentChoice + 1 ) % ARRAYSIZE(s_KnifeModels);
 	cl_knife_choice.SetValue( nextIndex );
 

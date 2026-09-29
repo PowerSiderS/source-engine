@@ -21,6 +21,7 @@
 #include "cs_client.h"
 #include "client.h"
 #include "cs_shareddefs.h"
+#include "cs_legacy_gameplay.h"
 #include "shake.h"
 #include "team.h"
 #include "weapon_c4.h"
@@ -5915,7 +5916,7 @@ bool CCSPlayer::PickupWeaponByUse( CWeaponCSBase *pWeapon )
 		return false;
 
 	const int iSlot = pWeapon->GetSlot();
-	if ( iSlot == WEAPON_SLOT_RIFLE || iSlot == WEAPON_SLOT_PISTOL )
+	if ( CSUsePickupShouldReplaceSlot( iSlot ) )
 	{
 		CBaseCombatWeapon *pEquippedWeapon = Weapon_GetSlot( iSlot );
 		if ( pEquippedWeapon && pEquippedWeapon != pWeapon )

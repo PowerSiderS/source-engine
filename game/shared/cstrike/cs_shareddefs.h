@@ -22,6 +22,7 @@
 //=============================================================================
 
 #include "cs_achievementdefs.h"
+#include "cs_weapon_slots.h"
 
 //=============================================================================
 // HPE_END
@@ -88,17 +89,6 @@ extern CUtlVectorInitialized< const char * > TerroristPlayerModels;
 #define ADDON_PISTOL			0x080
 #define ADDON_PISTOL2			0x100
 #define NUM_ADDON_BITS			9
-
-
-// Indices of each weapon slot.
-#define WEAPON_SLOT_RIFLE		0	// (primary slot)
-#define WEAPON_SLOT_PISTOL		1	// (secondary slot)
-#define WEAPON_SLOT_KNIFE		2
-#define WEAPON_SLOT_GRENADES	3
-#define WEAPON_SLOT_C4			4
-
-#define WEAPON_SLOT_FIRST		0
-#define WEAPON_SLOT_LAST		4
 
 
 // CS Team IDs.
