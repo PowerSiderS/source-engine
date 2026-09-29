@@ -2194,7 +2194,10 @@ int CStudioRenderContext::ComputeRenderLOD( IMatRenderContext *pRenderContext,
 //-----------------------------------------------------------------------------
 void CStudioRenderContext::InvokeBindProxies( const DrawModelInfo_t &info )
 {
-	if ( m_RC.m_pForcedMaterial )
+	const char *pszModelName = ( info.m_pStudioHdr ) ? info.m_pStudioHdr->pszName() : NULL;
+	bool bIsPlayer = ( pszModelName && Q_stristr( pszModelName, "player" ) );
+
+	if ( m_RC.m_pForcedMaterial && !bIsPlayer )
 	{
 		if ( m_RC.m_nForcedMaterialType == OVERRIDE_NORMAL && m_RC.m_pForcedMaterial->HasProxy() )
 		{
@@ -2287,10 +2290,34 @@ void CStudioRenderContext::DrawModel( DrawModelResults_t *pResults, const DrawMo
 	flex.m_pFlexWeights = pFlexWeights ? pFlexWeights : s_pZeroFlexWeights;
 	flex.m_pFlexDelayedWeights = pFlexDelayedWeights ? pFlexDelayedWeights : flex.m_pFlexWeights;
 
+	StudioRenderContext_t renderRC = m_RC;
+	const char *pszModelName = ( info.m_pStudioHdr ) ? info.m_pStudioHdr->pszName() : NULL;
+	if ( pszModelName && Q_stristr( pszModelName, "player" ) )
+	{
+		// Anti-Cheat (Chams & Full Colored models):
+		// Block forced material overrides on players (unless building shadows/depth pass)
+		if ( renderRC.m_pForcedMaterial && 
+			 renderRC.m_nForcedMaterialType != OVERRIDE_BUILD_SHADOWS &&
+			 renderRC.m_nForcedMaterialType != OVERRIDE_DEPTH_WRITE &&
+			 renderRC.m_nForcedMaterialType != OVERRIDE_SSAO_DEPTH_WRITE )
+		{
+			renderRC.m_pForcedMaterial = NULL;
+		}
+
+		// Disable wireframe on player models
+		renderRC.m_Config.bWireframe = false;
+
+		// Prevent full solid flat coloring on players
+		renderRC.m_ColorMod[0] = 1.0f;
+		renderRC.m_ColorMod[1] = 1.0f;
+		renderRC.m_ColorMod[2] = 1.0f;
+		renderRC.m_AlphaMod = 1.0f;
+	}
+
 	ICallQueue *pCallQueue = pRenderContext->GetCallQueue();
 	if ( !pCallQueue || studio_queue_mode.GetInt() == 0 )
 	{
-		g_pStudioRenderImp->DrawModel( info, m_RC, pBoneToWorld, flex, flags );
+		g_pStudioRenderImp->DrawModel( info, renderRC, pBoneToWorld, flex, flags );
 	}
 	else
 	{
@@ -2314,7 +2341,7 @@ void CStudioRenderContext::DrawModel( DrawModelResults_t *pResults, const DrawMo
 				flex.m_pFlexDelayedWeights = rdFlexDelayed.Base();
 			}
 		}
-		pCallQueue->QueueCall( g_pStudioRenderImp, &CStudioRender::DrawModel, info, m_RC, pBoneToWorld, flex, flags );
+		pCallQueue->QueueCall( g_pStudioRenderImp, &CStudioRender::DrawModel, info, renderRC, pBoneToWorld, flex, flags );
 	}
 
 	if( flags & STUDIORENDER_DRAW_ACCURATETIME )

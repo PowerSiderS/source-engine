@@ -1,4 +1,4 @@
-﻿//========= Copyright Valve Corporation, All rights reserved. ============//
+//========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Purpose:		Player for HL1.
 //
@@ -4255,6 +4255,40 @@ bool CCSPlayer::WantsLagCompensationOnEntity( const CBasePlayer *pPlayer, const 
 	}
 
 	return BaseClass::WantsLagCompensationOnEntity( pPlayer, pCmd, pEntityTransmitBits );
+}
+
+int CCSPlayer::ShouldTransmit( const CCheckTransmitInfo *pInfo )
+{
+	// Always transmit local player to itself
+	if ( pInfo->m_pClientEnt == edict() )
+		return FL_EDICT_ALWAYS;
+
+	CBaseEntity *pRecipientEntity = CBaseEntity::Instance( pInfo->m_pClientEnt );
+	if ( pRecipientEntity && pRecipientEntity->IsPlayer() )
+	{
+		CCSPlayer *pRecipientPlayer = ToCSPlayer( pRecipientEntity );
+		if ( pRecipientPlayer && pRecipientPlayer != this )
+		{
+			bool bIsEnemy = ( pRecipientPlayer->GetTeamNumber() != GetTeamNumber() );
+
+			if ( bIsEnemy && pRecipientPlayer->IsAlive() && IsAlive() )
+			{
+				// Anti-Flash: if recipient is blinded by flashbang, do not send enemy entity
+				if ( pRecipientPlayer->IsBlind() )
+				{
+					return FL_EDICT_DONTSEND;
+				}
+
+				// Anti-Smoke: if line of sight is obstructed by active smoke cloud, do not send enemy entity
+				if ( TheBots && TheBots->IsLineBlockedBySmoke( pRecipientPlayer->EyePosition(), EyePosition(), 1.0f ) )
+				{
+					return FL_EDICT_DONTSEND;
+				}
+			}
+		}
+	}
+
+	return BaseClass::ShouldTransmit( pInfo );
 }
 
 // Handles the special "radio" alias commands we're creating to accommodate the scripts players use

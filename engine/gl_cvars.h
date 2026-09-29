@@ -49,15 +49,11 @@ static inline bool CanCheat()
 
 static inline int WireFrameMode( void )
 {
-	if ( CanCheat() )
-		return mat_wireframe.GetInt();
 	return 0;
 }
 
 static inline bool ShouldDrawInWireFrameMode( void )
 {
-	if ( CanCheat() )
-		return ( mat_wireframe.GetInt() != 0 );
 	return false;
 }
 

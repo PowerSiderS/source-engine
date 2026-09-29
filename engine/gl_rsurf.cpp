@@ -1432,7 +1432,7 @@ ConVar mat_surfacemat("mat_surfacemat", "0", FCVAR_CHEAT);
 //-----------------------------------------------------------------------------
 static void ComputeDebugSettings( void )
 {
-	g_ShaderDebug.wireframe = ShouldDrawInWireFrameMode() || (r_drawworld.GetInt() == 2);
+	g_ShaderDebug.wireframe = false;
 	g_ShaderDebug.normals = mat_normals.GetBool();
 	g_ShaderDebug.luxels = mat_luxels.GetBool();
 	g_ShaderDebug.bumpBasis = mat_bumpbasis.GetBool();
@@ -1721,7 +1721,7 @@ void ResetWorldRenderList( CWorldRenderList *pRenderList )
 void Shader_WorldBegin( CWorldRenderList *pRenderList )
 {
 	// Cache the convars so we don't keep accessing them...
-	s_ShaderConvars.m_bDrawWorld = r_drawworld.GetBool();
+	s_ShaderConvars.m_bDrawWorld = true;
 	s_ShaderConvars.m_nDrawLeaf = r_drawleaf.GetInt();
 	s_ShaderConvars.m_bDrawFuncDetail = r_drawfuncdetail.GetBool();
 
