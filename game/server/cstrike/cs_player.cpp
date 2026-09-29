@@ -5906,6 +5906,28 @@ bool CCSPlayer::BumpWeapon( CBaseCombatWeapon *pBaseWeapon )
 	return false;
 }
 
+bool CCSPlayer::PickupWeaponByUse( CWeaponCSBase *pWeapon )
+{
+	if ( !pWeapon || pWeapon->GetOwner() || !Weapon_CanUse( pWeapon ) || !g_pGameRules->CanHavePlayerItem( this, pWeapon ) )
+		return false;
+
+	if ( HasShield() && !pWeapon->GetCSWpnData().m_bCanUseWithShield )
+		return false;
+
+	const int iSlot = pWeapon->GetSlot();
+	if ( iSlot == WEAPON_SLOT_RIFLE || iSlot == WEAPON_SLOT_PISTOL )
+	{
+		CBaseCombatWeapon *pEquippedWeapon = Weapon_GetSlot( iSlot );
+		if ( pEquippedWeapon && pEquippedWeapon != pWeapon )
+		{
+			if ( !CSWeaponDrop( pEquippedWeapon, false, true ) )
+				return false;
+		}
+	}
+
+	return BumpWeapon( pWeapon );
+}
+
 
 void CCSPlayer::ResetStamina( void )
 {
@@ -6727,12 +6749,9 @@ bool CCSPlayer::IsUseableEntity( CBaseEntity *pEntity, unsigned int requiredCaps
 
 	if( pCSWepaon )
 	{
-		// Cores: allow grenade drop and pickup
-		if ( pCSWepaon->GetCSWpnData().m_WeaponType == WEAPONTYPE_GRENADE || pCSWepaon->GetSlot() == WEAPON_SLOT_GRENADES )
-		{
-			BumpWeapon( pCSWepaon );
-			return true;
-		}
+		// CWeaponCSBase::Use performs the explicit E-key pickup. Keeping the
+		// mutation there avoids picking weapons up while FindUseEntity is only
+		// testing candidates.
 		return true;
 	}
 

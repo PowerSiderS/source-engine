@@ -106,25 +106,12 @@ struct KnifeModelInfo_t
 static const KnifeModelInfo_t s_KnifeModels[] =
 {
 	{ "default",        "Default Knife",     "models/weapons/v_knife_t.mdl",                      "models/weapons/w_knife_t.mdl" },
-	{ "bayonet",        "Bayonet",           "models/codex_knives/bayoneta/v_knife_t.mdl",        "models/weapons/w_knife_t.mdl" },
-	{ "bowie",          "Bowie Knife",       "models/codex_knives/bowie/v_knife_t.mdl",           "models/weapons/w_knife_t.mdl" },
-	{ "butterfly",      "Butterfly Knife",   "models/codex_knives/butterfly/v_knife_t.mdl",       "models/weapons/w_knife_t.mdl" },
-	{ "classic",        "Classic Knife",     "models/codex_knives/classic/v_knife_t.mdl",         "models/weapons/w_knife_t.mdl" },
-	{ "falchion",       "Falchion Knife",    "models/codex_knives/falchion/v_knife_t.mdl",        "models/weapons/w_knife_t.mdl" },
-	{ "flip",           "Flip Knife",        "models/codex_knives/flip/v_knife_t.mdl",            "models/weapons/w_knife_t.mdl" },
 	{ "gut",            "Gut Knife",         "models/codex_knives/gut/v_knife_t.mdl",             "models/weapons/w_knife_t.mdl" },
-	{ "huntsman",       "Huntsman Knife",    "models/codex_knives/huntsman/v_knife_t.mdl",        "models/weapons/w_knife_t.mdl" },
 	{ "karambit",       "Karambit",          "models/codex_knives/karambit/v_knife_t.mdl",        "models/weapons/w_knife_t.mdl" },
-	{ "kukri",          "Kukri Knife",       "models/codex_knives/kukri/v_knife_t.mdl",           "models/weapons/w_knife_t.mdl" },
-	{ "m9",             "M9 Bayonet",        "models/codex_knives/m9/v_knife_t.mdl",              "models/weapons/w_knife_t.mdl" },
-	{ "shadow_daggers", "Shadow Daggers",    "models/codex_knives/shadow_daggers/v_knife_t.mdl",  "models/weapons/w_knife_t.mdl" },
-	{ "skeleton",       "Skeleton Knife",    "models/codex_knives/skeleton/v_knife_t.mdl",        "models/weapons/w_knife_t.mdl" },
-	{ "stiletto",       "Stiletto Knife",    "models/codex_knives/stiletto/v_knife_t.mdl",        "models/weapons/w_knife_t.mdl" },
-	{ "survival",       "Survival Knife",    "models/codex_knives/survival/v_knife_t.mdl",        "models/weapons/w_knife_t.mdl" },
-	{ "talon",          "Talon Knife",       "models/codex_knives/talon/v_knife_t.mdl",           "models/weapons/w_knife_t.mdl" }
+	{ "m9",             "M9 Bayonet",        "models/codex_knives/m9/v_knife_t.mdl",              "models/weapons/w_knife_t.mdl" }
 };
 
-ConVar cl_knife_choice( "cl_knife_choice", "0", FCVAR_USERINFO | FCVAR_ARCHIVE, "Current knife skin index (0=Default, 1=Bayonet, 2=Bowie, 3=Butterfly, 4=Classic, 5=Falchion, 6=Flip, 7=Gut, 8=Huntsman, 9=Karambit, 10=Kukri, 11=M9, 12=Shadow Daggers, 13=Skeleton, 14=Stiletto, 15=Survival, 16=Talon)" );
+ConVar cl_knife_choice( "cl_knife_choice", "0", FCVAR_USERINFO | FCVAR_ARCHIVE, "Current knife skin index (0=Default, 1=Gut, 2=Karambit, 3=M9)" );
 
 // ----------------------------------------------------------------------------- //
 // CKnife implementation.
@@ -545,11 +532,11 @@ const char *CKnife::GetViewModel( int viewmodelindex ) const
 	{
 		int choice = 0;
 #ifdef CLIENT_DLL
-		choice = cl_knife_choice.GetInt();
+		choice = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
 #else
 		const char *val = engine->GetClientConVarValue( pOwner->entindex(), "cl_knife_choice" );
 		if ( val )
-			choice = atoi( val );
+			choice = clamp( atoi( val ), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
 #endif
 		if ( choice >= 0 && choice < ARRAYSIZE(s_KnifeModels) )
 		{
@@ -591,11 +578,11 @@ void CKnife::ItemPostFrame( void )
 	{
 		int nChoice = 0;
 #ifdef CLIENT_DLL
-		nChoice = cl_knife_choice.GetInt();
+		nChoice = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
 #else
 		const char *val = engine->GetClientConVarValue( pOwner->entindex(), "cl_knife_choice" );
 		if ( val )
-			nChoice = atoi( val );
+			nChoice = clamp( atoi( val ), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
 #endif
 		if ( m_nActiveKnifeChoice != nChoice )
 		{
@@ -613,11 +600,11 @@ bool CKnife::CanDrop()
 }
 
 #ifdef CLIENT_DLL
-CON_COMMAND( knife_select, "Select a knife skin by index (0-16) or name" )
+CON_COMMAND( knife_select, "Select a knife skin by index (0-3) or name" )
 {
 	if ( args.ArgC() < 2 )
 	{
-		Msg( "Uso: knife_select <numero 0-16 ou nome>\n" );
+		Msg( "Uso: knife_select <numero 0-3 ou nome>\n" );
 		int cur = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
 		Msg( "Faca atual: %s (%d)\n", s_KnifeModels[cur].displayName, cur );
 		return;
@@ -654,14 +641,16 @@ CON_COMMAND( knife_select, "Select a knife skin by index (0-16) or name" )
 
 CON_COMMAND( knife_next, "Equip next knife skin" )
 {
-	int nextChoice = ( cl_knife_choice.GetInt() + 1 ) % ARRAYSIZE(s_KnifeModels);
+	int currentChoice = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+	int nextChoice = ( currentChoice + 1 ) % ARRAYSIZE(s_KnifeModels);
 	cl_knife_choice.SetValue( nextChoice );
 	Msg( "Faca alterada para: %s\n", s_KnifeModels[nextChoice].displayName );
 }
 
 CON_COMMAND( knife_prev, "Equip previous knife skin" )
 {
-	int prevChoice = cl_knife_choice.GetInt() - 1;
+	int currentChoice = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+	int prevChoice = currentChoice - 1;
 	if ( prevChoice < 0 )
 		prevChoice = ARRAYSIZE(s_KnifeModels) - 1;
 	cl_knife_choice.SetValue( prevChoice );
@@ -670,7 +659,8 @@ CON_COMMAND( knife_prev, "Equip previous knife skin" )
 
 CON_COMMAND( knife_menu, "Open in-game knife switcher" )
 {
-	int nextIndex = ( cl_knife_choice.GetInt() + 1 ) % ARRAYSIZE(s_KnifeModels);
+	int currentChoice = clamp( cl_knife_choice.GetInt(), 0, (int)ARRAYSIZE(s_KnifeModels) - 1 );
+	int nextIndex = ( currentChoice + 1 ) % ARRAYSIZE(s_KnifeModels);
 	cl_knife_choice.SetValue( nextIndex );
 
 	Msg( "\n=== SKINCHANGER: FACA ALTERADA PARA %s ===\n", s_KnifeModels[nextIndex].displayName );

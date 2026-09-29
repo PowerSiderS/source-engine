@@ -43,6 +43,9 @@
 
 ConVar weapon_accuracy_model( "weapon_accuracy_model", "2", FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY | FCVAR_ARCHIVE );
 ConVar weapon_recoil_decay_coefficient( "weapon_recoil_decay_coefficient", "2.0", FCVAR_CHEAT | FCVAR_REPLICATED, "" );
+ConVar weapon_air_spread_scale( "weapon_air_spread_scale", "1.0", FCVAR_CHEAT | FCVAR_REPLICATED, "Scale factor for jumping inaccuracy", true, 0.0f, false, 1.0f );
+
+static const float kCSGOLegacyJumpImpulse = sqrtf( 2.0f * 800.0f * 57.0f );
 
 
 // ----------------------------------------------------------------------------- //
@@ -848,11 +851,35 @@ float CWeaponCSBase::GetInaccuracy() const
 	if ( fMaxSpeed == 0.0f )
 		fMaxSpeed = GetCSWpnData().m_flMaxSpeed;
 
-	return m_fAccuracyPenalty +
-		RemapValClamped(pPlayer->GetAbsVelocity().Length2D(),
+	float fAccuracy = m_fAccuracyPenalty;
+	float flMovementInaccuracyScale = RemapValClamped( pPlayer->GetAbsVelocity().Length2D(),
 		fMaxSpeed * CS_PLAYER_SPEED_DUCK_MODIFIER,
-		fMaxSpeed * 0.95f,							// max out at 95% of run speed to avoid jitter near max speed
-		0.0f, weaponInfo.m_fInaccuracyMove[m_weaponMode]);
+		fMaxSpeed * 0.95f,
+		0.0f, 1.0f );
+
+	if ( flMovementInaccuracyScale > 0.0f )
+	{
+		// CS:GO Legacy uses a sharp fourth-root curve while running. Walking keeps
+		// the linear curve so counter-strafing and shift-walking remain predictable.
+		if ( !( pPlayer->m_nButtons & IN_SPEED ) )
+			flMovementInaccuracyScale = powf( flMovementInaccuracyScale, 0.25f );
+
+		fAccuracy += flMovementInaccuracyScale * weaponInfo.m_fInaccuracyMove[m_weaponMode];
+	}
+
+	if ( pPlayer->GetGroundEntity() == NULL )
+	{
+		const float flVerticalSpeed = fabsf( pPlayer->GetAbsVelocity().z );
+		const float flInitialJumpPenalty = weaponInfo.m_fInaccuracyJumpInitial[m_weaponMode] * weapon_air_spread_scale.GetFloat();
+		const float flSqrtJumpSpeed = sqrtf( kCSGOLegacyJumpImpulse );
+		const float flSqrtVerticalSpeed = sqrtf( flVerticalSpeed );
+		float flAirSpeedInaccuracy = RemapVal( flSqrtVerticalSpeed,
+			flSqrtJumpSpeed * 0.25f, flSqrtJumpSpeed, 0.0f, flInitialJumpPenalty );
+		flAirSpeedInaccuracy = clamp( flAirSpeedInaccuracy, 0.0f, flInitialJumpPenalty * 2.0f );
+		fAccuracy += flAirSpeedInaccuracy;
+	}
+
+	return MIN( fAccuracy, 1.0f );
 }
 
 
@@ -1648,11 +1675,12 @@ void CWeaponCSBase::DefaultTouch(CBaseEntity *pOther)
 	//-----------------------------------------------------------------------------
 	void CWeaponCSBase::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 	{
-		CBasePlayer *pPlayer = ToBasePlayer( pActivator );
+		CCSPlayer *pPlayer = ToCSPlayer( pActivator );
 		
 		if ( pPlayer )
 		{
 			m_OnPlayerUse.FireOutput( pActivator, pCaller );
+			pPlayer->PickupWeaponByUse( this );
 		}
 	}
 
@@ -2353,13 +2381,14 @@ void CWeaponCSBase::UpdateAccuracyPenalty()
 	// on ladder?
 	if ( pPlayer->GetMoveType() == MOVETYPE_LADDER )
 	{
-		fNewPenalty += weaponInfo.m_fInaccuracyStand[m_weaponMode] + weaponInfo.m_fInaccuracyLadder[m_weaponMode];
+		fNewPenalty += weaponInfo.m_fInaccuracyLadder[m_weaponMode] + weaponInfo.m_fInaccuracyLadder[Primary_Mode];
 	}
 	// in the air?
-// 	else if ( !FBitSet( pPlayer->GetFlags(), FL_ONGROUND ) )
-// 	{
-// 		fNewPenalty += weaponInfo.m_fInaccuracyStand[m_weaponMode] + weaponInfo.m_fInaccuracyJump[m_weaponMode];
-// 	}
+	else if ( pPlayer->GetGroundEntity() == NULL )
+	{
+		fNewPenalty += weaponInfo.m_fInaccuracyStand[m_weaponMode];
+		fNewPenalty += weaponInfo.m_fInaccuracyJump[m_weaponMode] * weapon_air_spread_scale.GetFloat();
+	}
 	else if ( FBitSet( pPlayer->GetFlags(), FL_DUCKING) )
 	{
 		fNewPenalty += weaponInfo.m_fInaccuracyCrouch[m_weaponMode];
@@ -2451,11 +2480,10 @@ float CWeaponCSBase::GetRecoveryTime( void )
 	}
 }
 
-const float kJumpVelocity = sqrtf(2.0f * 800.0f * 57.0f);	// see CCSGameMovement::CheckJumpButton()
-
 void CWeaponCSBase::OnJump( float fImpulse )
 {
-	m_fAccuracyPenalty += GetCSWpnData().m_fInaccuracyJump[m_weaponMode] * fImpulse / kJumpVelocity;
+	// The airborne base and vertical-speed penalties are evaluated every frame in
+	// UpdateAccuracyPenalty/GetInaccuracy, as in CS:GO Legacy.
 }
 
 void CWeaponCSBase::OnLand( float fVelocity )

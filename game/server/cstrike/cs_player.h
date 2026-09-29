@@ -490,6 +490,7 @@ public:
 
 	void Weapon_Equip( CBaseCombatWeapon *pWeapon );
 	virtual bool BumpWeapon( CBaseCombatWeapon *pWeapon );
+	bool PickupWeaponByUse( CWeaponCSBase *pWeapon );
 	virtual bool Weapon_CanUse( CBaseCombatWeapon *pWeapon );
 
 	void ClearFlashbangScreenFade ( void );
