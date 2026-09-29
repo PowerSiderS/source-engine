@@ -27,7 +27,6 @@
 #include "OptionsSubVideo.h"
 #include "OptionsSubVoice.h"
 #include "OptionsSubMultiplayer.h"
-#include "OptionsSubInventory.h"
 #include "OptionsSubDifficulty.h"
 #include "OptionsSubPortal.h"
 #ifdef WIN32
@@ -48,8 +47,8 @@ COptionsDialog::COptionsDialog(vgui::Panel *parent) : PropertyDialog(parent, "Op
 {
 	SetDeleteSelfOnClose(true);
 
-	int w = 900;
-	int h = 560;
+	int w = 512;
+	int h = 406;
 	if (IsProportional())
 	{
 		w = scheme()->GetProportionalScaledValueEx(GetScheme(), w);
@@ -87,7 +86,6 @@ COptionsDialog::COptionsDialog(vgui::Panel *parent) : PropertyDialog(parent, "Op
 
 	AddPage(new COptionsSubKeyboard(this), "#GameUI_Keyboard");
 	AddPage(new COptionsSubMouse(this), "#GameUI_Mouse");
-	AddPage(new COptionsSubInventory(this), "Inventario");
 
 #ifdef ANDROID
 	AddPage(new COptionsSubTouch(this), "Touch");

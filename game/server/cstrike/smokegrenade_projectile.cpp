@@ -20,6 +20,7 @@ LINK_ENTITY_TO_CLASS( smokegrenade_projectile, CSmokeGrenadeProjectile );
 PRECACHE_WEAPON_REGISTER( smokegrenade_projectile );
 
 BEGIN_DATADESC( CSmokeGrenadeProjectile )
+	DEFINE_FIELD( m_flDetonateDeadline, FIELD_TIME ),
 	DEFINE_THINKFUNC( Think_Detonate ),
 	DEFINE_THINKFUNC( Think_Fade ),
 	DEFINE_THINKFUNC( Think_Remove )
@@ -63,13 +64,14 @@ void CSmokeGrenadeProjectile::SetTimer( float timer )
 {
 	SetThink( &CSmokeGrenadeProjectile::Think_Detonate );
 	SetNextThink( gpGlobals->curtime + timer );
+	m_flDetonateDeadline = gpGlobals->curtime + timer + 1.5f;
 
 	TheBots->SetGrenadeRadius( this, 0.0f );
 }
 
 void CSmokeGrenadeProjectile::Think_Detonate()
 {
-	if ( GetAbsVelocity().Length() > 0.1 )
+	if ( GetAbsVelocity().Length() > 0.1f && gpGlobals->curtime < m_flDetonateDeadline )
 	{
 		// Still moving. Don't detonate yet.
 		SetNextThink( gpGlobals->curtime + 0.2 );

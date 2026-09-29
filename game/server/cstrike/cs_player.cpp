@@ -614,6 +614,7 @@ void CCSPlayer::Precache()
 	PrecacheScriptSound( "Flesh.BulletImpact" );
 	PrecacheScriptSound( "Player.DamageKevlar" );
 	PrecacheScriptSound( "Player.PickupWeapon" );
+	PrecacheScriptSound( "Player.UseDeny" );
 	PrecacheScriptSound( "Player.NightVisionOff" );
 	PrecacheScriptSound( "Player.NightVisionOn" );
 	PrecacheScriptSound( "Player.FlashlightOn" );
@@ -5910,10 +5911,16 @@ bool CCSPlayer::BumpWeapon( CBaseCombatWeapon *pBaseWeapon )
 bool CCSPlayer::PickupWeaponByUse( CWeaponCSBase *pWeapon )
 {
 	if ( !pWeapon || pWeapon->GetOwner() || !Weapon_CanUse( pWeapon ) || !g_pGameRules->CanHavePlayerItem( this, pWeapon ) )
+	{
+		PlayUseDenySound();
 		return false;
+	}
 
 	if ( HasShield() && !pWeapon->GetCSWpnData().m_bCanUseWithShield )
+	{
+		PlayUseDenySound();
 		return false;
+	}
 
 	const int iSlot = pWeapon->GetSlot();
 	if ( CSUsePickupShouldReplaceSlot( iSlot ) )
@@ -5922,7 +5929,10 @@ bool CCSPlayer::PickupWeaponByUse( CWeaponCSBase *pWeapon )
 		if ( pEquippedWeapon && pEquippedWeapon != pWeapon )
 		{
 			if ( !CSWeaponDrop( pEquippedWeapon, false, true ) )
+			{
+				PlayUseDenySound();
 				return false;
+			}
 		}
 	}
 
@@ -7624,9 +7634,8 @@ void CCSPlayer::StopReplayMode()
 
 void CCSPlayer::PlayUseDenySound()
 {
-	// Don't do a sound here because it can mute your footsteps giving you an advantage.
-	// The CS:S content for this sound is silent anyways.
-	//EmitSound( "Player.UseDeny" );
+	CSingleUserRecipientFilter filter( this );
+	EmitSound( filter, entindex(), "Player.UseDeny" );
 }
 
 //=============================================================================

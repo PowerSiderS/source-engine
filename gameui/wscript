@@ -89,7 +89,6 @@ def build(bld):
 		'ModOptionsSubGyro.cpp',
 		'OptionsSubAudio.cpp',
 		'OptionsSubDifficulty.cpp',
-		'OptionsSubInventory.cpp',
 		'OptionsSubGame.cpp',
 		'OptionsSubKeyboard.cpp',
 		'OptionsSubMouse.cpp',
@@ -116,7 +115,6 @@ def build(bld):
 		'../common',
 		'../common/GameUI',
 		'../thirdparty'
-		,'../game/shared'
 	]
 
 	defines = []

@@ -7,7 +7,6 @@
 #include "cbase.h"
 #include "weapon_knife.h"
 #include "cs_gamerules.h"
-#include "cs_knife_models.h"
 
 #if defined( CLIENT_DLL )
 	#include "c_cs_player.h"
@@ -96,15 +95,12 @@ PRECACHE_WEAPON_REGISTER( weapon_knife );
 
 #endif
 
-ConVar cl_knife_choice( "cl_knife_choice", "0", FCVAR_USERINFO | FCVAR_ARCHIVE, "Current knife inventory selection (0-16)" );
-
 // ----------------------------------------------------------------------------- //
 // CKnife implementation.
 // ----------------------------------------------------------------------------- //
 
 CKnife::CKnife()
 {
-	m_nActiveKnifeChoice = -1;
 }
 
 
@@ -122,14 +118,6 @@ bool CKnife::CanBeSelected()
 void CKnife::Precache()
 {
 	BaseClass::Precache();
-
-	for ( int i = 0; i < ARRAYSIZE(s_KnifeModels); i++ )
-	{
-		if ( s_KnifeModels[i].v_model && s_KnifeModels[i].v_model[0] )
-			PrecacheModel( s_KnifeModels[i].v_model );
-		if ( s_KnifeModels[i].w_model && s_KnifeModels[i].w_model[0] )
-			PrecacheModel( s_KnifeModels[i].w_model );
-	}
 
 	PrecacheScriptSound( "Weapon_Knife.Deploy" );
 	PrecacheScriptSound( "Weapon_Knife.Slash" );
@@ -510,70 +498,12 @@ bool CKnife::SwingOrStab( bool bStab )
 	return bDidHit;
 }
 
-const char *CKnife::GetViewModel( int viewmodelindex ) const
-{
-	CCSPlayer *pOwner = GetPlayerOwner();
-	if ( pOwner )
-	{
-		int choice = 0;
-#ifdef CLIENT_DLL
-		choice = CSClampKnifeChoice( cl_knife_choice.GetInt() );
-#else
-		const char *val = engine->GetClientConVarValue( pOwner->entindex(), "cl_knife_choice" );
-		if ( val )
-			choice = CSClampKnifeChoice( atoi( val ) );
-#endif
-		if ( choice >= 0 && choice < ARRAYSIZE(s_KnifeModels) )
-		{
-			return s_KnifeModels[choice].v_model;
-		}
-	}
-
-	return BaseClass::GetViewModel( viewmodelindex );
-}
-
-void CKnife::UpdateSkin( void )
-{
-	CCSPlayer *pOwner = GetPlayerOwner();
-	if ( !pOwner )
-		return;
-
-	CBaseViewModel *pVM = pOwner->GetViewModel( m_nViewModelIndex );
-	if ( pVM )
-	{
-		const char *pszModel = GetViewModel( m_nViewModelIndex );
-		pVM->SetWeaponModel( pszModel, this );
-		SendWeaponAnim( GetDeployActivity() );
-		pOwner->SetNextAttack( gpGlobals->curtime + 0.35f );
-		m_flNextPrimaryAttack = gpGlobals->curtime + 0.35f;
-		m_flNextSecondaryAttack = gpGlobals->curtime + 0.35f;
-	}
-}
-
 void CKnife::ItemPostFrame( void )
 {
 	if( m_flSmackTime > 0 && gpGlobals->curtime > m_flSmackTime )
 	{
 		Smack();
 		m_flSmackTime = -1;
-	}
-
-	CCSPlayer *pOwner = GetPlayerOwner();
-	if ( pOwner )
-	{
-		int nChoice = 0;
-#ifdef CLIENT_DLL
-		nChoice = CSClampKnifeChoice( cl_knife_choice.GetInt() );
-#else
-		const char *val = engine->GetClientConVarValue( pOwner->entindex(), "cl_knife_choice" );
-		if ( val )
-			nChoice = CSClampKnifeChoice( atoi( val ) );
-#endif
-		if ( m_nActiveKnifeChoice != nChoice )
-		{
-			m_nActiveKnifeChoice = nChoice;
-			UpdateSkin();
-		}
 	}
 
 	BaseClass::ItemPostFrame();
@@ -583,79 +513,5 @@ bool CKnife::CanDrop()
 {
 	return false;
 }
-
-#ifdef CLIENT_DLL
-CON_COMMAND( knife_select, "Select a knife inventory item by index (0-16) or name" )
-{
-	if ( args.ArgC() < 2 )
-	{
-		Msg( "Uso: knife_select <numero 0-16 ou nome>\n" );
-		int cur = CSClampKnifeChoice( cl_knife_choice.GetInt() );
-		Msg( "Faca atual: %s (%d)\n", s_KnifeModels[cur].displayName, cur );
-		return;
-	}
-
-	const char *arg = args[1];
-	int targetIndex = -1;
-	if ( isdigit( arg[0] ) )
-	{
-		targetIndex = atoi( arg );
-	}
-	else
-	{
-		for ( int i = 0; i < ARRAYSIZE(s_KnifeModels); i++ )
-		{
-			if ( Q_stristr( s_KnifeModels[i].name, arg ) || Q_stristr( s_KnifeModels[i].displayName, arg ) )
-			{
-				targetIndex = i;
-				break;
-			}
-		}
-	}
-
-	if ( targetIndex >= 0 && targetIndex < ARRAYSIZE(s_KnifeModels) )
-	{
-		cl_knife_choice.SetValue( targetIndex );
-		Msg( "Faca selecionada: %s\n", s_KnifeModels[targetIndex].displayName );
-	}
-	else
-	{
-		Warning( "Faca invalida: %s\n", arg );
-	}
-}
-
-CON_COMMAND( knife_next, "Equip next knife skin" )
-{
-	int currentChoice = CSClampKnifeChoice( cl_knife_choice.GetInt() );
-	int nextChoice = ( currentChoice + 1 ) % ARRAYSIZE(s_KnifeModels);
-	cl_knife_choice.SetValue( nextChoice );
-	Msg( "Faca alterada para: %s\n", s_KnifeModels[nextChoice].displayName );
-}
-
-CON_COMMAND( knife_prev, "Equip previous knife skin" )
-{
-	int currentChoice = CSClampKnifeChoice( cl_knife_choice.GetInt() );
-	int prevChoice = currentChoice - 1;
-	if ( prevChoice < 0 )
-		prevChoice = ARRAYSIZE(s_KnifeModels) - 1;
-	cl_knife_choice.SetValue( prevChoice );
-	Msg( "Faca alterada para: %s\n", s_KnifeModels[prevChoice].displayName );
-}
-
-CON_COMMAND( knife_menu, "Open in-game knife switcher" )
-{
-	int currentChoice = CSClampKnifeChoice( cl_knife_choice.GetInt() );
-	int nextIndex = ( currentChoice + 1 ) % ARRAYSIZE(s_KnifeModels);
-	cl_knife_choice.SetValue( nextIndex );
-
-	Msg( "\n=== SKINCHANGER: FACA ALTERADA PARA %s ===\n", s_KnifeModels[nextIndex].displayName );
-	for ( int i = 0; i < ARRAYSIZE(s_KnifeModels); i++ )
-	{
-		const char *marker = ( i == nextIndex ) ? " [* ATIVA]" : "";
-		Msg( " [%d] %-16s (comando: knife_select %d)%s\n", i, s_KnifeModels[i].displayName, i, marker );
-	}
-	Msg( "Dica: Voce pode usar 'knife_select <nome>' ou vincular 'knife_next' a uma tecla!\n\n" );
-}
-#endif
 
 

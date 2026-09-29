@@ -7,6 +7,7 @@
 #include "cbase.h"
 #include <KeyValues.h>
 #include "cs_weapon_parse.h"
+#include "cs_legacy_weapon_tuning.h"
 #include "cs_shareddefs.h"
 #include "weapon_csbase.h"
 #include "icvar.h"
@@ -457,6 +458,10 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	m_WeaponType = WeaponClassFromString(pTypeString);
 
 	m_bFullAuto = pKeyValuesData->GetBool("FullAuto");
+
+	// Gameplay balance is compiled into both DLLs. Content packs may replace
+	// models, materials and sounds without silently changing recoil or damage.
+	CSApplyLegacyWeaponTuning( *this, AliasToWeaponID( GetTranslatedWeaponAlias( szWeaponName ) ) );
 
 	// Read the addon model.
 	Q_strncpy( m_szAddonModel, pKeyValuesData->GetString( "AddonModel" ), sizeof( m_szAddonModel ) );

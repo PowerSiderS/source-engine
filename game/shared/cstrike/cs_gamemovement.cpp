@@ -11,6 +11,7 @@
 #include "in_buttons.h"
 #include "movevars_shared.h"
 #include "weapon_csbase.h"
+#include "cs_legacy_gameplay.h"
 
 #ifdef CLIENT_DLL
 	#include "c_cs_player.h"
@@ -445,7 +446,7 @@ void CCSGameMovement::WalkMove( void )
 	{
 		float flRatio;
 
-		flRatio = ( STAMINA_MAX - ( ( m_pCSPlayer->m_flStamina / 1000.0 ) * STAMINA_RECOVER_RATE ) ) / STAMINA_MAX;
+		flRatio = CSLegacyStaminaRatio( m_pCSPlayer->m_flStamina, STAMINA_RECOVER_RATE, STAMINA_MAX );
 
 		// This Goldsrc code was run with variable timesteps and it had framerate dependencies.
 		// People looking at Goldsrc for reference are usually
@@ -621,7 +622,7 @@ ConVar sv_enablebunnyhopping( "sv_enablebunnyhopping", "0", FCVAR_REPLICATED | F
 // Only allow bunny jumping up to 1.1x server / player maxspeed setting
 #define BUNNYJUMP_MAX_SPEED_FACTOR 1.1f
 
-// taken from TF2 but changed BUNNYJUMP_MAX_SPEED_FACTOR from 1.1 to 1.0
+// Crop excess landing speed to the legacy CS:GO 1.1x movement cap.
 void CCSGameMovement::PreventBunnyJumping()
 {
 	// Speed at which bunny jumping is limited
@@ -748,7 +749,7 @@ bool CCSGameMovement::CheckJumpButton( void )
 	{
 		float flRatio;
 
-		flRatio = ( STAMINA_MAX - ( ( m_pCSPlayer->m_flStamina  / 1000.0 ) * STAMINA_RECOVER_RATE ) ) / STAMINA_MAX;
+		flRatio = CSLegacyStaminaRatio( m_pCSPlayer->m_flStamina, STAMINA_RECOVER_RATE, STAMINA_MAX );
 
 		mv->m_vecVelocity[2] *= flRatio;
 	}

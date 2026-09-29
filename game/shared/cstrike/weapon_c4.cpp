@@ -7,6 +7,7 @@
 #include "cbase.h"
 #include "weapon_c4.h"
 #include "in_buttons.h"
+#include "cs_legacy_gameplay.h"
 #include "cs_gamerules.h"
 #include "decals.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
@@ -378,12 +379,13 @@ END_PREDICTION_DATA()
 			//if the defusing process has not ended yet
 			if ( m_flDefuseCountDown > gpGlobals->curtime)
 			{
-				int iOnGround = FBitSet( m_pBombDefuser->GetFlags(), FL_ONGROUND );
+				const bool bOnGround = FBitSet( m_pBombDefuser->GetFlags(), FL_ONGROUND ) != 0;
+				const bool bUseHeld = ( m_pBombDefuser->m_nButtons & IN_USE ) != 0;
 
 				//if the bomb defuser has stopped defusing the bomb
-				if( m_flNextDefuse < gpGlobals->curtime || !iOnGround )
+				if( CSShouldCancelDefuse( bUseHeld, bOnGround, m_flNextDefuse < gpGlobals->curtime ) )
 				{
-					if ( !iOnGround && m_pBombDefuser->IsAlive() )
+					if ( !bOnGround && m_pBombDefuser->IsAlive() )
 						ClientPrint( m_pBombDefuser, HUD_PRINTCENTER, "#C4_Defuse_Must_Be_On_Ground");
 
 					// release the player from being frozen

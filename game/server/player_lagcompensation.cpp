@@ -79,6 +79,8 @@ public:
 		m_flSimulationTime = -1;
 		m_masterSequence = 0;
 		m_masterCycle = 0;
+		for ( int poseIndex = 0; poseIndex < MAXSTUDIOPOSEPARAM; ++poseIndex )
+			m_flPoseParameters[poseIndex] = 0.0f;
 	}
 
 	LagRecord( const LagRecord& src )
@@ -95,6 +97,8 @@ public:
 		}
 		m_masterSequence = src.m_masterSequence;
 		m_masterCycle = src.m_masterCycle;
+		for ( int poseIndex = 0; poseIndex < MAXSTUDIOPOSEPARAM; ++poseIndex )
+			m_flPoseParameters[poseIndex] = src.m_flPoseParameters[poseIndex];
 	}
 
 	// Did player die this frame
@@ -112,6 +116,7 @@ public:
 	LayerRecord				m_layerRecords[MAX_LAYER_RECORDS];
 	int						m_masterSequence;
 	float					m_masterCycle;
+	float					m_flPoseParameters[MAXSTUDIOPOSEPARAM];
 };
 
 
@@ -238,7 +243,7 @@ void CLagCompensationManager::FrameUpdatePostEntityThink()
 	VPROF_BUDGET( "FrameUpdatePostEntityThink", "CLagCompensationManager" );
 
 	// remove all records before that time:
-	int flDeadtime = gpGlobals->curtime - sv_maxunlag.GetFloat();
+	const float flDeadtime = gpGlobals->curtime - sv_maxunlag.GetFloat();
 
 	// Iterate all active players
 	for ( int i = 1; i <= gpGlobals->maxClients; i++ )
@@ -299,7 +304,7 @@ void CLagCompensationManager::FrameUpdatePostEntityThink()
 		record.m_vecMinsPreScaled	= pPlayer->CollisionProp()->OBBMinsPreScaled();
 		record.m_vecMaxsPreScaled	= pPlayer->CollisionProp()->OBBMaxsPreScaled();
 
-		int layerCount = pPlayer->GetNumAnimOverlays();
+		const int layerCount = MIN( pPlayer->GetNumAnimOverlays(), MAX_LAYER_RECORDS );
 		for( int layerIndex = 0; layerIndex < layerCount; ++layerIndex )
 		{
 			CAnimationLayer *currentLayer = pPlayer->GetAnimOverlay(layerIndex);
@@ -313,6 +318,10 @@ void CLagCompensationManager::FrameUpdatePostEntityThink()
 		}
 		record.m_masterSequence = pPlayer->GetSequence();
 		record.m_masterCycle = pPlayer->GetCycle();
+		for ( int poseIndex = 0; poseIndex < MAXSTUDIOPOSEPARAM; ++poseIndex )
+		{
+			record.m_flPoseParameters[poseIndex] = pPlayer->GetPoseParameter( poseIndex );
+		}
 	}
 
 	//Clear the current player.
@@ -624,6 +633,19 @@ void CLagCompensationManager::BacktrackPlayer( CBasePlayer *pPlayer, float flTar
 		// If the master state changes, all layers will be invalid too, so don't interp (ya know, interp barely ever happens anyway)
 		interpolationAllowed = true;
 	}
+
+	// Hitboxes are built from the complete animated skeleton. Rewind every pose
+	// parameter with the sequence and overlays so crouching, aiming and strafing
+	// resolve to the same bones the shooter saw.
+	for ( int poseIndex = 0; poseIndex < MAXSTUDIOPOSEPARAM; ++poseIndex )
+	{
+		restore->m_flPoseParameters[poseIndex] = pPlayer->GetPoseParameter( poseIndex );
+		const float flPose = ( frac > 0.0f && interpolationAllowed )
+			? Lerp( frac, record->m_flPoseParameters[poseIndex], prevRecord->m_flPoseParameters[poseIndex] )
+			: record->m_flPoseParameters[poseIndex];
+		pPlayer->SetPoseParameter( poseIndex, flPose );
+		change->m_flPoseParameters[poseIndex] = flPose;
+	}
 	
 	////////////////////////
 	// First do the master settings
@@ -654,7 +676,7 @@ void CLagCompensationManager::BacktrackPlayer( CBasePlayer *pPlayer, float flTar
 
 	////////////////////////
 	// Now do all the layers
-	int layerCount = pPlayer->GetNumAnimOverlays();
+	const int layerCount = MIN( pPlayer->GetNumAnimOverlays(), MAX_LAYER_RECORDS );
 	for( int layerIndex = 0; layerIndex < layerCount; ++layerIndex )
 	{
 		CAnimationLayer *currentLayer = pPlayer->GetAnimOverlay(layerIndex);
@@ -807,8 +829,12 @@ void CLagCompensationManager::FinishLagCompensation( CBasePlayer *player )
 
 			pPlayer->SetSequence(restore->m_masterSequence);
 			pPlayer->SetCycle(restore->m_masterCycle);
+			for ( int poseIndex = 0; poseIndex < MAXSTUDIOPOSEPARAM; ++poseIndex )
+			{
+				pPlayer->SetPoseParameter( poseIndex, restore->m_flPoseParameters[poseIndex] );
+			}
 
-			int layerCount = pPlayer->GetNumAnimOverlays();
+			const int layerCount = MIN( pPlayer->GetNumAnimOverlays(), MAX_LAYER_RECORDS );
 			for( int layerIndex = 0; layerIndex < layerCount; ++layerIndex )
 			{
 				CAnimationLayer *currentLayer = pPlayer->GetAnimOverlay(layerIndex);

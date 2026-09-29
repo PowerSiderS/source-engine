@@ -15,6 +15,7 @@
 #include "collisionutils.h"
 #include "particle_smokegrenade.h"
 #include "smoke_fog_overlay_shared.h"
+#include "cs_legacy_gameplay.h"
 
 #define GRENADE_MODEL "models/Weapons/w_eq_flashbang_thrown.mdl"
 
@@ -163,29 +164,10 @@ void RadiusFlash(
 					
 				flDot = DotProduct (vecLOS, vForward);
 
-				float startingAlpha = 255;
-	
-				// if target is facing the bomb, the effect lasts longer
-				if( flDot >= 0.5 )
-				{
-					// looking directly at the flashbang (full blind)
-					fadeTime = flAdjustedDamage * 2.5f;
-					fadeHold = flAdjustedDamage * 1.25f;
-				}
-				else if( flDot >= 0.0 )
-				{
-					// looking to the side (partial blind)
-					fadeTime = flAdjustedDamage * 1.0f;
-					fadeHold = flAdjustedDamage * 0.4f;
-					startingAlpha = 150;
-				}
-				else
-				{
-					// Cores: facing away (CS:GO curve)
-					fadeTime = 0.0f;
-					fadeHold = 0.0f;
-					startingAlpha = 0;
-				}
+				const float flFacingScale = CSLegacyFlashFacingScale( flDot );
+				const float startingAlpha = 80.0f + 175.0f * flFacingScale;
+				fadeTime = flAdjustedDamage * 2.5f * flFacingScale;
+				fadeHold = flAdjustedDamage * 1.25f * flFacingScale;
 
 				fadeTime *= percentageOfFlash;
 				fadeHold *= percentageOfFlash;

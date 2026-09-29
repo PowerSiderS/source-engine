@@ -508,9 +508,11 @@ void CCSPlayer::FireBullet(
 		}
 #endif
 
-		//calculate the damage based on the distance the bullet travelled.
-		flCurrentDistance += tr.fraction * flDistance;
-		fCurrentDamage *= pow (flRangeModifier, (flCurrentDistance / 500));
+		// Apply falloff only for the segment just traced. Using the accumulated
+		// distance here compounds the previous segments after every penetration.
+		const float flSegmentDistance = tr.fraction * flDistance;
+		flCurrentDistance += flSegmentDistance;
+		fCurrentDamage *= pow( flRangeModifier, flSegmentDistance / 500.0f );
 
 		// check if we reach penetration distance, no more penetrations after that
 		if (flCurrentDistance > flPenetrationDistance && iPenetration > 0)
@@ -661,7 +663,9 @@ void CCSPlayer::FireBullet(
 		// NDebugOverlay::Box( exitTr.endpos, Vector(-2,-2,-2), Vector(2,2,2), 0,255,0,127, 8 );
 
 		vecSrc = exitTr.endpos;
-		flDistance = (flDistance - flCurrentDistance) * 0.5;
+		flDistance = MAX( 0.0f, flDistance - flSegmentDistance - flTraceDistance );
+		if ( flDistance <= 0.0f )
+			break;
 
 		// reduce damage power each time we hit something other than a grate
 		fCurrentDamage *= flDamageModifier;

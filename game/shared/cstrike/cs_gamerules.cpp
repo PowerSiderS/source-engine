@@ -2390,12 +2390,8 @@ ConVar cl_autohelp(
 		
 		//ClearBodyQue();
 
-		// Hardlock the player accelaration to 5.0
-		//CVAR_SET_FLOAT( "sv_accelerate", 5.0 );
-		//CVAR_SET_FLOAT( "sv_friction", 4.0 );
-		//CVAR_SET_FLOAT( "sv_stopspeed", 75 );
-
-		sv_stopspeed.SetValue( 75.0f );
+		// Keep the CS:GO stopping speed after every round restart.
+		sv_stopspeed.SetValue( 80.0f );
 
 		// Tabulate the number of players on each team.
 		int NumDeadCT, NumDeadTerrorist, NumAliveTerrorist, NumAliveCT;

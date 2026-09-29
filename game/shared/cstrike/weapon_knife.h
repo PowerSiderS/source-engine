@@ -64,8 +64,6 @@ public:
 	void WeaponIdle();
 
 	virtual CSWeaponID GetWeaponID( void ) const		{ return WEAPON_KNIFE; }
-	virtual const char *GetViewModel( int viewmodelindex = 0 ) const;
-	void UpdateSkin();
 
 public:
 	
@@ -74,7 +72,6 @@ public:
 
 	CNetworkVar( float, m_flSmackTime );
 	bool	m_bStab;
-	int		m_nActiveKnifeChoice;
 
 private:
 	CKnife( const CKnife & ) {}

@@ -3,7 +3,6 @@
 #include "tier0/dbg.h"
 #include "unitlib/unitlib.h"
 #include "cstrike/cs_legacy_gameplay.h"
-#include "cstrike/cs_knife_models.h"
 #include "tier1/strtools.h"
 #include <math.h>
 
@@ -48,21 +47,4 @@ DEFINE_TESTCASE( LegacyAirInaccuracyTest, CStrikeGameplayTestSuite )
 	Shipping_Assert( NearlyEqual( CSLegacyAirSpeedInaccuracy( flLegacyJumpImpulse, flJumpPenalty ), flJumpPenalty ) );
 	Shipping_Assert( NearlyEqual( CSLegacyAirSpeedInaccuracy( 100000.0f, flJumpPenalty ), flJumpPenalty * 2.0f ) );
 	Shipping_Assert( NearlyEqual( CSLegacyAirSpeedInaccuracy( flLegacyJumpImpulse, 0.0f ), 0.0f ) );
-}
-
-DEFINE_TESTCASE( KnifeModelWhitelistTest, CStrikeGameplayTestSuite )
-{
-	Shipping_Assert( CS_KNIFE_MODEL_COUNT == 17 );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[0].name, "default" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[7].name, "gut" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[9].name, "karambit" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[11].name, "m9" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[13].name, "skeleton" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[7].v_model, "models/codex_knives/gut/v_knife_t.mdl" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[9].v_model, "models/codex_knives/karambit/v_knife_t.mdl" ) );
-	Shipping_Assert( !Q_stricmp( s_KnifeModels[11].v_model, "models/codex_knives/m9/v_knife_t.mdl" ) );
-	Shipping_Assert( CSClampKnifeChoice( -1 ) == 0 );
-	Shipping_Assert( CSClampKnifeChoice( 0 ) == 0 );
-	Shipping_Assert( CSClampKnifeChoice( 16 ) == 16 );
-	Shipping_Assert( CSClampKnifeChoice( 99 ) == 16 );
 }

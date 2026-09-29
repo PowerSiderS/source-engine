@@ -10,7 +10,7 @@ def configure(conf):
 	return
 
 def build(bld):
-	source = ['cstriketest.cpp', 'cstrike_gameplay_tests.cpp']
+	source = ['cstriketest.cpp', 'cstrike_gameplay_tests.cpp', 'cstrike_interaction_tests.cpp']
 	includes = ['../../public', '../../public/tier0', '../../game/shared']
 	libs = ['tier0', 'tier1', 'unitlib']
 
