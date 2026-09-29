@@ -16,6 +16,9 @@
 
 // VProf is enabled by default in all configurations -except- X360 Retail.
 
+#if !( defined( _X360 ) && defined( _CERT ) )
+#define VPROF_ENABLED
+#endif
 #if defined(_X360) && defined(VPROF_ENABLED)
 #include "tier0/pmc360.h"
 #ifndef USE_PIX
