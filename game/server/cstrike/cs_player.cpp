@@ -6727,8 +6727,8 @@ bool CCSPlayer::IsUseableEntity( CBaseEntity *pEntity, unsigned int requiredCaps
 
 	if( pCSWepaon )
 	{
-			// Cores: allow grenade drop and pickup
-		if ( pCSWepaon->IsA( "weapon_basecsgrenade" ) || pCSWepaon->GetCSWpnData().m_WeaponType == WEAPONTYPE_GRENADE || pCSWepaon->GetSlot() == WEAPON_SLOT_GRENADES )
+		// Cores: allow grenade drop and pickup
+		if ( pCSWepaon->GetCSWpnData().m_WeaponType == WEAPONTYPE_GRENADE || pCSWepaon->GetSlot() == WEAPON_SLOT_GRENADES )
 		{
 			BumpWeapon( pCSWepaon );
 			return true;
