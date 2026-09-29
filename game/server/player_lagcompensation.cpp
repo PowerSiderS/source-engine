@@ -227,7 +227,7 @@ ILagCompensationManager *lagcompensation = &g_LagCompensationManager;
 //-----------------------------------------------------------------------------
 void CLagCompensationManager::FrameUpdatePostEntityThink()
 {
-	if ( (gpGlobals->maxClients <= 1) || !sv_unlag.GetBool() )
+	if ( !sv_unlag.GetBool() )
 	{
 		ClearHistory();
 		return;
@@ -338,7 +338,6 @@ void CLagCompensationManager::StartLagCompensation( CBasePlayer *player, CUserCm
 	m_pCurrentPlayer = player;
 	
 	if ( !player->m_bLagCompensation		// Player not wanting lag compensation
-		 || (gpGlobals->maxClients <= 1)	// no lag compensation in single player
 		 || !sv_unlag.GetBool()				// disabled by server admin
 		 || player->IsBot() 				// not for bots
 		 || player->IsObserver()			// not for spectators
@@ -827,6 +826,8 @@ void CLagCompensationManager::FinishLagCompensation( CBasePlayer *player )
 		{
 			pPlayer->SetSimulationTime( restore->m_flSimulationTime );
 		}
+
+		pPlayer->InvalidateBoneCache();
 	}
 }
 
