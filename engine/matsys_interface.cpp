@@ -38,6 +38,8 @@
 #include "tier2/tier2.h"
 #include "LoadScreenUpdate.h"
 #include "client.h"
+#include "modelloader.h"
+#include "bspfile.h"
 #include "sourcevr/isourcevirtualreality.h"
 #if defined( _X360 )
 #include "xbox/xbox_launch.h"
@@ -69,6 +71,8 @@ const MaterialSystem_Config_t *g_pMaterialSystemConfig;
 
 static CSysModule	*g_MaterialsDLL = NULL;
 bool g_LostVideoMemory = false;
+static bool s_bDeferredWorldRestore = false;
+static int s_nDeferredWorldRestoreFlags = 0;
 
 IMaterial*	g_materialEmpty;	// purple checkerboard for missing textures
 
@@ -1619,6 +1623,21 @@ void RestoreMaterialSystemObjects( int nChangeFlags )
 	if ( IsX360() )
 		return;
 
+	// Device loss can occur while a different BSP context is open (for example
+	// another client changing fullscreen mode). Its lumps must not be used to
+	// rebuild the previous world's displacement buffers. Finish the new world
+	// first, then restore against its own BSP context.
+	if ( CMapLoadHelper::GetRefCount() > 0 )
+	{
+		s_bDeferredWorldRestore = true;
+		s_nDeferredWorldRestoreFlags |= nChangeFlags;
+		DevMsg("[video-restore] deferred while BSP context is active\n");
+		return;
+	}
+	nChangeFlags |= s_nDeferredWorldRestoreFlags;
+	s_nDeferredWorldRestoreFlags = 0;
+	s_bDeferredWorldRestore = false;
+
 	bool bThreadingAllowed = Host_AllowQueuedMaterialSystem( false );
 	g_LostVideoMemory = false;
 
@@ -1660,6 +1679,47 @@ void RestoreMaterialSystemObjects( int nChangeFlags )
 
 	Host_AllowQueuedMaterialSystem( bThreadingAllowed );
 }
+
+void FinishDeferredMaterialSystemRestore()
+{
+	if ( s_bDeferredWorldRestore && CMapLoadHelper::GetRefCount() == 0 &&
+		(!host_state.worldmodel || modelloader->Map_GetRenderInfoAllocated()) )
+	{
+		DevMsg("[video-restore] restoring completed world\n");
+		RestoreMaterialSystemObjects(0);
+	}
+}
+
+#ifndef SWDS
+CON_COMMAND_F( mat_validate_bsp_restore, "Test graphics restoration while another local BSP context is open: mat_validate_bsp_restore maps/name.bsp", FCVAR_CHEAT )
+{
+	model_t *world = host_state.worldmodel;
+	if ( args.ArgC() != 2 || !world || !modelloader->Map_GetRenderInfoAllocated() ||
+		CMapLoadHelper::GetRefCount() || g_LostVideoMemory )
+	{
+		Warning("BSP restore audit requires a loaded world and one local map path.\n"); return;
+	}
+	const char *path = args[1];
+	const char *extension = Q_GetFileExtension(path);
+	if ( Q_strnicmp(path,"maps/",5) || Q_strstr(path,"..") || Q_strstr(path,":") ||
+		Q_strstr(path,"\\") || !extension || Q_stricmp(extension,"bsp") || !g_pFileSystem->FileExists(path,"GAME") )
+	{
+		Warning("BSP restore audit rejected an invalid/missing local map path.\n"); return;
+	}
+	const int originalCount = world->brush.pShared->numDispInfos;
+	CMapLoadHelper::Init(NULL,path);
+	const int contextCount = CMapLoadHelper::LumpSize(LUMP_DISPINFO) / sizeof(ddispinfo_t);
+	ReleaseMaterialSystemObjects();
+	RestoreMaterialSystemObjects(0);
+	const bool deferred = s_bDeferredWorldRestore;
+	CMapLoadHelper::Shutdown();
+	FinishDeferredMaterialSystemRestore();
+	const bool restored = !s_bDeferredWorldRestore && !g_LostVideoMemory;
+	Msg("[bsp-restore-audit] current=%s target=%s stored_disp=%d context_disp=%d deferred=%d restored=%d failures=%d\n",
+		world->strName.String(),path,originalCount,contextCount,deferred,restored,
+		(!deferred || !restored || world->brush.pShared->numDispInfos != originalCount) ? 1 : 0);
+}
+#endif
 
 bool TangentSpaceSurfaceSetup( SurfaceHandle_t surfID, Vector &tVect )
 {

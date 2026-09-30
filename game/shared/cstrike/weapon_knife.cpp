@@ -340,9 +340,10 @@ void CKnife::SendAttackAnimation( bool bStab, bool bDidHit )
 	{
 		// A number of imported knives give slash and stab the same activity.
 		// Named sequences avoid that ambiguous weighted activity selection.
-		const char *lightNames[] = { "light_hit1", "midslash1", "slash1", "light_hit2", "midslash2", "slash2" };
-		const char *heavyHitNames[] = { "heavy_hit", "stab", "stab_hit" };
-		const char *heavyMissNames[] = { "heavy_miss", "stab_miss", "heavy_hit", "stab" };
+		const char *lightHitNames[] = { "light_hit1", "light_hit2", "midslash1", "midslash2", "slash1", "slash2" };
+		const char *lightMissNames[] = { "light_miss1", "light_miss2", "miss1", "miss2", "miss", "slash1", "slash2" };
+		const char *heavyHitNames[] = { "heavy_hit1", "heavy_hit", "stab", "stab_hit" };
+		const char *heavyMissNames[] = { "heavy_miss1", "heavy_miss", "stab_miss" };
 		int sequence = -1;
 		if ( bStab )
 		{
@@ -354,9 +355,12 @@ void CKnife::SendAttackAnimation( bool bStab, bool bDidHit )
 		else
 		{
 			// SharedRandom uses the command seed, so prediction and server agree.
-			const int first = SharedRandomInt( "KnifeLightAnimation", 0, 1 ) * 3;
-			for ( int i = 0; i < ARRAYSIZE( lightNames ) && sequence < 0; ++i )
-				sequence = pViewModel->LookupSequence( lightNames[( first + i ) % ARRAYSIZE( lightNames )] );
+			const char **names = bDidHit ? lightHitNames : lightMissNames;
+			const int count = bDidHit ? ARRAYSIZE(lightHitNames) : ARRAYSIZE(lightMissNames);
+			const int first = SharedRandomInt( "KnifeLightAnimation", 0, 1 );
+			sequence = pViewModel->LookupSequence(names[first]);
+			for ( int i = 0; i < count && sequence < 0; ++i )
+				sequence = pViewModel->LookupSequence(names[i]);
 		}
 		if ( sequence >= 0 )
 		{
@@ -365,7 +369,7 @@ void CKnife::SendAttackAnimation( bool bStab, bool bDidHit )
 #endif
 			SetSequence( sequence );
 			CBaseCombatWeapon::SendViewModelAnim( sequence );
-			DevMsg("[knife-animation] %s sequence=%s\n",bStab ? "heavy" : "light",pViewModel->GetSequenceName(sequence));
+			DevMsg("[knife-animation] %s hit=%d sequence=%s\n",bStab ? "heavy" : "light",bDidHit,pViewModel->GetSequenceName(sequence));
 			return;
 		}
 		const Activity secondary = bDidHit ? ACT_VM_HITCENTER2 : ACT_VM_MISSCENTER2;

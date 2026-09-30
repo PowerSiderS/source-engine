@@ -44,7 +44,7 @@
 #endif
 
 
-ConVar weapon_accuracy_model( "weapon_accuracy_model", "2", FCVAR_REPLICATED | FCVAR_CHEAT );
+ConVar weapon_accuracy_model( "weapon_accuracy_model", "2", FCVAR_REPLICATED | FCVAR_NOTIFY, "Server-selected accuracy model: 2 uses the compiled per-weapon profiles.", true, 0, true, 2 );
 ConVar weapon_recoil_decay_coefficient( "weapon_recoil_decay_coefficient", "2.0", FCVAR_CHEAT | FCVAR_REPLICATED, "" );
 ConVar weapon_air_spread_scale( "weapon_air_spread_scale", "1.0", FCVAR_CHEAT | FCVAR_REPLICATED, "Scale factor for jumping inaccuracy", true, 0.0f, false, 1.0f );
 
@@ -595,7 +595,8 @@ void CWeaponCSBase::SendViewModelAnim( int nSequence )
  CBaseViewModel *vm = pPlayer->GetViewModel( m_nViewModelIndex );
  if ( vm )
  	{
- 	 bool bIsLookingAt = (vm->GetSequence() != ACT_INVALID && V_stristr( vm->GetSequenceName( vm->GetSequence() ), "lookat" ));
+	 const char *current = vm->GetSequence() >= 0 ? vm->GetSequenceName(vm->GetSequence()) : "";
+	 bool bIsLookingAt = V_stristr(current,"lookat") || V_stristr(current,"inspect");
 
  	 if ( vm->GetCycle() < 0.98f && bIsLookingAt && V_stristr( vm->GetSequenceName( nSequence ), "idle" ) )
  		 {
@@ -947,6 +948,9 @@ void CWeaponCSBase::SetInventoryItem( int itemId )
 	const CSkinItem *item = CSInventory().FindForWeapon( itemId, GetWeaponID() );
 	if ( itemId && !item ) return;
 	if ( m_iInventoryItem == itemId ) return;
+#ifndef CLIENT_DLL
+	if ( GetPlayerOwner() ) GetPlayerOwner()->StopLookingAtWeapon();
+#endif
 	m_iInventoryItem = itemId;
 	m_nSkin = item ? item->skin : 0;
 	CCSPlayer *owner = GetPlayerOwner();

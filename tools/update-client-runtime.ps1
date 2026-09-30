@@ -21,9 +21,12 @@ try {
     # invocation alone does not switch away from a dedicated/test configuration.
     & python waf configure -T release --build-games=cstrike --enable-opus --disable-warns --prefix=.\output "--out=$BuildDirectory"
     if ($LASTEXITCODE -ne 0) { throw "Falha na configuracao: $LASTEXITCODE" }
-    & python waf build install --targets=engine,server,client,filesystem_stdio -j12
+    # Native modules share interface headers. Install a matching full release,
+    # including the launcher and GameUI map selector, rather than mixing builds.
+    & python waf build install -j12
     if ($LASTEXITCODE -ne 0) { throw "Falha na compilacao: $LASTEXITCODE" }
-    $relativeFiles = @('bin\engine.dll', 'bin\filesystem_stdio.dll', 'cstrike\bin\client.dll', 'cstrike\bin\server.dll')
+    $relativeFiles = @('hl2_launcher.exe', 'cstrike\bin\client.dll', 'cstrike\bin\server.dll')
+    $relativeFiles += @(Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'output\bin') -File -Filter '*.dll' | ForEach-Object { 'bin\' + $_.Name })
     foreach ($relative in $relativeFiles) {
         if (-not (Test-Path -LiteralPath (Join-Path $sourceRoot "output\$relative"))) {
             throw "Binario ausente em output: $relative"

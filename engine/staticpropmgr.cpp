@@ -353,6 +353,7 @@ public:
 	virtual bool IsStaticProp( CBaseHandle handle ) const;
 	virtual int GetStaticPropIndex( IHandleEntity *pHandleEntity ) const;
 	virtual ICollideable *GetStaticPropByIndex( int propIndex );
+	void ValidateHandles();
 
 	// methods of IStaticPropMgrClient
 	virtual void ComputePropOpacity( const Vector &viewOrigin, float factor );
@@ -480,7 +481,11 @@ CStaticProp::~CStaticProp()
 //-----------------------------------------------------------------------------
 bool CStaticProp::Init( int index, StaticPropLump_t &lump, model_t *pModel )
 {
-	m_EntHandle.Init(index, STATICPROP_EHANDLE_MASK >> NUM_ENT_ENTRY_BITS);
+	// Static props use a tagged model index, not an edict entry/serial pair.
+	// CS:GO maps can exceed NUM_ENT_ENTRIES; splitting that index as an edict
+	// handle changes its serial and incorrectly classifies props as entities.
+	Assert( index >= 0 && index < STATICPROP_EHANDLE_MASK );
+	m_EntHandle = CBaseHandle( static_cast<uintp>(index) | STATICPROP_EHANDLE_MASK );
 	m_Partition = PARTITION_INVALID_HANDLE;
 	m_flForcedFadeScale = lump.m_flForcedFadeScale;
 	VectorCopy( lump.m_Origin, m_Origin );
@@ -1592,7 +1597,7 @@ void CStaticPropMgr::CreateVPhysicsRepresentations( IPhysicsEnvironment	*pPhysEn
 inline int CStaticPropMgr::HandleEntityToIndex( IHandleEntity *pHandleEntity ) const
 {
 	Assert( IsStaticProp( pHandleEntity ) );
-	return pHandleEntity->GetRefEHandle().GetEntryIndex();
+	return pHandleEntity->GetRefEHandle().ToInt() & ~STATICPROP_EHANDLE_MASK;
 }
 
 ICollideable *CStaticPropMgr::GetStaticProp( IHandleEntity *pHandleEntity )
@@ -1602,8 +1607,8 @@ ICollideable *CStaticPropMgr::GetStaticProp( IHandleEntity *pHandleEntity )
 		return NULL;
 	}
 
-	int nIndex = pHandleEntity ? pHandleEntity->GetRefEHandle().GetEntryIndex() : -1;
-	if ( nIndex < 0 || nIndex > m_StaticProps.Count() )
+	int nIndex = pHandleEntity ? HandleEntityToIndex( pHandleEntity ) : -1;
+	if ( nIndex < 0 || nIndex >= m_StaticProps.Count() )
 	{
 		return NULL;
 	}
@@ -1788,12 +1793,31 @@ void CStaticPropMgr::GetAllStaticPropsInOBB( const Vector &ptOrigin, const Vecto
 //-----------------------------------------------------------------------------
 bool CStaticPropMgr::IsStaticProp( IHandleEntity *pHandleEntity ) const
 {
-	return (!pHandleEntity) || ( (pHandleEntity->GetRefEHandle().GetSerialNumber() == (STATICPROP_EHANDLE_MASK >> NUM_ENT_ENTRY_BITS) ) != 0 );
+	return !pHandleEntity || IsStaticProp( pHandleEntity->GetRefEHandle() );
 }
 
 bool CStaticPropMgr::IsStaticProp( CBaseHandle handle ) const
 {
-	return (handle.GetSerialNumber() == (STATICPROP_EHANDLE_MASK >> NUM_ENT_ENTRY_BITS));
+	return handle.IsValid() && (handle.ToInt() & STATICPROP_EHANDLE_MASK) != 0;
+}
+
+void CStaticPropMgr::ValidateHandles()
+{
+	int failures = 0;
+	for ( int i = 0; i < m_StaticProps.Count(); ++i )
+	{
+		CStaticProp *prop = &m_StaticProps[i];
+		if ( !IsStaticProp(prop) || !IsStaticProp(prop->GetRefEHandle()) ||
+			GetStaticPropIndex(prop) != i || GetStaticProp(prop) != static_cast<ICollideable*>(prop) )
+			++failures;
+	}
+	Msg( "[staticprop-audit] checked=%d high_indices=%d failures=%d\n",
+		m_StaticProps.Count(), MAX(0, m_StaticProps.Count() - NUM_ENT_ENTRIES), failures );
+}
+
+CON_COMMAND_F( staticprop_validate_handles, "Validate tagged static prop indices in the loaded map.", FCVAR_CHEAT )
+{
+	s_StaticPropMgr.ValidateHandles();
 }
 
 int CStaticPropMgr::GetStaticPropIndex( IHandleEntity *pHandleEntity ) const

@@ -46,6 +46,7 @@ void MaterialSystem_CreateSortinfo( void );
 
 void InitMaterialSystem( void );
 void ShutdownMaterialSystem( void );
+void FinishDeferredMaterialSystemRestore();
 void InitStartupScreen();
 void UpdateMaterialSystemConfig( void );
 bool MaterialConfigLightingChanged();

@@ -1426,6 +1426,14 @@ void CMaterialSystem::ReleaseShaderObjects()
 
 void CMaterialSystem::RestoreShaderObjects( CreateInterfaceFn shaderFactory, int nChangeFlags )
 {
+	if ( nChangeFlags & MATERIAL_RESTORE_SWAPCHAIN_CHANGED )
+	{
+		// Only targets whose dimensions depend on the backbuffer need updating.
+		// File textures and lightmaps remain valid after ResetEx.
+		m_HardwareRenderContext.OnReleaseShaderObjects();
+		TextureManager()->RestoreRenderTargets();
+		return;
+	}
 	if ( shaderFactory )
 	{
 		g_pShaderAPI = (IShaderAPI*)shaderFactory( SHADERAPI_INTERFACE_VERSION, NULL );

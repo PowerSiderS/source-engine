@@ -165,7 +165,27 @@ void CCreateMultiplayerGameServerPage::OnApplyChanges()
 //-----------------------------------------------------------------------------
 void CCreateMultiplayerGameServerPage::LoadMaps( const char *pszPathID )
 {
-	FileFindHandle_t findHandle = NULL;
+	// Keep the native new-game selector aligned with the dedicated map catalog.
+	if(!Q_stricmp(ModInfo().GetGameName(),"Counter-Strike") ||
+	   g_pFullFileSystem->FileExists("cfg/sourceadvanced_maps.txt",pszPathID))
+	{
+		FileHandle_t catalog=g_pFullFileSystem->Open("cfg/sourceadvanced_maps.txt","rt",pszPathID);
+		if(catalog!=FILESYSTEM_INVALID_HANDLE)
+		{
+			char line[256];
+			while(g_pFullFileSystem->ReadLine(line,sizeof(line),catalog))
+			{
+				V_StripTrailingWhitespace(line);
+				if(!line[0] || line[0]=='#' || line[0]=='/')continue;
+				bool valid=true;for(const char *p=line;*p;++p)if(!((*p>='a' && *p<='z') || (*p>='0' && *p<='9') || *p=='_' || *p=='-'))valid=false;
+				char path[300];V_snprintf(path,sizeof(path),"maps/%s.bsp",line);
+				if(valid && g_pFullFileSystem->FileExists(path,pszPathID))
+					m_pMapList->AddItem(line,new KeyValues("data","mapname",line));
+			}
+			g_pFullFileSystem->Close(catalog);return;
+		}
+	}
+	FileFindHandle_t findHandle = FILESYSTEM_INVALID_FIND_HANDLE;
 
 	KeyValues *hiddenMaps = ModInfo().GetHiddenMaps();
 
@@ -223,7 +243,7 @@ void CCreateMultiplayerGameServerPage::LoadMaps( const char *pszPathID )
 	nextFile:
 		pszFilename = g_pFullFileSystem->FindNext( findHandle );
 	}
-	g_pFullFileSystem->FindClose( findHandle );
+	if(findHandle!=FILESYSTEM_INVALID_FIND_HANDLE)g_pFullFileSystem->FindClose( findHandle );
 }
 
 

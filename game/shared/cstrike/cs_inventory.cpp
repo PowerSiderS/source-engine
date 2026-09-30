@@ -18,26 +18,52 @@ extern ISoundEmitterSystemBase *soundemitterbase;
 
 static CInventoryManager s_Inventory;
 CInventoryManager &CSInventory() { return s_Inventory; }
+static void RegisterInventoryModel( const char *path )
+{
+#ifdef CLIENT_DLL
+	CBaseEntity::PrecacheModel( path );
+#else
+	// Register every choice before signon, but load a cosmetic only when used.
+	// The string-table entry still permits switching models during the match.
+	// BaseEntity also scans model components, which immediately loads the
+	// model even with bPreload=false. These cosmetic meshes have client-side
+	// animation sounds from the manifest, so register directly with engine.
+	engine->PrecacheModel( path, false );
+#endif
+}
 
 static bool ValidModel( const char *path, int skin = 0 )
 {
 	const char *extension = Q_GetFileExtension( path );
 	if ( !extension || Q_strnicmp( path, "models/", 7 ) || Q_strstr( path, ".." ) || Q_strstr( path, "\\" ) || Q_strstr( path, ":" ) || Q_stricmp( extension, "mdl" ) )
 		return false;
-	CUtlBuffer buffer;
-	if ( !filesystem->ReadFile( path, "GAME", buffer ) || buffer.TellPut() < sizeof(studiohdr_t) ) return false;
-	const studiohdr_t *header = (const studiohdr_t *)buffer.Base();
-	if ( header->id != 0x54534449 || header->version < 44 || header->version > 49 || header->length < sizeof(studiohdr_t) || header->length > buffer.TellPut() || skin >= header->numskinfamilies ) return false;
+	// Validation needs the header, not the entire model payload.
+	FileHandle_t file = filesystem->Open( path, "rb", "GAME" );
+	if ( file == FILESYSTEM_INVALID_HANDLE ) return false;
+	studiohdr_t storage;
+	const unsigned int length = filesystem->Size( file );
+	const int read = filesystem->Read( &storage, sizeof(storage), file );
+	filesystem->Close( file );
+	const studiohdr_t *header = &storage;
+	if ( read != sizeof(storage) || header->id != 0x54534449 || header->version < 44 || header->version > 49 || header->length < sizeof(studiohdr_t) || header->length > length || skin < 0 || skin >= header->numskinfamilies ) return false;
 	char sibling[256]; Q_StripExtension( path, sibling, sizeof( sibling ) ); Q_strncat( sibling, ".vvd", sizeof( sibling ) );
 	if ( !filesystem->FileExists( sibling, "GAME" ) ) return false;
 	Q_StripExtension( path, sibling, sizeof( sibling ) ); Q_strncat( sibling, ".dx90.vtx", sizeof( sibling ) );
 	return filesystem->FileExists( sibling, "GAME" );
 }
 
-CInventoryManager::CInventoryManager() : CAutoGameSystem( "SourceAdvancedInventory" ), m_Loaded( false ) {}
+CInventoryManager::CInventoryManager() : CAutoGameSystem( "SourceAdvancedInventory" ), m_Loaded( false ) { ResetPrecache(); }
+void CInventoryManager::ResetPrecache()
+{
+	memset( m_Precached, 0, sizeof(m_Precached) );
+	m_ArmsPrecached = false;
+	m_PrecacheCalls = m_PrecacheHits = m_PrecacheModels = 0;
+	m_LoadSeconds = m_PrecacheSeconds = 0;
+}
 void CInventoryManager::Load()
 {
 	if ( m_Loaded ) return;
+	const double started = Plat_FloatTime();
 	m_Loaded = true;
 	KeyValues *root = new KeyValues( "SkinsManifest" );
 	if ( root->LoadFromFile( filesystem, "scripts/skins_manifest.txt", "MOD" ) )
@@ -65,16 +91,14 @@ void CInventoryManager::Load()
 		}
 	}
 	root->deleteThis();
+	m_LoadSeconds = Plat_FloatTime() - started;
 	DevMsg( "Inventory: %d validated items loaded\n", m_Items.Count() );
 }
-void CInventoryManager::LevelInitPreEntity() { m_Loaded = false; m_Items.RemoveAll(); Load(); }
+void CInventoryManager::LevelInitPreEntity() { m_Loaded = false; m_Items.RemoveAll(); ResetPrecache(); Load(); }
 void CInventoryManager::LevelShutdownPostEntity()
 {
 	m_Items.Purge(); m_Loaded = false;
-#ifdef CLIENT_DLL
-	// The client has already released map entities and their bonemerged arms.
-	if ( materials ) materials->UncacheUnusedMaterials();
-#endif
+	// CHLClient and the model loader already own material cache teardown.
 }
 const CSkinItem *CInventoryManager::Find( int itemId ) const
 {
@@ -88,16 +112,49 @@ const CSkinItem *CInventoryManager::FindForWeapon( int itemId, CSWeaponID id ) c
 void CInventoryManager::PrecacheForWeapon( CSWeaponID id )
 {
 	Load();
+	++m_PrecacheCalls;
+	if ( id <= WEAPON_NONE || id >= WEAPON_KEVLAR ) return;
+	if ( m_Precached[id] ) { ++m_PrecacheHits; return; }
+	m_Precached[id] = true;
+	const double started = Plat_FloatTime();
 	for ( int i = 0; i < m_Items.Count(); ++i ) if ( m_Items[i].weapon_id == id )
 	{
-		CBaseEntity::PrecacheModel( m_Items[i].view_model ); CBaseEntity::PrecacheModel( m_Items[i].world_model );
+		RegisterInventoryModel( m_Items[i].view_model ); RegisterInventoryModel( m_Items[i].world_model );
+		m_PrecacheModels += 2;
 	}
-	if ( m_Items.Count() && ValidModel( "models/sourceadvanced/c_arms_default.mdl" ) )
-		CBaseEntity::PrecacheModel( "models/sourceadvanced/c_arms_default.mdl" );
+	if ( !m_ArmsPrecached && m_Items.Count() )
+	{
+		m_ArmsPrecached = true;
+		if ( ValidModel( "models/sourceadvanced/c_arms_default.mdl" ) )
+		{ RegisterInventoryModel( "models/sourceadvanced/c_arms_default.mdl" ); ++m_PrecacheModels; }
+		if ( ValidModel( "models/sourceadvanced/c_arms_native.mdl" ) )
+		{ RegisterInventoryModel( "models/sourceadvanced/c_arms_native.mdl" ); ++m_PrecacheModels; }
+	}
+	m_PrecacheSeconds += Plat_FloatTime() - started;
+}
+
+void CInventoryManager::PrintProfile() const
+{
+	Msg("[inventory-profile] side=%s items=%d header_load_ms=%.2f precache_ms=%.2f calls=%d cached_calls=%d models=%d\n",
+#ifdef CLIENT_DLL
+		"client",
+#else
+		"server",
+#endif
+		m_Items.Count(),m_LoadSeconds*1000,m_PrecacheSeconds*1000,m_PrecacheCalls,m_PrecacheHits,m_PrecacheModels);
 }
 
 #ifdef CLIENT_DLL
+CON_COMMAND( cl_inventory_profile, "Report inventory loading and repeated precache savings." )
+#else
+CON_COMMAND( cs_inventory_profile, "Report inventory loading and repeated precache savings." )
+#endif
+{ CSInventory().PrintProfile(); }
+
+#ifdef CLIENT_DLL
 static ConVar cl_inventory_loadout( "cl_inventory_loadout", "", FCVAR_ARCHIVE | FCVAR_USERINFO, "Validated inventory choices; weaponID:itemID pairs." );
+CON_COMMAND( inspectlook, "Inspect the held weapon; attacks and reload interrupt the animation." )
+{ engine->ServerCmd( "inspectlook" ); }
 #endif
 int CInventoryManager::GetPlayerSelection( CBasePlayer *player, CSWeaponID id ) const
 {
@@ -168,8 +225,8 @@ CON_COMMAND_F( cl_inventory_validate, "Log the active model, animation and bonem
 			for (int row=0;row<3;++row) for (int col=0;col<4;++col) if (!IsFinite(matrices[i][row][col])) ++invalid;
 		}
 	}
-	Msg("[inventory-audit] item=%d model=%s sequence=%s arms=%s missing_bones=%d invalid_matrices=%d clip=%d/%d alive=%d buttons=%d attack=%.3f now=%.3f\n",
+	Msg("[inventory-audit] item=%d model=%s sequence=%s arms=%s missing_bones=%d invalid_matrices=%d clip=%d/%d alive=%d buttons=%d attack=%.3f now=%.3f looking=%d\n",
 		weapon->m_iInventoryItem.Get(),modelinfo->GetModelName(vm->GetModel()),vm->GetSequenceName(vm->GetSequence()),
-		arms ? modelinfo->GetModelName(arms->GetModel()) : "none",missing,invalid,weapon->Clip1(),weapon->GetMaxClip1(),player->IsAlive(),player->m_nButtons,weapon->m_flNextPrimaryAttack.Get(),gpGlobals->curtime);
+		arms ? modelinfo->GetModelName(arms->GetModel()) : "none",missing,invalid,weapon->Clip1(),weapon->GetMaxClip1(),player->IsAlive(),player->m_nButtons,weapon->m_flNextPrimaryAttack.Get(),gpGlobals->curtime,player->IsLookingAtWeapon());
 }
 #endif

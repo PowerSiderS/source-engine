@@ -2759,7 +2759,12 @@ void CShaderDeviceDx8::ReacquireResourcesInternal( bool bResetState, bool bForce
 //-----------------------------------------------------------------------------
 // Changes the window size
 //-----------------------------------------------------------------------------
-bool CShaderDeviceDx8::ResizeWindow( const ShaderDeviceInfo_t &info ) 
+static ConVar mat_profile_video_changes( "mat_profile_video_changes", "0", 0,
+	"Log device resource release, reset and restore times during resolution changes." );
+static ConVar mat_fast_video_changes( "mat_fast_video_changes", "1", FCVAR_ARCHIVE,
+	"Preserve D3D9Ex resources during resolution changes; legacy devices use the full reset path." );
+
+bool CShaderDeviceDx8::ResizeWindow( const ShaderDeviceInfo_t &info )
 {
 	if ( IsX360() )
 		return false;
@@ -2770,13 +2775,52 @@ bool CShaderDeviceDx8::ResizeWindow( const ShaderDeviceInfo_t &info )
 	// to be resizing...
 	if ( info.m_bResizing )
 		return false;
+	const double started = mat_profile_video_changes.GetBool() ? Plat_FloatTime() : 0;
 
 	g_pShaderDeviceMgr->InvokeModeChangeCallbacks();
 
+#if defined(IS_WINDOWS_PC) && defined(SHADERAPIDX9) && !defined(DX_TO_GL_ABSTRACTION)
+	if ( g_ShaderDeviceUsingD3D9Ex && mat_fast_video_changes.GetBool() &&
+		ThreadOwnsDevice() && ThreadInMainThread() && !IsDeactivated() )
+	{
+		IDirect3DDevice9Ex *device = NULL;
+		if ( SUCCEEDED(Dx9Device()->QueryInterface(__uuidof(IDirect3DDevice9Ex),(void **)&device)) )
+		{
+			ReleaseSwapChainSurfaces();
+			FreeNonInteractiveRefreshObjects();
+			SetPresentParameters( (VD3DHWND)m_hWnd, m_DisplayAdapter, info );
+			D3DDISPLAYMODEEX mode = {};
+			mode.Size = sizeof(mode);
+			mode.Width = m_PresentParameters.BackBufferWidth;
+			mode.Height = m_PresentParameters.BackBufferHeight;
+			mode.RefreshRate = m_PresentParameters.FullScreen_RefreshRateInHz;
+			mode.Format = m_PresentParameters.BackBufferFormat;
+			mode.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+			// ResetEx modifies its input struct; retain our desired presentation state.
+			D3DPRESENT_PARAMETERS parameters = m_PresentParameters;
+			const HRESULT result = device->ResetEx(&parameters,parameters.Windowed ? NULL : &mode);
+			device->Release();
+			if ( SUCCEEDED(result) )
+			{
+				RestoreSwapChainSurfaces();
+				ResetRenderState();
+				ShaderUtil()->RestoreShaderObjects(NULL,MATERIAL_RESTORE_SWAPCHAIN_CHANGED);
+				AllocNonInteractiveRefreshObjects();
+				if ( started ) Msg("[video-profile] width=%d height=%d path=d3d9ex retained_textures=1 total_ms=%.2f\n",
+					info.m_DisplayMode.m_nWidth,info.m_DisplayMode.m_nHeight,(Plat_FloatTime()-started)*1000);
+				return true;
+			}
+			Warning("Fast video change failed (0x%08lX); using full resource reset.\n",result);
+		}
+	}
+#endif
+
 	ReleaseResources();
+	const double released = started ? Plat_FloatTime() : 0;
 
 	SetPresentParameters( (VD3DHWND)m_hWnd, m_DisplayAdapter, info );
 	HRESULT hr = Dx9Device()->Reset( &m_PresentParameters );
+	const double reset = started ? Plat_FloatTime() : 0;
 	if ( FAILED( hr ) )
 	{
 		Warning( "ResizeWindow: Reset failed, hr = 0x%08lX.\n", hr );
@@ -2786,6 +2830,10 @@ bool CShaderDeviceDx8::ResizeWindow( const ShaderDeviceInfo_t &info )
 	{
 		ReacquireResourcesInternal( true, true, "ResizeWindow" );
 	}
+	if ( started )
+		Msg("[video-profile] width=%d height=%d release_ms=%.2f reset_ms=%.2f restore_ms=%.2f total_ms=%.2f\n",
+			info.m_DisplayMode.m_nWidth,info.m_DisplayMode.m_nHeight,(released-started)*1000,
+			(reset-released)*1000,(Plat_FloatTime()-reset)*1000,(Plat_FloatTime()-started)*1000);
 
 	return true;
 }
@@ -2937,8 +2985,8 @@ void CShaderDeviceDx8::CheckDeviceLost( bool bOtherAppInitializing )
 #ifdef _DEBUG
 		Warning( "mode change!\n" );
 #endif
-		// now purge unreferenced materials
-		g_pShaderUtil->UncacheUnusedMaterials( true );
+		// Material lifetime is managed at map transitions. A video mode change
+		// must not purge the catalog and trigger new disk reads on the next draw.
 
 		ResizeWindow( m_PendingVideoModeChangeConfig );
 	}

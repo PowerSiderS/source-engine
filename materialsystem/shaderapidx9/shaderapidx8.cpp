@@ -638,6 +638,8 @@ public:
 	virtual void OnDeviceShutdown();
 	virtual void ReleaseShaderObjects();
 	virtual void RestoreShaderObjects();
+	void ReleaseSwapChainSurfaces() { ReleaseInternalRenderTargets(); }
+	void RestoreSwapChainSurfaces() { AcquireInternalRenderTargets(); SetRenderTarget(); }
 	virtual void BeginPIXEvent( unsigned long color, const char *szName );
 	virtual void EndPIXEvent();
 	virtual void AdvancePIXFrame();
@@ -1809,6 +1811,8 @@ private:
 // Class Factory
 //-----------------------------------------------------------------------------
 static CShaderAPIDx8 g_ShaderAPIDX8;
+void ReleaseSwapChainSurfaces() { g_ShaderAPIDX8.ReleaseSwapChainSurfaces(); }
+void RestoreSwapChainSurfaces() { g_ShaderAPIDX8.RestoreSwapChainSurfaces(); }
 IShaderAPIDX8 *g_pShaderAPIDX8 = &g_ShaderAPIDX8;
 CShaderDeviceDx8* g_pShaderDeviceDx8 = &g_ShaderAPIDX8;
 

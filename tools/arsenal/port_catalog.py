@@ -5,7 +5,6 @@ and retain their original authors' license; this tool does not grant a license.
 """
 import argparse, concurrent.futures, json, math, os, re, shutil, subprocess
 from pathlib import Path
-import numpy as np
 
 
 def rename_bones(text):
@@ -32,30 +31,6 @@ def nodes(text):
     return [(int(i), name, int(parent)) for i,name,parent in re.findall(r'(\d+)\s+"([^"]+)"\s+(-?\d+)', section)]
 
 
-def inspect_animation(idle_text):
-    """Original inspection motion; explicitly not a restored Valve sequence."""
-    prefix, skeleton = idle_text.split('skeleton\n', 1)
-    values = {}
-    for line in skeleton.splitlines():
-        if line.strip() == 'end': break
-        parts = line.split()
-        if len(parts) == 7: values[int(parts[0])] = list(map(float, parts[1:]))
-        elif parts and parts[0] == 'time' and values: break
-    output = [prefix, 'skeleton\n']
-    for frame in range(91):
-        t = frame/90.; envelope = math.sin(math.pi*t)**2
-        output.append(f'time {frame}\n')
-        for bone, pose in values.items():
-            pose = pose[:]
-            if bone == 0:
-                pose[3] += 0.18 * envelope
-                pose[4] += 0.32 * envelope * math.sin(2*math.pi*t)
-                pose[5] += 0.45 * envelope
-            output.append(str(bone)+' '+' '.join(f'{v:.6f}' for v in pose)+'\n')
-    output.append('end\n')
-    return ''.join(output)
-
-
 def first_pose(text):
     values={}
     for line in text.split('skeleton\n',1)[1].splitlines():
@@ -66,6 +41,7 @@ def first_pose(text):
 
 
 def global_pose(text):
+    import numpy as np
     pose=first_pose(text);hierarchy={i:(name,parent) for i,name,parent in nodes(text)};cache={}
     def transform(index):
         if index in cache:return cache[index]
@@ -78,6 +54,7 @@ def global_pose(text):
 
 
 def world_mesh(mesh_texts, idle_text=None):
+    import numpy as np
     # The world model is a static weapon-only mesh. Arm vertices never enter it.
     triangles = []
     for text in mesh_texts:
@@ -140,16 +117,21 @@ def prepare(source, destination, audit):
             if slug.startswith('knife_') and name in ('stab','stab_miss'):
                 block=block.replace('ACT_VM_HITCENTER"','ACT_VM_HITCENTER2"').replace('ACT_VM_MISSCENTER"','ACT_VM_MISSCENTER2"')
             qcout.append(rename_bones(block)+'\n');seqs.append(name)
-        idle=next((p for p in target.rglob('idle.smd')),None)
-        if idle:
-            inspect=target/'sa_inspect.smd'
-            inspect.write_text(inspect_animation(idle.read_text(encoding='utf-8')),encoding='utf-8')
-            qcout.append('$sequence "inspect" "sa_inspect.smd" activity ACT_VM_FIDGET 1 fps 30 fadein 0.1 fadeout 0.1\n')
+        # Names vary (idle, idle1, idle_unsil); activity is the stable contract.
+        idle=None
+        for sequence_name,sequence_block in blocks(qc,'sequence'):
+            if 'ACT_VM_IDLE' not in sequence_block: continue
+            match=re.search(r'"([^"\n]+\.smd)"',sequence_block,re.I)
+            if match:
+                candidate=target/match.group(1).replace('\\','/')
+                if candidate.is_file(): idle=candidate; break
+        # Preserve source sequences. Do not substitute an authored inspection
+        # for a missing native clip; use a compatible native model instead.
         viewqc=target/'view.qc';viewqc.write_text(''.join(qcout),encoding='utf-8')
         (target/'world.smd').write_text(world_mesh(mesh_texts,idle.read_text(encoding='utf-8') if idle else None),encoding='utf-8')
         material_lines=[line for line in qcout if line.lstrip().startswith('$cdmaterials')]
         (target/'world.qc').write_text(f'$modelname "sourceadvanced/w_weapon_{slug}.mdl"\n$body "weapon" "world.smd"\n'+''.join(material_lines)+'$surfaceprop "metal"\n$sequence "idle" "world.smd" fps 1\n',encoding='utf-8')
-        catalog.append({'folder':slug,'view_model':f'models/sourceadvanced/c_weapon_{slug}.mdl','world_model':f'models/sourceadvanced/w_weapon_{slug}.mdl','arm_bones':len(arm_bones),'meshes':selected,'source_sequences':seqs,'custom_sequences':['inspect'] if idle else []})
+        catalog.append({'folder':slug,'view_model':f'models/sourceadvanced/c_weapon_{slug}.mdl','world_model':f'models/sourceadvanced/w_weapon_{slug}.mdl','arm_bones':len(arm_bones),'meshes':selected,'source_sequences':seqs,'custom_sequences':[]})
     (destination/'catalog.json').write_text(json.dumps(catalog,indent=2),encoding='utf-8')
     return catalog
 

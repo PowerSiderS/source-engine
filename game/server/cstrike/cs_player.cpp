@@ -1677,7 +1677,10 @@ void CCSPlayer::PostThink()
 	if ( IsLookingAtWeapon() )
  	{
 	  if ( gpGlobals->curtime >= m_flLookWeaponEndTime )
- 	  StopLookingAtWeapon();
+	  {
+		StopLookingAtWeapon();
+		if ( CWeaponCSBase *weapon = GetActiveCSWeapon() ) weapon->SendWeaponAnim( ACT_VM_IDLE );
+	  }
 	}
 
 	UpdateAddonBits();
@@ -4759,6 +4762,11 @@ bool CCSPlayer::ClientCommand( const CCommand &args )
 		*/
 		return true;
 	}
+	else if ( FStrEq( pcmd, "inspectlook" ) )
+	{
+		if ( ShouldRunRateLimitedCommand( args ) ) LookAtHeldWeapon();
+		return true;
+	}
 	else if ( FStrEq( pcmd, "+lookatweapon" ) )
  	{
   	m_bIsHoldingLookAtWeapon = true;
@@ -4781,7 +4789,7 @@ bool CCSPlayer::ClientCommand( const CCommand &args )
 }
 void CCSPlayer::LookAtHeldWeapon( void )
 {
-	if ( IsLookingAtWeapon() )
+	if ( !IsAlive() || State_Get() != STATE_ACTIVE || m_bIsDefusing || IsLookingAtWeapon() )
 		return;
 
 	int nSequence = ACTIVITY_NOT_AVAILABLE;
@@ -4792,6 +4800,8 @@ void CCSPlayer::LookAtHeldWeapon( void )
 		return;
 	// Can't taunt while reloading, or switching the silencer
 	if ( pActiveWeapon->m_bInReload || pActiveWeapon->IsSwitchingSilencer() )
+		return;
+	if ( m_flNextAttack > gpGlobals->curtime || pActiveWeapon->m_flNextPrimaryAttack > gpGlobals->curtime || pActiveWeapon->m_flNextSecondaryAttack > gpGlobals->curtime )
 		return;
 	// Don't let me inspect a shotgun that's mid per-shell reload
 	if ( pActiveWeapon->IsKindOf( WEAPONTYPE_SHOTGUN ) && pActiveWeapon->GetShotgunReloadState() != 0 )
@@ -4807,17 +4817,28 @@ void CCSPlayer::LookAtHeldWeapon( void )
 
 		if ( bSilencedInspect )
 		nSequence = pViewModel->LookupSequence( "lookat01_silenced" );
+		if ( pActiveWeapon->IsA( WEAPON_KNIFE ) )
+		{
+			// Native knife models assign their inspection variants and rare
+			// animations to this activity with weights stored in the model.
+			const int nativeInspect = pViewModel->SelectWeightedSequence( ACT_VM_IDLE_LOWERED );
+			if ( nativeInspect >= 0 && !Q_strnicmp(pViewModel->GetSequenceName(nativeInspect),"lookat",6) )
+				nSequence = nativeInspect;
+		}
 
 		if ( nSequence == ACT_INVALID || nSequence == ACTIVITY_NOT_AVAILABLE )
 		nSequence = pViewModel->LookupSequence( "lookat01" );
+		if ( nSequence < 0 ) nSequence = pViewModel->LookupSequence( "inspect" );
+		if ( nSequence < 0 ) nSequence = pViewModel->SelectWeightedSequence( ACT_VM_FIDGET );
 
 		if ( nSequence != ACTIVITY_NOT_AVAILABLE && nSequence != ACT_INVALID )
 		{
 		m_flLookWeaponEndTime = gpGlobals->curtime + pViewModel->SequenceDuration( nSequence );
 		m_bIsLookingAtWeapon = true;
 
+		pViewModel->SendViewModelMatchingSequence( nSequence );
 		pViewModel->SetCycle( 0 );
-		pViewModel->ResetSequence( nSequence ) ;
+		DevMsg("[inspect-audit] model=%s sequence=%s duration=%.3f\n",STRING(pViewModel->GetModelName()),pViewModel->GetSequenceName(nSequence),pViewModel->SequenceDuration(nSequence));
 		}
 		}
 

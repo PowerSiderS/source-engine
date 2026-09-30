@@ -64,8 +64,14 @@
 	{
 		const char *modelName = GetModel() ? modelinfo->GetModelName( GetModel() ) : "";
 		if ( Q_strnicmp( modelName, "models/sourceadvanced/c_weapon_", 31 ) ) { ReleaseUnifiedArms(); return; }
-		if ( m_hUnifiedArms ) return;
-		const char *arms = "models/sourceadvanced/c_arms_default.mdl";
+		const char *arms = Q_stristr(modelName,"c_weapon_knife_") ?
+			"models/sourceadvanced/c_arms_native.mdl" : "models/sourceadvanced/c_arms_default.mdl";
+		if ( m_hUnifiedArms )
+		{
+			const model_t *current = m_hUnifiedArms->GetModel();
+			if ( current && !Q_stricmp(modelinfo->GetModelName(current),arms) ) return;
+			ReleaseUnifiedArms();
+		}
 		if ( modelinfo->GetModelIndex( arms ) <= 0 ) return;
 		CUnifiedViewArms *child = new CUnifiedViewArms;
 		if ( !child->InitializeAsClientEntity( arms, RENDER_GROUP_VIEW_MODEL_OPAQUE ) ) { child->Release(); return; }

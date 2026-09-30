@@ -61,6 +61,26 @@ static ConVar cl_soundfile( "cl_soundfile", "sound/player/jingle.wav", FCVAR_ARC
 ConVar cl_avatar( "cl_avatar", "", FCVAR_USERINFO | FCVAR_ARCHIVE, "Player avatar VTF file." );
 static ConVar cl_allowdownload ( "cl_allowdownload", "1", FCVAR_ARCHIVE, "Client downloads customization files" );
 static ConVar cl_downloadfilter( "cl_downloadfilter", "all", FCVAR_ARCHIVE, "Determines which files can be downloaded from the server (all, none, nosounds, mapsonly)" );
+static ConVar cl_profile_map_load( "cl_profile_map_load", "0", 0, "Log client signon phases and actual loading-screen completion." );
+
+class CClientLoadTimer
+{
+public:
+	CClientLoadTimer( const char *phase, const char *map ) : m_Phase(phase), m_Map(map),
+		m_Enabled(cl_profile_map_load.GetBool()), m_Start(m_Enabled ? Plat_FloatTime() : 0)
+	{
+		if ( m_Enabled ) ConMsg("[load-profile] event=begin phase=%s map=%s t=%.6f\n", m_Phase, m_Map, m_Start);
+	}
+	~CClientLoadTimer()
+	{
+		if ( m_Enabled ) ConMsg("[load-profile] event=end phase=%s map=%s ms=%.2f t=%.6f\n",
+			m_Phase, m_Map, (Plat_FloatTime()-m_Start)*1000, Plat_FloatTime());
+	}
+private:
+	const char *m_Phase, *m_Map;
+	bool m_Enabled;
+	double m_Start;
+};
 
 #ifdef OSX
 	// OS X is barely making it due to virtual memory pressure on 32bit, our behavior of load new models -> unload
@@ -199,6 +219,7 @@ bool CClientState::SetSignonState ( int state, int count )
 	// ConDMsg ("Signon state: %i\n", state );
 
 	COM_TimestampedLog( "CClientState::SetSignonState: start %i", state );
+	if ( cl_profile_map_load.GetBool() ) ConMsg("[load-profile] event=signon state=%d map=%s t=%.6f\n", state, m_szLevelBaseName, Plat_FloatTime());
 
 	switch ( m_nSignonState )
 	{
@@ -279,6 +300,7 @@ bool CClientState::SetSignonState ( int state, int count )
 
 		case SIGNONSTATE_FULL:
 			{
+				CClientLoadTimer timer("fully_connected", m_szLevelBaseName);
 				CL_FullyConnected();
 				if ( m_NetChannel )
 				{
@@ -317,6 +339,8 @@ bool CClientState::SetSignonState ( int state, int count )
 		// tell server that we entered now that state
 		m_NetChannel->SendNetMsg( NET_SignonState( state, count) );
 	}
+	if ( state == SIGNONSTATE_FULL && cl_profile_map_load.GetBool() )
+		ConMsg("[load-profile] event=client_ready map=%s t=%.6f\n", m_szLevelBaseName, Plat_FloatTime());
 
 	return true;
 }
@@ -1744,7 +1768,9 @@ void CClientState::FinishSignonState_New()
 	}
 
 	// Verify the map and player .mdl crc's now that we've finished downloading missing resources (maps etc)
-	if ( !CL_CheckCRCs( m_szLevelFileName ) )
+	bool crcValid;
+	{ CClientLoadTimer timer("verify_crc", m_szLevelBaseName); crcValid = CL_CheckCRCs(m_szLevelFileName); }
+	if ( !crcValid )
 	{
 		Host_Error( "Unable to verify map %s", ( m_szLevelFileName && m_szLevelFileName[0] ) ? m_szLevelFileName : "unknown" );
 		return;
@@ -1780,7 +1806,7 @@ void CClientState::FinishSignonState_New()
 
 	// Before we do anything with the whitelist, make sure we have the proper map pack mounted
 	// this will load the .bsp by setting the world model the string list at the hardcoded index 1.
-	cl.SetModel( 1 );
+	{ CClientLoadTimer timer("world_model", m_szLevelBaseName); cl.SetModel(1); }
 
 	V_RenderSwapBuffers();
 
@@ -1794,20 +1820,20 @@ void CClientState::FinishSignonState_New()
 	// longer pure, but would be unloaded in fully connected anyway.
 	CL_CheckForPureServerWhitelist( m_pPendingPureFileReloads );
 
-	CL_InstallAndInvokeClientStringTableCallbacks();
+	{ CClientLoadTimer timer("string_tables", m_szLevelBaseName); CL_InstallAndInvokeClientStringTableCallbacks(); }
 
-	materials->CacheUsedMaterials();
+	{ CClientLoadTimer timer("materials", m_szLevelBaseName); materials->CacheUsedMaterials(); }
 
 	// force a consistency check
-	ConsistencyCheck( true );
+	{ CClientLoadTimer timer("consistency", m_szLevelBaseName); ConsistencyCheck(true); }
 
-	CL_RegisterResources();
+	{ CClientLoadTimer timer("register_resources", m_szLevelBaseName); CL_RegisterResources(); }
 
 	// Done with all resources, issue prespawn command.
 	// Include server count in case server disconnects and changes level during d/l
 
 	// Tell rendering system we have a new set of models.
-	R_LevelInit();
+	{ CClientLoadTimer timer("renderer", m_szLevelBaseName); R_LevelInit(); }
 
 	// Balanced against SuspendTextureStreaming above
 	materials->ResumeTextureStreaming();

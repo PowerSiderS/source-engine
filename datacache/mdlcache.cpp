@@ -824,6 +824,9 @@ void CMDLCache::Flush( MDLHandle_t handle, int nFlushFlags )
 
 		UncacheData( pStudioData->m_VertexCache, MDLCACHE_VERTEXES, bIgnoreLock );
 		pStudioData->m_VertexCache = NULL;
+		// An explicit vertex flush permits retry after content has been replaced.
+		if ( pStudioData->m_nFlags & STUDIODATA_FLAGS_NO_VERTEX_DATA )
+			pStudioData->m_nFlags &= ~(STUDIODATA_FLAGS_NO_VERTEX_DATA | STUDIODATA_FLAGS_NO_STUDIOMESH);
 	}
 
 	// Now check whatever files are not loaded, make sure file system knows
@@ -2920,9 +2923,15 @@ bool CMDLCache::ProcessDataIntoCache( MDLHandle_t handle, MDLCacheDataType_t typ
 
 	case MDLCACHE_VERTEXES:
 		{
-			if ( bDataValid )
+			if ( bDataValid && pData && nDataSize >= sizeof(vertexFileHeader_t) )
 			{
-				BuildAndCacheVertexData( pStudioHdrCurrent, (vertexFileHeader_t *)pData );
+				if ( !BuildAndCacheVertexData( pStudioHdrCurrent, (vertexFileHeader_t *)pData ) )
+				{
+					// A readable but incompatible VVD is a completed failure, not a
+					// pending load. Otherwise every draw reopens and rejects it.
+					pStudioDataCurrent->m_nFlags |= STUDIODATA_FLAGS_NO_VERTEX_DATA;
+					return false;
+				}
 			}
 			else
 			{

@@ -1523,6 +1523,11 @@ CDispCollTree *DispCollTrees_Alloc( int count )
 void DispCollTrees_Free( CDispCollTree *pTrees )
 {
 #ifdef ENGINE_DLL
+	// The cache stores pointers into the map hunk. Drain every entry while
+	// the trees are still alive, before their destructors and hunk teardown.
+	// A per-tree handle alone cannot cover obsolete cache registrations.
+	if ( pTrees )
+		g_DispCollTriCache.FlushAll();
 	for ( int i = 0; i < g_nTrees; i++ )
 	{
 		Destruct( pTrees + i );

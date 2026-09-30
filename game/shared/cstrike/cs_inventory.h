@@ -30,10 +30,16 @@ public:
 	void PrecacheForWeapon( CSWeaponID id );
 	int GetPlayerSelection( CBasePlayer *player, CSWeaponID id ) const;
 	int Count() const { return m_Items.Count(); }
+	void PrintProfile() const;
 private:
 	void Load();
+	void ResetPrecache();
 	CUtlVector<CSkinItem> m_Items;
 	bool m_Loaded;
+	bool m_Precached[WEAPON_KEVLAR];
+	bool m_ArmsPrecached;
+	int m_PrecacheCalls, m_PrecacheHits, m_PrecacheModels;
+	double m_LoadSeconds, m_PrecacheSeconds;
 };
 CInventoryManager &CSInventory();
 #endif

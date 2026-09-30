@@ -529,6 +529,8 @@ enum MaterialRenderTargetDepth_t
 enum RestoreChangeFlags_t
 {
 	MATERIAL_RESTORE_VERTEX_FORMAT_CHANGED = 0x1,
+	// D3D9Ex swap-chain changes retain textures, lightmaps and mesh buffers.
+	MATERIAL_RESTORE_SWAPCHAIN_CHANGED = 0x2,
 };
 
 

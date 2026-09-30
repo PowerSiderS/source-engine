@@ -8,12 +8,14 @@
 #include "tier1/utlvector.h"
 #include "tier1/utlstring.h"
 #include "tier1/strtools.h"
+#include "tier1/utlbuffer.h"
 #include <ctype.h>
 
 ConVar sm_map_enabled( "sm_map_enabled", "1", FCVAR_GAMEDLL, "Enable or disable in-game chat map switcher commands (!map, !maps, !rtv)." );
 ConVar sm_map_delay( "sm_map_delay", "3.0", FCVAR_GAMEDLL, "Delay in seconds before changing to the new map." );
 ConVar sm_rtv_ratio( "sm_rtv_ratio", "0.5", FCVAR_GAMEDLL, "Ratio of human players required to trigger Rock The Vote (0.1 to 1.0)." );
 ConVar sm_map_player_change("sm_map_player_change","0",FCVAR_GAMEDLL,"Allow ordinary players to use !map; RTV remains available.");
+ConVar sm_map_catalog("sm_map_catalog","cfg/sourceadvanced_maps.txt",FCVAR_GAMEDLL,"Allowed map catalog. Empty enables scanning all mounted maps; missing catalog fails closed.");
 
 static CUtlVector<CUtlString> s_MapList;
 static bool s_bMapListInitialized = false;
@@ -41,6 +43,25 @@ static bool MapManager_AddMap(const char *name)
 static void MapManager_ScanMaps()
 {
 	s_MapList.RemoveAll();
+	if(sm_map_catalog.GetString()[0])
+	{
+		CUtlBuffer catalog(0,0,CUtlBuffer::TEXT_BUFFER);
+		if(!filesystem->ReadFile(sm_map_catalog.GetString(),"GAME",catalog))
+			Warning("[Map Manager] Required map catalog unavailable: %s\n",sm_map_catalog.GetString());
+		else
+		{
+			while(catalog.IsValid() && catalog.GetBytesRemaining()>0)
+			{
+				char line[256];catalog.GetLine(line,sizeof(line));
+				V_StripTrailingWhitespace(line);
+				char *name=line;while(*name==' ' || *name=='\t')++name;
+				if(*name && *name!='#' && *name!='/')MapManager_AddMap(name);
+			}
+		}
+		s_bMapListInitialized=true;
+		Msg("[Map Manager] Scanned %d competitive and casual maps available on server (restricted catalog).\n",s_MapList.Count());
+		return;
+	}
 
 	// Primary Competitive Active Duty Pool first
 	const char *priorityPool[] = {

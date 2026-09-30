@@ -31,6 +31,8 @@
 #if !defined( _X360 )
 IDirect3DDevice9 *Dx9Device();
 IDirect3D9 *D3D();
+	void ReleaseSwapChainSurfaces();
+	void RestoreSwapChainSurfaces();
 #endif
 
 

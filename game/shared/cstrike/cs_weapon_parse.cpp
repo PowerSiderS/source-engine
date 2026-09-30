@@ -167,9 +167,11 @@ CCSWeaponInfo * GetWeaponInfo( CSWeaponID weaponID )
 		return NULL;
 	}
 
-	CCSWeaponInfo *pWeaponInfo = dynamic_cast< CCSWeaponInfo* >( GetFileWeaponInfoFromHandle( hWpnInfo ) );
-
-	return pWeaponInfo;
+	FileWeaponInfo_t *pFileInfo=GetFileWeaponInfoFromHandle(hWpnInfo);
+	// The generic null weapon descriptor is smaller than CCSWeaponInfo. With
+	// RTTI disabled, casting it would read outside the object on missing content.
+	if(!pFileInfo || !pFileInfo->bParsedScript)return NULL;
+	return static_cast<CCSWeaponInfo *>(pFileInfo);
 }
 
 //--------------------------------------------------------------------------------------------------------

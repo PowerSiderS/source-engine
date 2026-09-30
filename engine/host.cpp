@@ -45,6 +45,7 @@
 #if !defined SWDS
 #include "voice.h"
 #include "sound.h"
+#include "Overlay.h"
 #endif
 
 #include "icvar.h"
@@ -4929,6 +4930,11 @@ void Host_Shutdown(void)
 #endif // VOICE_OVER_IP
 
 	// TODO, Trace this
+	// Overlay queues hold material references. Release them while the
+	// renderer/material system is alive, rather than at DLL static teardown.
+#ifndef SWDS
+	OverlayMgr()->UnloadOverlays();
+#endif
 	CM_FreeMap();
 
 	host_initialized = false;

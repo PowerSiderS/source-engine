@@ -285,6 +285,7 @@ void R_LevelInit( void )
 #endif
 
 	COM_TimestampedLog( "R_LevelInit: Finish" );
+	FinishDeferredMaterialSystemRestore();
 }
 
 void R_LevelShutdown()
