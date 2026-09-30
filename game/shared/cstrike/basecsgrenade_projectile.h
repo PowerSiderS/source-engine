@@ -12,6 +12,7 @@
 
 
 #include "basegrenade_shared.h"
+#include "cs_grenade_rules.h"
 
 
 #ifdef CLIENT_DLL
@@ -51,7 +52,7 @@ public:
 	virtual ~CBaseCSGrenadeProjectile();
 
 	//Constants for all CS Grenades
-	static inline float GetGrenadeGravity() { return 0.4f; }
+	static inline float GetGrenadeGravity() { return CS_GRENADE_GRAVITY_SCALE; }
 	static inline const float GetGrenadeFriction() { return 0.2f; }
 	static inline const float GetGrenadeElasticity() { return 0.45f; }
 

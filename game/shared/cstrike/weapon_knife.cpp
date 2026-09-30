@@ -7,6 +7,8 @@
 #include "cbase.h"
 #include "weapon_knife.h"
 #include "cs_gamerules.h"
+#include "baseviewmodel_shared.h"
+#include "shareddefs.h"
 
 #if defined( CLIENT_DLL )
 	#include "c_cs_player.h"
@@ -330,6 +332,52 @@ void CKnife::WeaponIdle()
 //=============================================================================
 
 
+void CKnife::SendAttackAnimation( bool bStab, bool bDidHit )
+{
+	CCSPlayer *pPlayer = GetPlayerOwner();
+	CBaseViewModel *pViewModel = pPlayer ? pPlayer->GetViewModel( m_nViewModelIndex, false ) : NULL;
+	if ( pViewModel )
+	{
+		// A number of imported knives give slash and stab the same activity.
+		// Named sequences avoid that ambiguous weighted activity selection.
+		const char *lightNames[] = { "light_hit1", "midslash1", "slash1", "light_hit2", "midslash2", "slash2" };
+		const char *heavyHitNames[] = { "heavy_hit", "stab", "stab_hit" };
+		const char *heavyMissNames[] = { "heavy_miss", "stab_miss", "heavy_hit", "stab" };
+		int sequence = -1;
+		if ( bStab )
+		{
+			const char **names = bDidHit ? heavyHitNames : heavyMissNames;
+			const int count = bDidHit ? ARRAYSIZE( heavyHitNames ) : ARRAYSIZE( heavyMissNames );
+			for ( int i = 0; i < count && sequence < 0; ++i )
+				sequence = pViewModel->LookupSequence( names[i] );
+		}
+		else
+		{
+			// SharedRandom uses the command seed, so prediction and server agree.
+			const int first = SharedRandomInt( "KnifeLightAnimation", 0, 1 ) * 3;
+			for ( int i = 0; i < ARRAYSIZE( lightNames ) && sequence < 0; ++i )
+				sequence = pViewModel->LookupSequence( lightNames[( first + i ) % ARRAYSIZE( lightNames )] );
+		}
+		if ( sequence >= 0 )
+		{
+#ifndef CLIENT_DLL
+			pPlayer->StopLookingAtWeapon();
+#endif
+			SetSequence( sequence );
+			CBaseCombatWeapon::SendViewModelAnim( sequence );
+			DevMsg("[knife-animation] %s sequence=%s\n",bStab ? "heavy" : "light",pViewModel->GetSequenceName(sequence));
+			return;
+		}
+		const Activity secondary = bDidHit ? ACT_VM_HITCENTER2 : ACT_VM_MISSCENTER2;
+		if ( bStab && pViewModel->SelectWeightedSequence( secondary ) >= 0 )
+		{
+			SendWeaponAnim( secondary );
+			return;
+		}
+	}
+	SendWeaponAnim( bDidHit ? ACT_VM_HITCENTER : ACT_VM_MISSCENTER );
+}
+
 bool CKnife::SwingOrStab( bool bStab )
 {
 	CCSPlayer *pPlayer = GetPlayerOwner();
@@ -375,7 +423,7 @@ bool CKnife::SwingOrStab( bool bStab )
 
 	if ( bStab )
 	{
-		SendWeaponAnim( bDidHit ? ACT_VM_HITCENTER : ACT_VM_MISSCENTER );
+		SendAttackAnimation( true, bDidHit );
 
 		fPrimDelay = fSecDelay = bDidHit ? 1.1f : 1.0f;
 
@@ -383,7 +431,7 @@ bool CKnife::SwingOrStab( bool bStab )
 	}
 	else // swing
 	{
-		SendWeaponAnim( bDidHit ? ACT_VM_HITCENTER : ACT_VM_MISSCENTER );
+		SendAttackAnimation( false, bDidHit );
 
 		fPrimDelay = bDidHit ? 0.5f : 0.4f;
 		fSecDelay = bDidHit ? 0.5f : 0.5f;

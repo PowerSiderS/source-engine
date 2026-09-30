@@ -72,6 +72,9 @@ CBaseViewModel::~CBaseViewModel()
 
 void CBaseViewModel::UpdateOnRemove( void )
 {
+#if defined( CLIENT_DLL ) && defined( CSTRIKE_DLL )
+	ReleaseUnifiedArms();
+#endif
 	BaseClass::UpdateOnRemove();
 
 	DestroyControlPanels();

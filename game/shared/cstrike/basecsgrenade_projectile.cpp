@@ -119,6 +119,9 @@ END_NETWORK_TABLE()
 
 		// smaller, cube bounding box so we rest on the ground
 		SetSize( Vector ( -2, -2, -2 ), Vector ( 2, 2, 2 ) );
+		SetGravity(GetGrenadeGravity());
+		SetFriction(GetGrenadeFriction());
+		SetElasticity(GetGrenadeElasticity());
 	}
 
 	void CBaseCSGrenadeProjectile::DangerSoundThink( void )
@@ -217,9 +220,9 @@ END_NETWORK_TABLE()
 
 			SetAbsVelocity( vecAbsVelocity );
 
-			if ( flSpeedSqr < ( 30 * 30 ) )
+			if ( flSpeedSqr < CS_GRENADE_REST_SPEED*CS_GRENADE_REST_SPEED )
 			{
-				if ( pEntity->IsStandable() )
+				if ( pEntity && pEntity->IsStandable() )
 				{
 					SetGroundEntity( pEntity );
 				}

@@ -114,6 +114,12 @@ bool CWeaponCSBaseGun::CSBaseGunFire( float flCycleTime, CSWeaponMode weaponMode
 		return false;
 
 	const CCSWeaponInfo &pCSInfo = GetCSWpnData();
+	// Every direct call must respect the same authoritative gate as ItemPostFrame.
+	// Holding IN_ATTACK at high tick rates is legitimate; ignore an early shot
+	// without rejecting the player's movement command.
+	if ( !pPlayer->IsAlive() || m_bInReload || pPlayer->m_flNextAttack > gpGlobals->curtime || m_flNextPrimaryAttack > gpGlobals->curtime )
+		return false;
+	flCycleTime = pCSInfo.m_flCycleTime[weaponMode];
 
 	m_bDelayFire = true;
 

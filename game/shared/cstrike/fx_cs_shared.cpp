@@ -7,6 +7,7 @@
 #include "cbase.h"
 #include "fx_cs_shared.h"
 #include "weapon_csbase.h"
+#include "cs_inventory.h"
 #include "ammodef.h"
 
 #ifdef CLIENT_DLL
@@ -16,7 +17,7 @@
         #include "ilagcompensationmanager.h"
 #endif
 
-ConVar weapon_accuracy_logging( "weapon_accuracy_logging", "0", FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY | FCVAR_ARCHIVE );
+ConVar weapon_accuracy_logging( "weapon_accuracy_logging", "0", FCVAR_REPLICATED | FCVAR_CHEAT );
 
 #ifdef CLIENT_DLL
 ConVar r_drawtracers( "r_drawtracers", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL, "Enable/disable weapon tracers" );
@@ -35,6 +36,14 @@ ConVar r_drawtracers( "r_drawtracers", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL, "En
 
 		// If we have some sounds from the weapon classname.txt file, play a random one of them
 		const char *shootsound = pWeaponInfo->aShootSounds[ sound_type ]; 
+		CBasePlayer *player=UTIL_PlayerByIndex(iPlayerIndex);
+		CWeaponCSBase *weapon=player ? dynamic_cast<CWeaponCSBase *>(player->GetActiveWeapon()) : NULL;
+		const CSkinItem *item=weapon ? CSInventory().FindForWeapon(weapon->m_iInventoryItem.Get(),weapon->GetWeaponID()) : NULL;
+		if (item)
+		{
+			const char *custom=sound_type==SPECIAL1 ? item->silenced_sound : item->shoot_sound;
+			if (custom[0]) shootsound=custom;
+		}
 		if ( !shootsound || !shootsound[0] )
 			return;
 

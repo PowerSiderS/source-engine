@@ -870,12 +870,9 @@ COM_InitFilesystem
 */
 void COM_InitFilesystem( const char *pFullModPath )
 {
-	FILE *fpDbg = fopen( "dedicated_trace.log", "a" );
-	if ( fpDbg ) { fprintf( fpDbg, "[COM_InitFilesystem] entered pFullModPath=%s\n", pFullModPath ? pFullModPath : "null" ); fclose( fpDbg ); }
-
 	CFSSearchPathsInit initInfo;
 
-	bool bIsDedicated = ( CommandLine()->FindParm("-dedicated") != 0 || CommandLine()->FindParm("-console") != 0 );
+	bool bIsDedicated = ( CommandLine()->FindParm("-dedicated") != 0 );
 
 #ifndef SWDS	
 	if ( IsPC() && !bIsDedicated )
@@ -929,22 +926,13 @@ void COM_InitFilesystem( const char *pFullModPath )
 		initInfo.m_pDirectoryName = GetCurrentGame();
 	}
 
-	fpDbg = fopen( "dedicated_trace.log", "a" );
-	if ( fpDbg ) { fprintf( fpDbg, "[COM_InitFilesystem] calling Host_CheckGore and BLoadHDContent\n" ); fclose( fpDbg ); }
-
 	Host_CheckGore();
 
 	initInfo.m_bLowViolence = g_bLowViolence;
 	initInfo.m_bMountHDContent = BLoadHDContent( initInfo.m_pDirectoryName, GetBaseDirectory() );
 
-	fpDbg = fopen( "dedicated_trace.log", "a" );
-	if ( fpDbg ) { fprintf( fpDbg, "[COM_InitFilesystem] calling FileSystem_LoadSearchPaths\n" ); fclose( fpDbg ); }
-
 	// Load gameinfo.txt and setup all the search paths, just like the tools do.
 	FileSystem_LoadSearchPaths( initInfo );
-
-	fpDbg = fopen( "dedicated_trace.log", "a" );
-	if ( fpDbg ) { fprintf( fpDbg, "[COM_InitFilesystem] FileSystem_LoadSearchPaths returned, ModPath=%s\n", initInfo.m_ModPath ); fclose( fpDbg ); }
 							  
 	// The mod path becomes com_gamedir.
 	Q_MakeAbsolutePath( com_gamedir, sizeof( com_gamedir ), initInfo.m_ModPath );
@@ -955,7 +943,7 @@ void COM_InitFilesystem( const char *pFullModPath )
 	Q_FixSlashes( com_basedir );
 	
 #if !defined( SWDS ) && !defined( DEDICATED )
-	if ( !bIsDedicated )
+	if ( EngineVGui() && !bIsDedicated )
 	{
 		EngineVGui()->SetVGUIDirectories();
 	}
@@ -963,9 +951,6 @@ void COM_InitFilesystem( const char *pFullModPath )
 
 	// Set LOGDIR to be something reasonable
 	COM_SetupLogDir( NULL );
-
-	fpDbg = fopen( "dedicated_trace.log", "a" );
-	if ( fpDbg ) { fprintf( fpDbg, "[COM_InitFilesystem] finished successfully\n" ); fclose( fpDbg ); }
 
 //	g_pFileSystem->PrintSearchPaths();
 

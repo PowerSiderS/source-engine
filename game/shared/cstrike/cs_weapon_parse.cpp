@@ -8,11 +8,13 @@
 #include <KeyValues.h>
 #include "cs_weapon_parse.h"
 #include "cs_legacy_weapon_tuning.h"
+#include "cs_2015_weapon_profiles.h"
 #include "cs_shareddefs.h"
 #include "weapon_csbase.h"
 #include "icvar.h"
 #include "cs_gamerules.h"
 #include "cs_blackmarket.h"
+#include "filesystem.h"
 
 
 //--------------------------------------------------------------------------------------------------------
@@ -84,6 +86,11 @@ WeaponNameInfo s_weaponNameInfo[] =
 
 	// not sure any of these are needed
 	{ WEAPON_SHIELDGUN,			"weapon_shieldgun" },
+	{ WEAPON_CZ75, "weapon_cz75" }, { WEAPON_TEC9, "weapon_tec9" },
+	{ WEAPON_REVOLVER, "weapon_revolver" }, { WEAPON_P2000, "weapon_p2000" },
+	{ WEAPON_M4A4, "weapon_m4a4" }, { WEAPON_MP7, "weapon_mp7" },
+	{ WEAPON_BIZON, "weapon_bizon" }, { WEAPON_MAG7, "weapon_mag7" },
+	{ WEAPON_SAWEDOFF, "weapon_sawedoff" }, { WEAPON_NEGEV, "weapon_negev" },
 	{ WEAPON_KEVLAR,			"weapon_kevlar" },
 	{ WEAPON_ASSAULTSUIT,		"weapon_assaultsuit" },
 	{ WEAPON_NVG,				"weapon_nvg" },
@@ -274,6 +281,7 @@ FileWeaponInfo_t* CreateWeaponInfo()
 CCSWeaponInfo::CCSWeaponInfo()
 {
 	m_flMaxSpeed = 1; // This should always be set in the script.
+	m_flMaxSpeedAlt = 1;
 	m_szAddonModel[0] = 0;
 
 	m_fRecoilAngle[0] = m_fRecoilAngle[1] = 0.0f;
@@ -308,6 +316,7 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	BaseClass::Parse( pKeyValuesData, szWeaponName );
 
 	m_flMaxSpeed = (float)pKeyValuesData->GetInt( "MaxPlayerSpeed", 1 );
+	m_flMaxSpeedAlt = (float)pKeyValuesData->GetInt( "MaxPlayerSpeedAlt", (int)m_flMaxSpeed );
 
 	m_iDefaultPrice = m_iWeaponPrice = pKeyValuesData->GetInt( "WeaponPrice", -1 );
 	if ( m_iWeaponPrice == -1 )
@@ -461,7 +470,10 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 
 	// Gameplay balance is compiled into both DLLs. Content packs may replace
 	// models, materials and sounds without silently changing recoil or damage.
-	CSApplyLegacyWeaponTuning( *this, AliasToWeaponID( GetTranslatedWeaponAlias( szWeaponName ) ) );
+	const char *balanceAlias = !Q_strnicmp( szWeaponName, "weapon_", 7 ) ? szWeaponName+7 : szWeaponName;
+	const CSWeaponID balanceID=AliasToWeaponID(GetTranslatedWeaponAlias(balanceAlias));
+	CSApplyLegacyWeaponTuning(*this,balanceID);
+	CSApply2015WeaponProfile(*this,balanceID);
 
 	// Read the addon model.
 	Q_strncpy( m_szAddonModel, pKeyValuesData->GetString( "AddonModel" ), sizeof( m_szAddonModel ) );
@@ -518,6 +530,9 @@ void WeaponRecoilData::GenerateRecoilTable( RecoilData *data )
 
 	if ( !data )
 		return;
+	data->suppressionShots = iSuppressionShots;
+	data->suppressionFactor = fBaseSuppressionFactor;
+	data->variance = fRecoilVariance;
 
 	CCSWeaponInfo *pWeaponInfo = GetWeaponInfo( data->iWeaponID );
 
@@ -544,38 +559,11 @@ void WeaponRecoilData::GenerateRecoilTable( RecoilData *data )
 
 	for ( int iMode = 0; iMode < 2; ++iMode )
 	{
-	Assert( pWeaponInfo );
-
-	recoilRandom.SetSeed( iSeed );
-
-		float fAngle = 0.0f;
-		float fMagnitude = 0.0f;
-
-		for ( int j = 0; j < ARRAYSIZE( data->recoilTable[iMode] ); ++j )
-	{
-			float fAngleNew = flRecoilAngle[iMode] + recoilRandom.RandomFloat( -flRecoilAngleVariance[iMode], +flRecoilAngleVariance[iMode] );
-			float fMagnitudeNew = flRecoilMagnitude[iMode] + recoilRandom.RandomFloat( -flRecoilMagnitudeVariance[iMode], +flRecoilMagnitudeVariance[iMode] );
-
-			if ( bFullAuto && ( j > 0 ) )
-			{
-				fAngle = Lerp( fRecoilVariance, fAngle, fAngleNew );
-				fMagnitude = Lerp( fRecoilVariance, fMagnitude, fMagnitudeNew );
-			}
-			else
-			{
-				fAngle = fAngleNew;
-				fMagnitude = fMagnitudeNew;
-			}
-
-			if ( bFullAuto && ( j < iSuppressionShots ) )
-			{
-				float fSuppressionFactor = Lerp( (float)j / (float)iSuppressionShots, fBaseSuppressionFactor, 1.0f );
-				fMagnitude *= fSuppressionFactor;
-			}
-
-			data->recoilTable[iMode][j].fAngle = fAngle;
-			data->recoilTable[iMode][j].fMagnitude = fMagnitude;
-	}
+		CSGenerateRecoilPattern(recoilRandom, iSeed, bFullAuto,
+			flRecoilAngle[iMode], flRecoilAngleVariance[iMode],
+			flRecoilMagnitude[iMode], flRecoilMagnitudeVariance[iMode],
+			iSuppressionShots, fBaseSuppressionFactor, fRecoilVariance,
+			data->recoilTable[iMode], ARRAYSIZE(data->recoilTable[iMode]));
 	}
 }
 
@@ -601,7 +589,12 @@ void WeaponRecoilData::GetRecoilOffsets( CWeaponCSBase *pWeapon, int iMode, int 
 	Assert( wepData );
 	}
 
-	iIndex = iIndex % ARRAYSIZE( wepData->recoilTable[iMode] );
+	if ( wepData->suppressionShots != weapon_recoil_suppression_shots.GetInt() ||
+		wepData->suppressionFactor != weapon_recoil_suppression_factor.GetFloat() ||
+		wepData->variance != weapon_recoil_variance.GetFloat() ) GenerateRecoilTable(wepData);
+	iMode = iMode == Secondary_Mode ? Secondary_Mode : Primary_Mode;
+	const int count = ARRAYSIZE( wepData->recoilTable[iMode] );
+	iIndex = CSRecoilTableIndex( iIndex, count );
 	fAngle = wepData->recoilTable[iMode][iIndex].fAngle;
 	fMagnitude = wepData->recoilTable[iMode][iIndex].fMagnitude;
 }
@@ -619,6 +612,55 @@ void WeaponRecoilData::GenerateRecoilPattern( CSWeaponID id )
 }
 
 WeaponRecoilData g_WeaponRecoilData;
+
+#ifndef CLIENT_DLL
+CON_COMMAND_F( cs_validate_weapon_balance, "Compare effective weapon data with the compiled balance table.", FCVAR_CHEAT )
+{
+	int checked=0,failed=0;
+	for (int i=0;i<ARRAYSIZE(g_CSLegacyWeaponTuning);++i)
+	{
+		CSWeaponID id=g_CSLegacyWeaponTuning[i].id; const CCSWeaponInfo *loaded=GetWeaponInfo(id);
+		if (!loaded) { ++failed; Warning("[balance-audit] missing %s\n",WeaponIdAsString(id)); continue; }
+		CCSWeaponInfo expected=*loaded; CSApplyLegacyWeaponTuning(expected,id); CSApply2015WeaponProfile(expected,id);
+		bool valid=loaded->iMaxClip1==expected.iMaxClip1 && loaded->iDefaultClip1==expected.iDefaultClip1 && loaded->m_iDamage==expected.m_iDamage && loaded->m_iPenetration==expected.m_iPenetration && loaded->m_flRange==expected.m_flRange && loaded->m_flRangeModifier==expected.m_flRangeModifier && loaded->m_iRecoilSeed==expected.m_iRecoilSeed;
+		for (int mode=0;mode<2;++mode) valid=valid && loaded->m_flCycleTime[mode]==expected.m_flCycleTime[mode] && loaded->m_fSpread[mode]==expected.m_fSpread[mode] && loaded->m_fInaccuracyStand[mode]==expected.m_fInaccuracyStand[mode] && loaded->m_fInaccuracyMove[mode]==expected.m_fInaccuracyMove[mode] && loaded->m_fRecoilMagnitude[mode]==expected.m_fRecoilMagnitude[mode];
+		++checked; if (!valid) ++failed;
+		Msg("[balance-audit] %s %s damage=%d clip=%d cycle=%.6f recoil_seed=%d\n",valid ? "PASS" : "FAIL",WeaponIdAsString(id),loaded->m_iDamage,loaded->iMaxClip1,loaded->m_flCycleTime[0],loaded->m_iRecoilSeed);
+	}
+	Msg("[balance-audit] checked=%d failed=%d\n",checked,failed);
+}
+CON_COMMAND_F( cs_export_gunplay, "Export loaded weapon profiles and seeded recoil impulses to gunplay_audit.csv.", FCVAR_CHEAT )
+{
+	FileHandle_t file = filesystem->Open("gunplay_audit.csv","wt","MOD");
+	if ( file == FILESYSTEM_INVALID_HANDLE ) { Warning("Cannot write gunplay_audit.csv\n"); return; }
+	filesystem->FPrintf(file,"weapon,mode,shot,seed,angle,magnitude,cycle,spread,crouch,stand,move,jump,fire,recovery_crouch,recovery_crouch_final,recovery_stand,recovery_stand_final\n");
+	int rows = 0;
+	for ( int index = 0; index < ARRAYSIZE(g_CSLegacyWeaponTuning); ++index )
+	{
+		CSWeaponID id = g_CSLegacyWeaponTuning[index].id;
+		const CCSWeaponInfo *info = GetWeaponInfo(id);
+		if ( !info ) continue;
+		for ( int mode = 0; mode < 2; ++mode )
+		{
+			CUniformRandomStream random;
+			CSRecoilOffset offsets[64];
+			CSGenerateRecoilPattern(random,info->m_iRecoilSeed,info->m_bFullAuto,
+				info->m_fRecoilAngle[mode],info->m_fRecoilAngleVariance[mode],info->m_fRecoilMagnitude[mode],info->m_fRecoilMagnitudeVariance[mode],
+				weapon_recoil_suppression_shots.GetInt(),weapon_recoil_suppression_factor.GetFloat(),weapon_recoil_variance.GetFloat(),offsets,64);
+			for ( int shot = 0; shot < 64; ++shot )
+			{
+				filesystem->FPrintf(file,"%s,%d,%d,%d,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g\n",
+					WeaponIdAsString(id),mode,shot,info->m_iRecoilSeed,offsets[shot].fAngle,offsets[shot].fMagnitude,
+					info->m_flCycleTime[mode],info->m_fSpread[mode],info->m_fInaccuracyCrouch[mode],info->m_fInaccuracyStand[mode],info->m_fInaccuracyMove[mode],info->m_fInaccuracyJump[mode],info->m_fInaccuracyImpulseFire[mode],
+					info->m_fRecoveryTimeCrouch,info->m_fRecoveryTimeCrouchFinal,info->m_fRecoveryTimeStand,info->m_fRecoveryTimeStandFinal);
+				++rows;
+			}
+		}
+	}
+	filesystem->Close(file);
+	Msg("[gunplay-audit] Exported %d rows to gunplay_audit.csv\n",rows);
+}
+#endif
 
 void GenerateWeaponRecoilPattern( CSWeaponID idx )
 {

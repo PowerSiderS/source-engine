@@ -13,6 +13,7 @@
 
 #include "weapon_parse.h"
 #include "networkvar.h"
+#include "cs_recoil_pattern.h"
 
 
 //--------------------------------------------------------------------------------------------------------
@@ -69,6 +70,9 @@ enum CSWeaponID
 	WEAPON_P90,
 
 	WEAPON_SHIELDGUN,	// BOTPORT: Is this still needed?
+	WEAPON_CZ75, WEAPON_TEC9, WEAPON_REVOLVER, WEAPON_P2000,
+	WEAPON_M4A4, WEAPON_MP7, WEAPON_BIZON, WEAPON_MAG7,
+	WEAPON_SAWEDOFF, WEAPON_NEGEV,
 
 	WEAPON_KEVLAR,
 	WEAPON_ASSAULTSUIT,
@@ -98,16 +102,12 @@ public:
 
 private:
 
-	struct RecoilOffset
-	{
-	float	fAngle;
-	float	fMagnitude;
-	};
-
 	struct RecoilData
 	{
 	CSWeaponID		iWeaponID;
-	RecoilOffset		recoilTable[2][64];
+	CSRecoilOffset		recoilTable[2][64];
+	int suppressionShots;
+	float suppressionFactor, variance;
 	};
 
 	CUtlMap< CSWeaponID, RecoilData* > m_mapRecoilTables;
@@ -151,6 +151,7 @@ public:
 public:
 
 	float m_flMaxSpeed;			// How fast the player can run while this is his primary weapon.
+	float m_flMaxSpeedAlt;		// How fast the player can run while zoomed / alt mode.
 
 	CSWeaponType m_WeaponType;
 

@@ -34,6 +34,45 @@
 
 #ifdef CSTRIKE_DLL
 	ConVar cl_righthand( "cl_righthand", "1", FCVAR_ARCHIVE, "Use right-handed view models." );
+
+	class CUnifiedViewArms : public C_BaseAnimating
+	{
+	public:
+		virtual bool IsViewModel() const { return true; }
+		virtual RenderGroup_t GetRenderGroup() { return RENDER_GROUP_VIEW_MODEL_OPAQUE; }
+		virtual ShadowType_t ShadowCastType() { return SHADOWS_NONE; }
+		virtual bool ShouldDraw()
+		{
+			C_BaseViewModel *parent = dynamic_cast<C_BaseViewModel *>( GetMoveParent() );
+			return parent && parent->ShouldDraw() && !parent->IsEffectActive( EF_NODRAW );
+		}
+		virtual int InternalDrawModel( int flags )
+		{
+			C_BaseViewModel *parent = dynamic_cast<C_BaseViewModel *>( GetMoveParent() );
+			CMatRenderContextPtr context( materials );
+			if ( parent && parent->ShouldFlipViewModel() ) context->CullMode( MATERIAL_CULLMODE_CW );
+			int result = C_BaseAnimating::InternalDrawModel( flags );
+			context->CullMode( MATERIAL_CULLMODE_CCW ); return result;
+		}
+	};
+
+	void C_BaseViewModel::ReleaseUnifiedArms()
+	{
+		if ( m_hUnifiedArms ) { m_hUnifiedArms->Release(); m_hUnifiedArms = NULL; }
+	}
+	void C_BaseViewModel::UpdateUnifiedArms()
+	{
+		const char *modelName = GetModel() ? modelinfo->GetModelName( GetModel() ) : "";
+		if ( Q_strnicmp( modelName, "models/sourceadvanced/c_weapon_", 31 ) ) { ReleaseUnifiedArms(); return; }
+		if ( m_hUnifiedArms ) return;
+		const char *arms = "models/sourceadvanced/c_arms_default.mdl";
+		if ( modelinfo->GetModelIndex( arms ) <= 0 ) return;
+		CUnifiedViewArms *child = new CUnifiedViewArms;
+		if ( !child->InitializeAsClientEntity( arms, RENDER_GROUP_VIEW_MODEL_OPAQUE ) ) { child->Release(); return; }
+		child->SetParent( this ); child->SetLocalOrigin( vec3_origin ); child->SetLocalAngles( vec3_angle );
+		child->AddEffects( EF_BONEMERGE | EF_BONEMERGE_FASTCULL | EF_PARENT_ANIMATES );
+		m_hUnifiedArms = child;
+	}
 #endif
 
 #ifdef TF_CLIENT_DLL
@@ -145,6 +184,9 @@ void C_BaseViewModel::FireEvent( const Vector& origin, const QAngle& angles, int
 
 bool C_BaseViewModel::Interpolate( float currentTime )
 {
+#ifdef CSTRIKE_DLL
+	UpdateUnifiedArms();
+#endif
 	CStudioHdr *pStudioHdr = GetModelPtr();
 	// Make sure we reset our animation information if we've switch sequences
 	UpdateAnimationParity();

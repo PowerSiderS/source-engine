@@ -925,6 +925,35 @@ void VInvalidParameterHandler(const wchar_t* expression,
    unsigned int line, 
    uintptr_t pReserved)
 {
+	// Release CRTs usually omit expression/file metadata, so also record the
+	// module-relative stack addresses for symbolication with the build's PDBs.
+	static LONG handlingInvalidParameter = 0;
+	if ( InterlockedCompareExchange( &handlingInvalidParameter, 1, 0 ) == 0 )
+	{
+		FILE *log = _wfopen( L"invalid_param.log", L"w" );
+		if ( log )
+		{
+			fwprintf( log, L"Expression: %ls\nFunction: %ls\nFile: %ls\nLine: %u\n",
+				expression ? expression : L"(null)",
+				function ? function : L"(null)",
+				file ? file : L"(null)", line );
+			void *frames[64] = {};
+			const USHORT count = CaptureStackBackTrace( 0, 64, frames, NULL );
+			for ( USHORT i = 0; i < count; ++i )
+			{
+				MEMORY_BASIC_INFORMATION info = {};
+				wchar_t modulePath[MAX_PATH] = {};
+				if ( VirtualQuery( frames[i], &info, sizeof( info ) ) )
+				{
+					GetModuleFileNameW( (HMODULE)info.AllocationBase, modulePath, MAX_PATH );
+					fwprintf( log, L"Frame %u: %ls + 0x%llx (base 0x%llx)\n", i,
+						modulePath, (unsigned long long)((uintptr_t)frames[i] - (uintptr_t)info.AllocationBase),
+						(unsigned long long)(uintptr_t)info.AllocationBase );
+				}
+			}
+			fclose( log );
+		}
+	}
 	WriteMiniDumpOrBreak( 1, "InvalidParameterHandler" );
 }
 

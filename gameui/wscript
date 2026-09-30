@@ -18,6 +18,7 @@ def configure(conf):
 
 def build(bld):
 	source = [
+		'OptionsSubInventory.cpp',
 		'BackgroundMenuButton.cpp',
 		'BasePanel.cpp',
 		'GameConsole.cpp',

@@ -620,7 +620,7 @@ void CCSGameMovement::PreventBunnyJumping()
 		return;
 
 	// Current player speed
-	float spd = mv->m_vecVelocity.Length();
+	float spd = mv->m_vecVelocity.Length2D();
 
 	if ( spd <= maxscaledspeed )
 		return;
@@ -628,7 +628,8 @@ void CCSGameMovement::PreventBunnyJumping()
 	// Apply this cropping fraction to velocity
 	float fraction = ( maxscaledspeed / spd );
 
-	mv->m_vecVelocity *= fraction;
+	mv->m_vecVelocity.x *= fraction;
+	mv->m_vecVelocity.y *= fraction;
 
 
 }

@@ -27,6 +27,8 @@
 #include "OptionsSubVideo.h"
 #include "OptionsSubVoice.h"
 #include "OptionsSubMultiplayer.h"
+#include "OptionsSubInventory.h"
+#include "filesystem.h"
 #include "OptionsSubDifficulty.h"
 #include "OptionsSubPortal.h"
 #ifdef WIN32
@@ -56,6 +58,11 @@ COptionsDialog::COptionsDialog(vgui::Panel *parent) : PropertyDialog(parent, "Op
 	}
 
 	SetBounds(0, 0, w, h);
+	if ( g_pFullFileSystem->FileExists( "scripts/skins_manifest.txt", "MOD" ) )
+	{
+		SetSize( 864, 580 );
+		AddPage( new COptionsSubInventory( this ), "Inventario" );
+	}
 
 	SetSizeable( false );
 

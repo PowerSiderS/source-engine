@@ -13,6 +13,7 @@
 #include "checksum_engine.h"
 #include "con_nprint.h"
 #include "r_local.h"
+#include "r_decal.h"
 #include "gl_lightmap.h"
 #include "console.h"
 #include "traceinit.h"
@@ -586,6 +587,9 @@ void CL_ClearState ( void )
 	CL_ReloadFilesInList( pFilesToReload );
 
 	CL_ResetEntityBits();
+	// Listen-server shutdown can bypass Disconnect; free decals before their
+	// surfaces and displacement data are released by the world hunk below.
+	R_DecalTermAll();
 
 	R_UnloadSkys();
 

@@ -5,6 +5,7 @@
 //=============================================================================//
 
 #include "cbase.h"
+#include "cs_grenade_rules.h"
 #include "weapon_csbase.h"
 #include "gamerules.h"
 #include "npcevent.h"
@@ -353,45 +354,24 @@ void CBaseCSGrenade::ItemPostFrame()
 
 		Vector vForward, vRight, vUp;
 
-		if ( angThrow.x < 0 )
-		{
-			angThrow.x += 360; // make sure we have a positive angle from LocalEyeAngles()
-		}
-
-		if ( angThrow.x < 90 )
-			angThrow.x = -10 + angThrow.x * ((90 + 10) / 90.0);
-		else
-		{
-			angThrow.x = 360.0f - angThrow.x;
-			angThrow.x = -10 + angThrow.x * -((90 - 10) / 90.0);
-		}
-
-		float flVel = (90 - angThrow.x) * 6;
-		if (flVel > 750)
-			flVel = 750;
-
-		if ( m_nThrowStrength == 1 )
-		{
-			flVel = 350.0f;
-		}
-		else if ( m_nThrowStrength == 2 )
-		{
-			flVel = 520.0f;
-		}
+		const float strength=CSGrenadeStrength(m_nThrowStrength);
+		angThrow.x=CSGrenadePitch(angThrow.x);
+		const float flVel=CSGrenadeThrowSpeed(strength);
 
 		AngleVectors( angThrow, &vForward, &vRight, &vUp );
 
 		Vector vecSrc = pPlayer->GetAbsOrigin() + pPlayer->GetViewOffset();
+		vecSrc.z+=CSGrenadeSourceHeight(strength);
 
-		// We want to throw the grenade from 16 units out.  But that can cause problems if we're facing
+		// Sweep to 22 units and back off six units, leaving the source 16 units out.  But that can cause problems if we're facing
 		// a thin wall.  Do a hull trace to be safe.
 		trace_t trace;
 		Vector mins( -2, -2, -2 );
 		Vector maxs(  2,  2,  2 );
-		UTIL_TraceHull( vecSrc, vecSrc + vForward * 16, mins, maxs, MASK_SOLID, pPlayer, COLLISION_GROUP_NONE, &trace );
-		vecSrc = trace.endpos;
+		UTIL_TraceHull( vecSrc, vecSrc + vForward * 22, mins, maxs, MASK_SOLID, pPlayer, COLLISION_GROUP_NONE, &trace );
+		vecSrc = trace.endpos - vForward * 6;
 
-		Vector vecThrow = vForward * flVel + pPlayer->GetAbsVelocity();
+		Vector vecThrow = vForward * flVel + pPlayer->GetAbsVelocity()*CS_GRENADE_PLAYER_VELOCITY_SCALE;
 
 		EmitGrenade( vecSrc, vec3_angle, vecThrow, AngularImpulse(600,random->RandomInt(-1200,1200),0), pPlayer );
 

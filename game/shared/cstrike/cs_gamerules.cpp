@@ -82,17 +82,17 @@ extern IReplaySystem *g_pReplay;
 
 /**
  * Player hull & eye position for standing, ducking, etc.  This version has a taller
- * player height, but goldsrc-compatible collision bounds.
+ * player height, with collision bounds matching its standing/crouched camera.
  */
 static CViewVectors g_CSViewVectors(
 	Vector( 0, 0, 64 ),		// eye position
 
 	Vector(-16, -16, 0 ),	// hull min
-	Vector( 16,  16, 62 ),	// hull max
+	Vector( 16,  16, 72 ),	// hull max
 
 	Vector(-16, -16, 0 ),	// duck hull min
-	Vector( 16,  16, 45 ),	// duck hull max
-	Vector( 0, 0, 47 ),		// duck view
+	Vector( 16,  16, 54 ),	// duck hull max
+	Vector( 0, 0, 46 ),		// duck view
 
 	Vector(-10, -10, -10 ),	// observer hull min
 	Vector( 10,  10,  10 ),	// observer hull max

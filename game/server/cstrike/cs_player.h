@@ -269,6 +269,7 @@ public:
 	// HPE_END
 	//=============================================================================
 
+	virtual bool TestHitboxes( const Ray_t &ray, unsigned int contentsMask, trace_t &trace );
 	virtual void		TraceAttack( const CTakeDamageInfo &inputInfo, const Vector &vecDir, trace_t *ptr, CDmgAccumulator *pAccumulator );
 
 	virtual CBaseEntity	*GiveNamedItem( const char *pszName, int iSubType = 0 );

@@ -45,6 +45,7 @@ public:
 	~C_CSPlayer();
 
 	virtual void Simulate();
+	virtual bool TestHitboxes( const Ray_t &ray, unsigned int contentsMask, trace_t &trace );
 
 	bool HasDefuser() const;
 

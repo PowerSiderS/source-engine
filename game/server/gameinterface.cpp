@@ -89,6 +89,9 @@
 #include "tier3/tier3.h"
 #include "serverbenchmark_base.h"
 #include "querycache.h"
+#ifdef CSTRIKE_DLL
+#include "cstrike/cs_weapon_integrity.h"
+#endif
 
 
 #ifdef TF_DLL
@@ -2668,6 +2671,7 @@ bool CServerGameClients::ClientConnect( edict_t *pEdict, const char *pszName, co
 	CBaseEntity *pEnt = pEdict->GetUnknown() ? pEdict->GetUnknown()->GetBaseEntity() : NULL;
 	bool bIsBot = ( pEnt && (pEnt->GetFlags() & FL_FAKECLIENT) );
 	bool bIsLocal = ( pszAddress && ( Q_strcmp( pszAddress, "loopback" ) == 0 || Q_strcmp( pszAddress, "none" ) == 0 ) );
+	if ( !bIsBot && !CSValidateWeaponFiles( pEdict, reject, maxrejectlen ) ) return false;
 
 	if ( !bIsBot && !bIsLocal )
 	{

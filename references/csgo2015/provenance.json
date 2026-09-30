@@ -1,0 +1,268 @@
+{
+  "archive_commit": "ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53",
+  "archive_date": "2015-11-30",
+  "files": [
+    {
+      "path": "csgo/csgo/scripts/weapon_ak47.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_ak47.txt",
+      "sha256": "c46608d591a64bd78d40e7e31eb00cbc9d8c77582d27248aceb4427fbf150c73",
+      "size": 2899
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_aug.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_aug.txt",
+      "sha256": "286eeee0bf60032f2dad1de9ea1116ac916d3ac29c0421cdecc4bfd1789f1659",
+      "size": 3388
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_awp.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_awp.txt",
+      "sha256": "4ce58c7c5a9c86329e2a3fbc3b5ff9c0698b0e7973cc66e6c71ab5a2a778eb6d",
+      "size": 3332
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_bizon.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_bizon.txt",
+      "sha256": "9d6ffa4a3ccc5c98c7c8d26778ab3bd84264b4cadda8c7fc0bb30de1bb5ab0b8",
+      "size": 2956
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_c4.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_c4.txt",
+      "sha256": "527ec1173d1dbfbc5d904c0527783664c8283ef7100b54b9d31d5260e13a1dac",
+      "size": 1889
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_cubemap.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_cubemap.txt",
+      "sha256": "18dcd16be6fe3fd65ae79e00e6d562b5e2e838cc102d2d5c72a6fdb1d3f173c5",
+      "size": 1016
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_deagle.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_deagle.txt",
+      "sha256": "e23c77640b45db966a033d198e507a918c3f3b4e922acbaf7d5fcc4437acedaa",
+      "size": 4230
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_decoy.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_decoy.txt",
+      "sha256": "82f6801e9b37f14a1d9d6460a3f9818b4752f812250636299f18d9952ce4f751",
+      "size": 1821
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_elite.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_elite.txt",
+      "sha256": "1ab502b83e3c77a1bab4b322ed525328eb426f9dc50f2d0f6a99493821f447fe",
+      "size": 4445
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_famas.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_famas.txt",
+      "sha256": "528465cdaef67fb92355be1a1b36b070cf25db70d6721172aa64a7e54b2e2fe5",
+      "size": 3295
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_fiveseven.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_fiveseven.txt",
+      "sha256": "539f0e50ab6df67ceb3a9f244e6298486a48a6097c2c34c28c0d145f9b65af87",
+      "size": 4223
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_flashbang.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_flashbang.txt",
+      "sha256": "6329a3696888aa86671b6e3abb83727d3940b72b2dd66efb6fe83990b851538a",
+      "size": 1916
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_g3sg1.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_g3sg1.txt",
+      "sha256": "0f1ccd0c3000be48b0e372868a0f33a245f9131becca3a72f5b7194a52017be9",
+      "size": 3306
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_galilar.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_galilar.txt",
+      "sha256": "921633fe67c7e6bdcfa7d4437a3edd8c6535ab17dfe17b0af799653b4d0352bb",
+      "size": 3365
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_glock.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_glock.txt",
+      "sha256": "94464ff9e29a6ad7733677a3761046a40304d9c9524c722e237889155e2b6088",
+      "size": 4774
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_hegrenade.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_hegrenade.txt",
+      "sha256": "b72a4acd14accd458724901203ad445470ed4eaa2e0a0e13ac9a647c795d3024",
+      "size": 2040
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_hkp2000.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_hkp2000.txt",
+      "sha256": "17418e1b280aa6687b0345ac2c08b35a1c99b7e3b2a69e30386c2af0ce94adf1",
+      "size": 4536
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_incgrenade.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_incgrenade.txt",
+      "sha256": "a5e504bd3e804b6186c1b22c397f990efc979740b406d0c6a4600de3778bc33d",
+      "size": 1917
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_knife.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_knife.txt",
+      "sha256": "96662d963601f9d7c976aab232a1d49c7390c384d5a8c395f04b2cc1e8a47783",
+      "size": 1870
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_knifegg.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_knifegg.txt",
+      "sha256": "0feb54a983102a399ac3c18dfa4668d1f88f06a1ca630df92b4cae16ebe819de",
+      "size": 1835
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_m249.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_m249.txt",
+      "sha256": "8b056111eee818c2bc77e2e5118092aba64259e38f12f9abd351dd569636d25e",
+      "size": 2911
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_m4a1.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_m4a1.txt",
+      "sha256": "e1100970423bd3d3c53cbb72be4d127bacdc3826b59df89e318c1ee0238fa38c",
+      "size": 3344
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_mac10.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_mac10.txt",
+      "sha256": "d97dc32a898366d280c36db1f780bf9d67027f0f33c6fdd2fe3212cdd41c0380",
+      "size": 2973
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_mag7.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_mag7.txt",
+      "sha256": "2a105d6ad2665cbaa9ed912e0ae99e63d5dfe72d2b2c61525449de35d30d5ad3",
+      "size": 2877
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_manifest.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_manifest.txt",
+      "sha256": "51413baa1d082fbb869fe00583426f31c9ad3f565beabac345705871c75387ae",
+      "size": 974
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_molotov.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_molotov.txt",
+      "sha256": "6df3310ec63cb8e4b48c01aac17bde0e0bd2dff4d901502261c9e4d1fab47498",
+      "size": 1900
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_mp7.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_mp7.txt",
+      "sha256": "ffe92e34cb946c5c11bc1550922d60d73ab43a766a2c97e35376e400b9896357",
+      "size": 2971
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_mp9.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_mp9.txt",
+      "sha256": "44b11de78ab4a6bbb1f9adb1464d2743088e6d027e6bd654981f43bdfae9fd27",
+      "size": 2958
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_negev.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_negev.txt",
+      "sha256": "aaee98906f1128f3ebfdae2d1e3dc3f5fb07750cf6965fecb9b27dab8b22d008",
+      "size": 2897
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_nova.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_nova.txt",
+      "sha256": "cd303f528794a07de2c1c7e277b5317f18fead85b612d2f7f3f6e10e8fab27b0",
+      "size": 2899
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_p250.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_p250.txt",
+      "sha256": "d194a9b4328063122547917090e4ed235626978667a79a0f459ea58b2eeb6fd8",
+      "size": 4133
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_p90.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_p90.txt",
+      "sha256": "e1ef182fea1c71f8eb04f9f3da2ee407c65afdc7a42d902a7a846fdc3eeffad7",
+      "size": 2954
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_rifle.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_rifle.txt",
+      "sha256": "bfe34bf11719db8b2e1e01104aa27fc3efb6805d7a55c108068b54b8413b4431",
+      "size": 5674
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_sawedoff.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_sawedoff.txt",
+      "sha256": "881be7de8f9284aaf7c3aa03e2821e28834e8bf8a5b888149e3331360d40c9d6",
+      "size": 2899
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_scar20.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_scar20.txt",
+      "sha256": "f502a1608179d0deb9e0dc6f5ec8a60d8b2d5f34ddcc3e464ceb64b81af0afc7",
+      "size": 3359
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_sg556.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_sg556.txt",
+      "sha256": "db994e31f17845033db51000de241e6b59537cece2fa10313a214855c5dbaa74",
+      "size": 3412
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_smokegrenade.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_smokegrenade.txt",
+      "sha256": "76ce5c67f4c330881e92f40a24fd4000b5d13fb264cfecd697358356d3042e49",
+      "size": 2001
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_ssg08.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_ssg08.txt",
+      "sha256": "577ab9d7761bb3fd6934196c7086aff1b02dcb52c70f3e6ce186c3c5d8012d32",
+      "size": 3301
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_taser.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_taser.txt",
+      "sha256": "0820f10197c17a4f7997a18d7212bcec9ac1876774191cc3e6dad3bef8a3f247",
+      "size": 2802
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_tec9.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_tec9.txt",
+      "sha256": "e16c5a908fd53b038cc7d3368ebff109ba099e5df7c0826bd1adc2525ede72bb",
+      "size": 4155
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_ump45.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_ump45.txt",
+      "sha256": "62f8e78310eb51b2c297bf824e0337f364ea8b8077c739048ed4a17855957440",
+      "size": 2952
+    },
+    {
+      "path": "csgo/csgo/scripts/weapon_xm1014.txt",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/scripts/weapon_xm1014.txt",
+      "sha256": "c692cbedcf6b617464224f1d70ef1039aedbea3ab7317cae622d9786e72f3f18",
+      "size": 2903
+    },
+    {
+      "path": "csgo/csgo/cfg/gamemode_competitive.cfg",
+      "url": "https://raw.githubusercontent.com/SteamTracking/GameTracking/ea70cfdbfb9d9ef5ecb0077cbfb3032c2f87cc53/csgo/csgo/cfg/gamemode_competitive.cfg",
+      "sha256": "02ce2574a080ab3e30d33730a664c1ad2dc251fbe84e0116ad2bc6142e4c315f",
+      "size": 4104
+    }
+  ],
+  "valve_schema_url": "https://steamcdn-a.akamaihd.net/apps/730/scripts/items/items_game.98f9e0fc7f6c03db3bd9251609aa1aa588e2ea72.txt",
+  "source_base_commit": "0aee1e0",
+  "target": "CS:GO after 2015-09-15 and before 2015-12-08",
+  "player_model_reference_status": "Missing authenticated 2015 player MDLs, skeleton and animation data"
+}

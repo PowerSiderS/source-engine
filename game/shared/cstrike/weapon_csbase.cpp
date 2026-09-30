@@ -15,6 +15,8 @@
 #include "npcevent.h"
 #include "eventlist.h"
 #include "cs_legacy_gameplay.h"
+#include "cs_inventory.h"
+#include "baseviewmodel_shared.h"
 
 #define ALLOW_WEAPON_SPREAD_DISPLAY	0
 
@@ -42,7 +44,7 @@
 #endif
 
 
-ConVar weapon_accuracy_model( "weapon_accuracy_model", "2", FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY | FCVAR_ARCHIVE );
+ConVar weapon_accuracy_model( "weapon_accuracy_model", "2", FCVAR_REPLICATED | FCVAR_CHEAT );
 ConVar weapon_recoil_decay_coefficient( "weapon_recoil_decay_coefficient", "2.0", FCVAR_CHEAT | FCVAR_REPLICATED, "" );
 ConVar weapon_air_spread_scale( "weapon_air_spread_scale", "1.0", FCVAR_CHEAT | FCVAR_REPLICATED, "Scale factor for jumping inaccuracy", true, 0.0f, false, 1.0f );
 
@@ -134,6 +136,11 @@ WeaponAliasInfo s_weaponAliasInfo[] =
 	// not sure any of these are needed
 	{ WEAPON_SHIELDGUN,			"shield" },
 	{ WEAPON_SHIELDGUN,			"shieldgun" },
+	{ WEAPON_CZ75, "cz75" }, { WEAPON_TEC9, "tec9" },
+	{ WEAPON_REVOLVER, "revolver" }, { WEAPON_P2000, "p2000" },
+	{ WEAPON_M4A4, "m4a4" }, { WEAPON_MP7, "mp7" },
+	{ WEAPON_BIZON, "bizon" }, { WEAPON_MAG7, "mag7" },
+	{ WEAPON_SAWEDOFF, "sawedoff" }, { WEAPON_NEGEV, "negev" },
 	{ WEAPON_KEVLAR,			"kevlar" },
 	{ WEAPON_ASSAULTSUIT,		"assaultsuit" },
 	{ WEAPON_NVG,				"nightvision" },
@@ -279,6 +286,7 @@ IMPLEMENT_NETWORKCLASS_ALIASED( WeaponCSBase, DT_WeaponCSBase )
 
 BEGIN_NETWORK_TABLE( CWeaponCSBase, DT_WeaponCSBase )
 #if !defined( CLIENT_DLL )
+SendPropInt( SENDINFO( m_iInventoryItem ), 16, SPROP_UNSIGNED ),
 SendPropInt( SENDINFO( m_weaponMode ), 1, SPROP_UNSIGNED ),
 SendPropFloat(SENDINFO(m_fAccuracyPenalty) ),
 SendPropFloat(SENDINFO(m_flRecoilIndex) ),
@@ -288,6 +296,7 @@ SendPropExclude( "DT_AnimTimeMustBeFirst", "m_flAnimTime" ),
 SendPropExclude( "DT_BaseAnimating", "m_nSequence" ),
 //	SendPropExclude( "DT_LocalActiveWeaponData", "m_flTimeWeaponIdle" ),
 #else
+RecvPropInt( RECVINFO( m_iInventoryItem ) ),
 RecvPropInt( RECVINFO( m_weaponMode ) ),
 RecvPropFloat( RECVINFO(m_fAccuracyPenalty)),
 RecvPropFloat( RECVINFO(m_flRecoilIndex) ),
@@ -297,6 +306,7 @@ END_NETWORK_TABLE()
 
 #if defined(CLIENT_DLL)
 BEGIN_PREDICTION_DATA( CWeaponCSBase )
+	DEFINE_PRED_FIELD( m_iInventoryItem, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flTimeWeaponIdle, FIELD_FLOAT, FTYPEDESC_OVERRIDE | FTYPEDESC_NOERRORCHECK ),
 	DEFINE_PRED_FIELD( m_flNextPrimaryAttack, FIELD_FLOAT, FTYPEDESC_OVERRIDE | FTYPEDESC_NOERRORCHECK ),
 	DEFINE_PRED_FIELD( m_flNextSecondaryAttack, FIELD_FLOAT, FTYPEDESC_OVERRIDE | FTYPEDESC_NOERRORCHECK ),
@@ -397,6 +407,7 @@ void DrawCrosshairRect( int r, int g, int b, int a, int x0, int y0, int x1, int 
 // ----------------------------------------------------------------------------- //
 CWeaponCSBase::CWeaponCSBase()
 {
+	m_iInventoryItem = 0;
 	SetPredictionEligible( true );
 	m_bDelayFire = true;
 	m_nextPrevOwnerTouchTime = 0.0;
@@ -535,7 +546,6 @@ void CWeaponCSBase::SecondaryAttack( void )
 			m_flNextPrimaryAttack = gpGlobals->curtime + 0.4;
 			}
 		#endif
-			m_fLastShotTime = gpGlobals->curtime;
 		}
 
 		bool CWeaponCSBase::SendWeaponAnim( int iActivity )
@@ -671,7 +681,6 @@ void CWeaponCSBase::ItemPostFrame()
 		}
 #endif
 	PrimaryAttack();
-	m_fLastShotTime = gpGlobals->curtime;
 	}
 	else if ( pPlayer->m_nButtons & IN_RELOAD && GetMaxClip1() != WEAPON_NOCLIP && !m_bInReload && m_flNextPrimaryAttack < gpGlobals->curtime)
 	{
@@ -911,6 +920,8 @@ const CCSWeaponInfo &CWeaponCSBase::GetCSWpnData() const
 //-----------------------------------------------------------------------------
 const char *CWeaponCSBase::GetViewModel( int /*viewmodelindex = 0 -- this is ignored in the base class here*/ ) const
 {
+	const CSkinItem *item = CSInventory().FindForWeapon( m_iInventoryItem, GetWeaponID() );
+	if ( item ) return item->view_model;
 	CCSPlayer *pOwner = GetPlayerOwner();
 
 	if ( pOwner == NULL )
@@ -925,8 +936,44 @@ const char *CWeaponCSBase::GetViewModel( int /*viewmodelindex = 0 -- this is ign
 
 }
 
+const char *CWeaponCSBase::GetWorldModel() const
+{
+	const CSkinItem *item = CSInventory().FindForWeapon( m_iInventoryItem, GetWeaponID() );
+	return item ? item->world_model : BaseClass::GetWorldModel();
+}
+
+void CWeaponCSBase::SetInventoryItem( int itemId )
+{
+	const CSkinItem *item = CSInventory().FindForWeapon( itemId, GetWeaponID() );
+	if ( itemId && !item ) return;
+	if ( m_iInventoryItem == itemId ) return;
+	m_iInventoryItem = itemId;
+	m_nSkin = item ? item->skin : 0;
+	CCSPlayer *owner = GetPlayerOwner();
+	// Activity lookup uses the held weapon's view-model skeleton. Carried
+	// weapon rendering uses m_iWorldModelIndex independently.
+	SetModel( owner ? GetViewModel() : GetWorldModel() );
+	m_iWorldModelIndex = modelinfo->GetModelIndex( GetWorldModel() );
+	m_iViewModelIndex = modelinfo->GetModelIndex( GetViewModel() );
+	if ( owner && owner->GetActiveWeapon() == this )
+	{
+		CBaseViewModel *vm = owner->GetViewModel( m_nViewModelIndex, false );
+		if ( vm )
+		{
+			char sequenceName[96]; Q_strncpy( sequenceName, vm->GetSequenceName( vm->GetSequence() ), sizeof( sequenceName ) );
+			float cycle = vm->GetCycle();
+			vm->SetWeaponModel( GetViewModel(), this ); vm->m_nSkin = m_nSkin;
+			int sequence = vm->LookupSequence( sequenceName );
+			bool compatible = sequence >= 0;
+			if ( !compatible ) sequence = vm->SelectWeightedSequence( GetDeployActivity() );
+			if ( sequence >= 0 ) { SetSequence( sequence ); vm->SendViewModelMatchingSequence( sequence ); vm->SetCycle( compatible ? cycle : 0.0f ); }
+		}
+	}
+}
+
 void CWeaponCSBase::Precache( void )
 {
+	CSInventory().PrecacheForWeapon( GetWeaponID() );
 	BaseClass::Precache();
 
 #ifdef CS_SHIELD_ENABLED
@@ -1058,6 +1105,7 @@ bool CWeaponCSBase::Holster( CBaseCombatWeapon *pSwitchingTo )
 bool CWeaponCSBase::Deploy()
 {
 	CCSPlayer *pPlayer = GetPlayerOwner();
+	SetInventoryItem( CSInventory().GetPlayerSelection( pPlayer, GetWeaponID() ) );
 
 #ifdef CLIENT_DLL
 	m_iAlpha =  80;
@@ -1865,6 +1913,9 @@ void CWeaponCSBase::Recoil( CSWeaponMode weaponMode )
 		return;
 
 	int index;
+	// All actual bullets, including scheduled Glock/FAMAS burst rounds, pass
+	// here. Dry firing and mode changes must not postpone recoil recovery.
+	m_fLastShotTime = gpGlobals->curtime;
 	if ( IsFullAuto() )
 	index = m_flRecoilIndex;
 	else

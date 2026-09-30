@@ -6,7 +6,9 @@
 //=============================================================================//
 
 #include "cbase.h"
+#include "cs_inventory.h"
 #include "cs_player.h"
+#include "cs_anticheat.h"
 #include "cs_gamerules.h"
 #include "trains.h"
 #include "vcollide_parse.h"
@@ -646,6 +648,7 @@ void CCSPlayer::PlayerRunCommand( CUserCmd *ucmd, IMoveHelper *moveHelper )
 
 	if ( !sv_runcmds.GetInt() )
 		return;
+	if(!CSAntiCheat_CheckCommand(this,ucmd))return;
 
 	// don't run commands in the future
 	if ( !IsEngineThreaded() &&
@@ -4440,6 +4443,19 @@ bool CCSPlayer::ShouldRunRateLimitedCommand( const CCommand &args )
 bool CCSPlayer::ClientCommand( const CCommand &args )
 {
 	const char *pcmd = args[0];
+	if ( !Q_stricmp( pcmd, "inv_equip" ) )
+	{
+		if ( args.ArgC() != 2 ) return true;
+		int itemId = Q_atoi( args[1] );
+		const CSkinItem *item = CSInventory().Find( itemId );
+		if ( itemId && !item ) return true;
+		for ( int i = 0; i < MAX_WEAPONS; ++i )
+		{
+			CWeaponCSBase *weapon = dynamic_cast<CWeaponCSBase *>( GetWeapon( i ) );
+			if ( weapon && ( item ? weapon->GetWeaponID() == item->weapon_id : weapon == GetActiveWeapon() ) ) weapon->SetInventoryItem( itemId );
+		}
+		return true;
+	}
 
 	// Bots mimic our client commands.
 /*

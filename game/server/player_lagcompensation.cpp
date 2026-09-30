@@ -13,6 +13,7 @@
 #include "utllinkedlist.h"
 #include "BaseAnimatingOverlay.h"
 #include "tier0/vprof.h"
+#include "cstrike/cs_hitbox_geometry.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -79,6 +80,8 @@ public:
 		m_flSimulationTime = -1;
 		m_masterSequence = 0;
 		m_masterCycle = 0;
+		m_modelIndex = -1;
+		m_hitboxSet = -1;
 		for ( int poseIndex = 0; poseIndex < MAXSTUDIOPOSEPARAM; ++poseIndex )
 			m_flPoseParameters[poseIndex] = 0.0f;
 	}
@@ -97,6 +100,8 @@ public:
 		}
 		m_masterSequence = src.m_masterSequence;
 		m_masterCycle = src.m_masterCycle;
+		m_modelIndex = src.m_modelIndex;
+		m_hitboxSet = src.m_hitboxSet;
 		for ( int poseIndex = 0; poseIndex < MAXSTUDIOPOSEPARAM; ++poseIndex )
 			m_flPoseParameters[poseIndex] = src.m_flPoseParameters[poseIndex];
 	}
@@ -116,6 +121,8 @@ public:
 	LayerRecord				m_layerRecords[MAX_LAYER_RECORDS];
 	int						m_masterSequence;
 	float					m_masterCycle;
+	int                     m_modelIndex;
+	int                     m_hitboxSet;
 	float					m_flPoseParameters[MAXSTUDIOPOSEPARAM];
 };
 
@@ -300,6 +307,8 @@ void CLagCompensationManager::FrameUpdatePostEntityThink()
 
 		record.m_flSimulationTime	= pPlayer->GetSimulationTime();
 		record.m_vecAngles			= pPlayer->GetLocalAngles();
+		record.m_modelIndex = pPlayer->GetModelIndex();
+		record.m_hitboxSet = pPlayer->GetHitboxSet();
 		record.m_vecOrigin			= pPlayer->GetLocalOrigin();
 		record.m_vecMinsPreScaled	= pPlayer->CollisionProp()->OBBMinsPreScaled();
 		record.m_vecMaxsPreScaled	= pPlayer->CollisionProp()->OBBMaxsPreScaled();
@@ -452,7 +461,8 @@ void CLagCompensationManager::BacktrackPlayer( CBasePlayer *pPlayer, float flTar
 		// get next record
 		record = &track->Element( curr );
 
-		if ( !(record->m_fFlags & LC_ALIVE) )
+		if ( !(record->m_fFlags & LC_ALIVE) || record->m_modelIndex != pPlayer->GetModelIndex() ||
+			record->m_hitboxSet != pPlayer->GetHitboxSet() )
 		{
 			// player most be alive, lost track
 			return;
@@ -504,7 +514,8 @@ void CLagCompensationManager::BacktrackPlayer( CBasePlayer *pPlayer, float flTar
 
 		Assert( frac > 0 && frac < 1 ); // should never extrapolate
 
-		ang				= Lerp( frac, record->m_vecAngles, prevRecord->m_vecAngles );
+		for ( int axis = 0; axis < 3; ++axis )
+			ang[axis] = CSInterpolateLoop(frac,record->m_vecAngles[axis],prevRecord->m_vecAngles[axis],360.0f);
 		org				= Lerp( frac, record->m_vecOrigin, prevRecord->m_vecOrigin );
 		minsPreScaled	= Lerp( frac, record->m_vecMinsPreScaled, prevRecord->m_vecMinsPreScaled );
 		maxsPreScaled	= Lerp( frac, record->m_vecMaxsPreScaled, prevRecord->m_vecMaxsPreScaled );
@@ -637,11 +648,14 @@ void CLagCompensationManager::BacktrackPlayer( CBasePlayer *pPlayer, float flTar
 	// Hitboxes are built from the complete animated skeleton. Rewind every pose
 	// parameter with the sequence and overlays so crouching, aiming and strafing
 	// resolve to the same bones the shooter saw.
+	CStudioHdr *poseHdr = pPlayer->GetModelPtr();
 	for ( int poseIndex = 0; poseIndex < MAXSTUDIOPOSEPARAM; ++poseIndex )
 	{
 		restore->m_flPoseParameters[poseIndex] = pPlayer->GetPoseParameter( poseIndex );
+		const float loop = poseHdr && poseIndex < poseHdr->GetNumPoseParameters()
+			? poseHdr->pPoseParameter(poseIndex).loop : 0.0f;
 		const float flPose = ( frac > 0.0f && interpolationAllowed )
-			? Lerp( frac, record->m_flPoseParameters[poseIndex], prevRecord->m_flPoseParameters[poseIndex] )
+			? CSInterpolateLoop( frac, record->m_flPoseParameters[poseIndex], prevRecord->m_flPoseParameters[poseIndex], loop )
 			: record->m_flPoseParameters[poseIndex];
 		pPlayer->SetPoseParameter( poseIndex, flPose );
 		change->m_flPoseParameters[poseIndex] = flPose;

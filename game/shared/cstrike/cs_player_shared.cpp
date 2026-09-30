@@ -11,6 +11,9 @@
 #include "weapon_c4.h"
 #include "in_buttons.h"
 #include "datacache/imdlcache.h"
+#include "bone_setup.h"
+#include "cs_hitbox_geometry.h"
+#include "cs_capsule_geometry.h"
 
 #ifdef CLIENT_DLL
 	#include "c_cs_player.h"
@@ -32,10 +35,133 @@
 #include "obstacle_pushaway.h"
 #include "props_shared.h"
 
-ConVar sv_showimpacts("sv_showimpacts", "0", FCVAR_REPLICATED, "Shows client (red) and server (blue) bullet impact point (1=both, 2=client-only, 3=server-only)" );
+ConVar sv_showimpacts("sv_showimpacts", "0", FCVAR_REPLICATED | FCVAR_CHEAT, "Shows client (red) and server (blue) bullet impact point (1=both, 2=client-only, 3=server-only)" );
 ConVar sv_showplayerhitboxes( "sv_showplayerhitboxes", "0", FCVAR_REPLICATED, "Show lag compensated hitboxes for the specified player index whenever a player fires." );
 
 #define	CS_MASK_SHOOT (MASK_SOLID|CONTENTS_DEBRIS)
+
+ConVar sv_player_hitbox_capsules( "sv_player_hitbox_capsules", "2", FCVAR_REPLICATED | FCVAR_NOTIFY,
+	"Player hitboxes: 0=authored boxes, 1=legacy rounded ellipses, 2=circular bone-local capsules.", true, 0.0f, true, 2.0f );
+
+bool CCSPlayer::TestHitboxes( const Ray_t &ray, unsigned int contentsMask, trace_t &trace )
+{
+	// Swept melee hulls retain the existing box collision path.
+	if ( !sv_player_hitbox_capsules.GetBool() || !ray.m_IsRay )
+		return BaseClass::TestHitboxes( ray, contentsMask, trace );
+	MDLCACHE_CRITICAL_SECTION();
+	CStudioHdr *hdr = GetModelPtr();
+	if ( !hdr || hdr->numbones() <= 0 || hdr->numbones() > MAXSTUDIOBONES ||
+		GetHitboxSet() < 0 || GetHitboxSet() >= hdr->numhitboxsets() ) return false;
+	mstudiohitboxset_t *set = hdr->pHitboxSet( GetHitboxSet() );
+	if ( !set || !set->numhitboxes ) return false;
+#ifdef CLIENT_DLL
+	CBoneCache *cache = GetBoneCache( hdr );
+#else
+	CBoneCache *cache = GetBoneCache();
+#endif
+	if ( !cache ) return false;
+	matrix3x4_t *bones[MAXSTUDIOBONES] = {};
+	cache->ReadCachedBonePointers( bones, hdr->numbones() );
+	trace.fraction = 1.0f;
+	trace.startsolid = trace.allsolid = false;
+	trace.startpos = ray.m_Start;
+	trace.endpos = ray.m_Start + ray.m_Delta;
+	for ( int i = 0; i < set->numhitboxes; ++i )
+	{
+		mstudiobbox_t *box = set->pHitbox(i);
+		if ( box->bone < 0 || box->bone >= hdr->numbones() || !bones[box->bone] ) continue;
+		mstudiobone_t *bone = hdr->pBone(box->bone);
+		if ( !( bone->contents & contentsMask ) ) continue;
+		CSRoundedHitbox shape;
+		if ( !shape.Init( box->bbmin, box->bbmax ) ) continue;
+		const matrix3x4_t &matrix = *bones[box->bone];
+		Vector axes[3], localStart, localDelta;
+		const Vector origin(matrix[0][3],matrix[1][3],matrix[2][3]);
+		bool valid = true;
+		for ( int j = 0; j < 3; ++j )
+		{
+			axes[j].Init(matrix[0][j],matrix[1][j],matrix[2][j]);
+			float lengthSqr = axes[j].LengthSqr();
+			if ( !isfinite(lengthSqr) || lengthSqr <= 0.000001f ) { valid = false; break; }
+			// Inverse transform for orthogonal bone axes, including model scale.
+			axes[j] /= lengthSqr;
+			localStart[j] = DotProduct(ray.m_Start - origin,axes[j]);
+			localDelta[j] = DotProduct(ray.m_Delta,axes[j]);
+		}
+		if ( !valid ) continue;
+		CSRoundedHit hit;
+		if ( sv_player_hitbox_capsules.GetInt() == 2 )
+		{
+			CSCapsuleHitbox capsule;CSCapsuleIntersection result;
+			if(!CSCapsuleFromAuthoredBox(box->bbmin,box->bbmax,capsule) || !CSIntersectCapsule(capsule,localStart,localDelta,result)) continue;
+			hit.fraction=result.fraction;hit.exitFraction=result.exitFraction;hit.startSolid=result.startSolid;hit.normal=result.normal;
+		}
+		else if(!CSIntersectRoundedHitbox(shape,localStart,localDelta,hit)) continue;
+		if(hit.fraction >= trace.fraction) continue;
+		trace.fraction = hit.fraction;
+		trace.startsolid = hit.startSolid;
+		trace.allsolid = hit.startSolid && hit.exitFraction >= 1.0f;
+		trace.endpos = ray.m_Start + ray.m_Delta * hit.fraction;
+		trace.hitbox = i;
+		trace.hitgroup = box->group;
+		trace.contents = bone->contents | CONTENTS_HITBOX;
+		trace.physicsbone = bone->physicsbone;
+		trace.surface.name = "**studio**";
+		trace.surface.flags = SURF_HITBOX;
+		trace.surface.surfaceProps = physprops->GetSurfaceIndex(bone->pszSurfaceProp());
+		trace.plane.normal = axes[0]*hit.normal.x + axes[1]*hit.normal.y + axes[2]*hit.normal.z;
+		VectorNormalize(trace.plane.normal);
+		trace.plane.dist = DotProduct(trace.endpos,trace.plane.normal);
+		trace.plane.type = 3;
+	}
+	// A tested miss must not fall back to the player's movement hull.
+	return true;
+}
+
+#ifndef CLIENT_DLL
+CON_COMMAND_F( cs_validate_hitboxes, "Validate current player bones and rounded hitboxes without drawing overlays.", FCVAR_CHEAT )
+{
+	int players = 0, tested = 0, failures = 0;
+	MDLCACHE_CRITICAL_SECTION();
+	for ( int playerIndex = 1; playerIndex <= gpGlobals->maxClients; ++playerIndex )
+	{
+		CCSPlayer *player = ToCSPlayer(UTIL_PlayerByIndex(playerIndex));
+		if ( !player || !player->IsAlive() ) continue;
+		++players;
+		CStudioHdr *hdr = player->GetModelPtr();
+		if ( !hdr || hdr->numbones() > MAXSTUDIOBONES || player->GetHitboxSet() < 0 ||
+			player->GetHitboxSet() >= hdr->numhitboxsets() ) { ++failures; continue; }
+		CBoneCache *cache = player->GetBoneCache();
+		if ( !cache ) { ++failures; continue; }
+		matrix3x4_t *bones[MAXSTUDIOBONES] = {};
+		cache->ReadCachedBonePointers(bones,hdr->numbones());
+		mstudiohitboxset_t *set = hdr->pHitboxSet(player->GetHitboxSet());
+		int playerFailures = 0;
+		for ( int boxIndex = 0; boxIndex < set->numhitboxes; ++boxIndex )
+		{
+			mstudiobbox_t *box = set->pHitbox(boxIndex);
+			CSRoundedHitbox shape;
+			if ( box->bone < 0 || box->bone >= hdr->numbones() || !bones[box->bone] || !shape.Init(box->bbmin,box->bbmax) )
+			{ ++playerFailures; continue; }
+			Vector center;
+			VectorTransform(shape.center,*bones[box->bone],center);
+			for ( int axis = 0; axis < 3; ++axis )
+				for ( int sign = -1; sign <= 1; sign += 2 )
+				{
+					Vector start = center;
+					start[axis] += sign*8192.0f;
+					Ray_t ray; ray.Init(start,center);
+					trace_t trace;
+					++tested;
+					if ( !player->TestHitboxes(ray,MASK_SHOT,trace) || trace.fraction >= 1.0f || trace.hitgroup <= 0 ) ++playerFailures;
+				}
+		}
+		failures += playerFailures;
+		Msg("[hitbox-audit] player=%d model=%s bones=%d boxes=%d failures=%d\n",playerIndex,hdr->pszName(),hdr->numbones(),set->numhitboxes,playerFailures);
+	}
+	Msg("[hitbox-audit] players=%d rays=%d failures=%d rounded=%d\n",players,tested,failures,sv_player_hitbox_capsules.GetInt());
+}
+#endif
 
 void DispatchEffect( const char *pName, const CEffectData &data );
 

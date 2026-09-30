@@ -162,6 +162,11 @@ public:
 	// (inherited from C_BaseAnimating)
 	virtual void			FormatViewModelAttachment( int nAttachment, matrix3x4_t &attachmentToWorld );
 	virtual bool			IsViewModel() const;
+#ifdef CSTRIKE_DLL
+	void UpdateUnifiedArms();
+	void ReleaseUnifiedArms();
+	CHandle<CBaseAnimating> m_hUnifiedArms;
+#endif
 	
 	CBaseCombatWeapon		*GetWeapon() const { return m_hWeapon.Get(); }
 

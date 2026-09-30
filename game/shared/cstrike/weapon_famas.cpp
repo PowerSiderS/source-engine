@@ -141,7 +141,7 @@ float CWeaponFamas::GetInaccuracy() const
 
 void CWeaponFamas::ItemPostFrame()
 {
-	if ( m_iBurstShotsRemaining > 0 && gpGlobals->curtime >= m_fNextBurstShot )
+	while ( m_iBurstShotsRemaining > 0 && gpGlobals->curtime >= m_fNextBurstShot )
 		FireRemaining();
 
 	BaseClass::ItemPostFrame();
@@ -224,12 +224,15 @@ void CWeaponFamas::PrimaryAttack()
 	if ( m_bBurstMode )
 	{
 		flCycleTime = 0.55f;
-		m_iBurstShotsRemaining = 2;
-		m_fNextBurstShot = gpGlobals->curtime + kFamasBurstCycleTime;
 	}
 
 	if ( !CSBaseGunFire( flCycleTime, m_weaponMode ) )
 		return;
+	if ( m_bBurstMode )
+	{
+		m_iBurstShotsRemaining = 2;
+		m_fNextBurstShot = gpGlobals->curtime + kFamasBurstCycleTime;
+	}
 	
 }
 

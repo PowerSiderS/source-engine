@@ -227,7 +227,7 @@ void CWeaponGlock::PrimaryAttack()
 		pPlayer->Weapon_ShootPosition(), 
 		pPlayer->GetFinalAimAngle(),
 		GetWeaponID(),
-		Primary_Mode,
+		m_weaponMode,
 		CBaseEntity::GetPredictionRandomSeed() & 255, // wrap it for network traffic so it's the same between client and server
 		GetInaccuracy(),
 		GetSpread(),

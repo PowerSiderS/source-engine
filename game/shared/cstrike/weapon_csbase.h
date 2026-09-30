@@ -240,6 +240,9 @@ public:
 	virtual void	ItemPostFrame();
 	virtual void	ItemBusyFrame();
 	virtual const char		*GetViewModel( int viewmodelindex = 0 ) const;
+	virtual const char *GetWorldModel() const;
+	void SetInventoryItem( int itemId );
+	CNetworkVar( int, m_iInventoryItem );
 
 
 	bool	m_bDelayFire;			// This variable is used to delay the time between subsequent button pressing.

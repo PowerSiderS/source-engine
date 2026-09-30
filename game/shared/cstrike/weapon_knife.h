@@ -49,6 +49,7 @@ public:
 	void Smack();
 	//void Smack( trace_t *pTr, float delay );
 	bool SwingOrStab( bool bStab );
+	void SendAttackAnimation( bool bStab, bool bDidHit );
 	void PrimaryAttack();
 	void SecondaryAttack();
 	void WeaponAnimation( int iAnimation );
