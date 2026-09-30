@@ -42,8 +42,6 @@ CSmokeGrenadeProjectile* CSmokeGrenadeProjectile::Create(
 	pGrenade->SetAbsVelocity( velocity );
 	pGrenade->SetupInitialTransmittedGrenadeVelocity( velocity );
 	pGrenade->SetThrower( pOwner );
-	pGrenade->SetGravity( 0.55 );
-	pGrenade->SetFriction( 0.7 );
 	pGrenade->m_flDamage = 100;
 	pGrenade->ChangeTeam( pOwner->GetTeamNumber() );
 	pGrenade->ApplyLocalAngularVelocityImpulse( angVelocity );	

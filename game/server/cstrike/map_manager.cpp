@@ -4,6 +4,7 @@
 #include "eiface.h"
 #include "convar.h"
 #include "map_manager.h"
+#include "cs_map_rules.h"
 #include "tier1/utlvector.h"
 #include "tier1/utlstring.h"
 #include "tier1/strtools.h"
@@ -12,6 +13,7 @@
 ConVar sm_map_enabled( "sm_map_enabled", "1", FCVAR_GAMEDLL, "Enable or disable in-game chat map switcher commands (!map, !maps, !rtv)." );
 ConVar sm_map_delay( "sm_map_delay", "3.0", FCVAR_GAMEDLL, "Delay in seconds before changing to the new map." );
 ConVar sm_rtv_ratio( "sm_rtv_ratio", "0.5", FCVAR_GAMEDLL, "Ratio of human players required to trigger Rock The Vote (0.1 to 1.0)." );
+ConVar sm_map_player_change("sm_map_player_change","0",FCVAR_GAMEDLL,"Allow ordinary players to use !map; RTV remains available.");
 
 static CUtlVector<CUtlString> s_MapList;
 static bool s_bMapListInitialized = false;
@@ -23,28 +25,16 @@ static char s_szTargetMap[128] = { 0 };
 static int s_nLastCountdownSecond = -1;
 
 // RTV state
-static CUtlVector<int> s_RTVVotes;
+static CUtlVector<EHANDLE> s_RTVVotes;
 
-static bool MapManager_IsAllowedCompetitiveOrCasual( const char *pszMap )
+static bool MapManager_AddMap(const char *name)
 {
-	if ( !pszMap || !pszMap[0] )
-		return false;
-
-	// Strictly exclude Zombie Escape, Aim training, and Hardware tests
-	if ( !Q_strnicmp( pszMap, "ze_", 3 ) || !Q_strnicmp( pszMap, "aim", 3 ) || !Q_strnicmp( pszMap, "test_", 5 ) )
-		return false;
-
-	// Exclude duplicates / second variants like _scb or _new if main version exists
-	if ( V_stristr( pszMap, "_scb" ) )
-		return false;
-	if ( !Q_stricmp( pszMap, "de_mirage_csgo_new" ) )
-		return false;
-
-	// Only allow standard defusal (de_) and hostage rescue (cs_)
-	if ( !Q_strnicmp( pszMap, "de_", 3 ) || !Q_strnicmp( pszMap, "cs_", 3 ) )
-		return true;
-
-	return false;
+    char map[128];if(!name || Q_strlen(name)>=sizeof(map))return false;
+    Q_strncpy(map,name,sizeof(map));Q_strlower(map);
+    if(!CSMapNameValid(map))return false;
+    for(int i=0;i<s_MapList.Count();++i)if(!Q_stricmp(s_MapList[i].String(),map))return false;
+    if(!engine->IsMapValid(map)) {DevMsg("[Map Manager] Rejected unavailable/invalid BSP: %s\n",map);return false;}
+    s_MapList.AddToTail(CUtlString(map));return true;
 }
 
 // Scan all available maps from filesystem (filtered for competitive & casual standard)
@@ -76,45 +66,25 @@ static void MapManager_ScanMaps()
 
 	for ( int p = 0; p < (int)ARRAYSIZE( priorityPool ); p++ )
 	{
-		char szBspPath[128];
-		Q_snprintf( szBspPath, sizeof( szBspPath ), "maps/%s.bsp", priorityPool[p] );
-		if ( filesystem->FileExists( szBspPath, "GAME" ) )
-		{
-			s_MapList.AddToTail( CUtlString( priorityPool[p] ) );
-		}
+		MapManager_AddMap(priorityPool[p]);
 	}
 
 	// Add any other standard de_ / cs_ maps found in maps/*.bsp
-	FileFindHandle_t findHandle;
+	FileFindHandle_t findHandle=FILESYSTEM_INVALID_FIND_HANDLE;
 	const char *pFilename = filesystem->FindFirstEx( "maps/*.bsp", "GAME", &findHandle );
 	while ( pFilename )
 	{
-		if ( V_stristr( pFilename, ".bsp" ) )
+		const int length=Q_strlen(pFilename);
+		if ( length>4 && !Q_stricmp(pFilename+length-4,".bsp") && !filesystem->FindIsDirectory(findHandle) )
 		{
 			char mapBase[128];
 			V_FileBase( pFilename, mapBase, sizeof( mapBase ) );
 
-			if ( MapManager_IsAllowedCompetitiveOrCasual( mapBase ) )
-			{
-				bool bExists = false;
-				for ( int m = 0; m < s_MapList.Count(); m++ )
-				{
-					if ( !Q_stricmp( s_MapList[m].String(), mapBase ) )
-					{
-						bExists = true;
-						break;
-					}
-				}
-
-				if ( !bExists )
-				{
-					s_MapList.AddToTail( CUtlString( mapBase ) );
-				}
-			}
+			MapManager_AddMap(mapBase);
 		}
 		pFilename = filesystem->FindNext( findHandle );
 	}
-	filesystem->FindClose( findHandle );
+	if(findHandle!=FILESYSTEM_INVALID_FIND_HANDLE)filesystem->FindClose(findHandle);
 
 	s_bMapListInitialized = true;
 	Msg( "[Map Manager] Scanned %d competitive and casual maps available on server.\n", s_MapList.Count() );
@@ -131,7 +101,7 @@ void MapManager_Init()
 
 static const char* MapManager_FindBestMapMatch( const char *pQuery )
 {
-	if ( !s_bMapListInitialized || s_MapList.Count() == 0 )
+	if ( !s_bMapListInitialized )
 	{
 		MapManager_ScanMaps();
 	}
@@ -176,6 +146,7 @@ void MapManager_ChangeMap( const char *pszMapName, float flDelay, const char *ps
 	}
 
 	Q_strncpy( s_szTargetMap, pszMatched, sizeof( s_szTargetMap ) );
+	flDelay=isfinite(flDelay) ? clamp(flDelay,0.0f,30.0f) : 3.0f;
 	s_bMapChangePending = true;
 	s_flMapChangeTime = gpGlobals->curtime + flDelay;
 	s_nLastCountdownSecond = (int)flDelay;
@@ -207,6 +178,7 @@ void MapManager_Update()
 	if ( flRemaining <= 0.0f )
 	{
 		s_bMapChangePending = false;
+		if(!engine->IsMapValid(s_szTargetMap)) {Warning("[Map Manager] Map became unavailable: %s\n",s_szTargetMap);return;}
 		Msg( "[Map Manager] Executing ChangeLevel to '%s' now...\n", s_szTargetMap );
 		engine->ChangeLevel( s_szTargetMap, NULL );
 		return;
@@ -253,6 +225,8 @@ bool MapManager_HandleChat( CBasePlayer *pPlayer, const char *pChatText )
 	// !map <name> or /map <name>
 	if ( !Q_strnicmp( pCmd, "map ", 4 ) || !Q_strnicmp( pCmd, "map", 3 ) && ( pCmd[3] == ' ' || pCmd[3] == '\0' ) )
 	{
+		if(pPlayer && !sm_map_player_change.GetBool() && !UTIL_IsCommandIssuedByServerAdmin())
+		{ClientPrint(pPlayer,HUD_PRINTTALK,"[MAP MANAGER] Use !rtv para solicitar a troca; !map requer administrador.\n");return true;}
 		const char *pArg = pCmd + 3;
 		while ( *pArg == ' ' ) pArg++;
 
@@ -300,19 +274,23 @@ bool MapManager_HandleChat( CBasePlayer *pPlayer, const char *pChatText )
 		if ( !pPlayer )
 			return true;
 
-		int entIndex = pPlayer->entindex();
-		if ( s_RTVVotes.Find( entIndex ) != -1 )
+		for(int i=s_RTVVotes.Count()-1;i>=0;--i) {
+			CBasePlayer *voter=ToBasePlayer(s_RTVVotes[i].Get());
+			if(!voter || !voter->IsConnected() || voter->IsBot())s_RTVVotes.Remove(i);
+		}
+		EHANDLE vote=pPlayer;
+		if ( s_RTVVotes.Find( vote ) != -1 )
 		{
 			ClientPrint( pPlayer, HUD_PRINTTALK, "\x04[RTV]\x01 Voce ja votou para trocar de mapa!\n" );
 			return true;
 		}
 
-		s_RTVVotes.AddToTail( entIndex );
+		s_RTVVotes.AddToTail( vote );
 
 		int nHumans = MapManager_GetHumanPlayerCount();
 		if ( nHumans < 1 ) nHumans = 1;
 
-		int nRequired = (int)ceil( (float)nHumans * sm_rtv_ratio.GetFloat() );
+		int nRequired = (int)ceil( (float)nHumans * clamp(sm_rtv_ratio.GetFloat(),.1f,1.0f) );
 		if ( nRequired < 1 ) nRequired = 1;
 
 		char rtvMsg[256];
@@ -355,6 +333,7 @@ bool MapManager_HandleChat( CBasePlayer *pPlayer, const char *pChatText )
 // Server Console Commands
 CON_COMMAND( map_change, "Change dedicated server to specified map immediately or with delay: map_change <mapname>" )
 {
+	if(!UTIL_IsCommandIssuedByServerAdmin())return;
 	if ( args.ArgC() < 2 )
 	{
 		Msg( "Usage: map_change <mapname>\n" );
@@ -366,6 +345,7 @@ CON_COMMAND( map_change, "Change dedicated server to specified map immediately o
 
 CON_COMMAND( sm_map, "SourceMod compatible map changer: sm_map <mapname>" )
 {
+	if(!UTIL_IsCommandIssuedByServerAdmin())return;
 	if ( args.ArgC() < 2 )
 	{
 		Msg( "Usage: sm_map <mapname>\n" );
@@ -390,5 +370,6 @@ CON_COMMAND( map_list, "List all available maps on the server" )
 
 CON_COMMAND( map_reload, "Rescan all maps from the maps folder" )
 {
+	if(!UTIL_IsCommandIssuedByServerAdmin())return;
 	MapManager_ScanMaps();
 }

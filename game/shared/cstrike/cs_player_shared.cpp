@@ -14,6 +14,7 @@
 #include "bone_setup.h"
 #include "cs_hitbox_geometry.h"
 #include "cs_capsule_geometry.h"
+#include "cs_capsule_model.h"
 
 #ifdef CLIENT_DLL
 	#include "c_cs_player.h"
@@ -93,7 +94,7 @@ bool CCSPlayer::TestHitboxes( const Ray_t &ray, unsigned int contentsMask, trace
 		if ( sv_player_hitbox_capsules.GetInt() == 2 )
 		{
 			CSCapsuleHitbox capsule;CSCapsuleIntersection result;
-			if(!CSCapsuleFromAuthoredBox(box->bbmin,box->bbmax,capsule) || !CSIntersectCapsule(capsule,localStart,localDelta,result)) continue;
+			if(!CSReadModelCapsule(*box,capsule) || !CSIntersectCapsule(capsule,localStart,localDelta,result)) continue;
 			hit.fraction=result.fraction;hit.exitFraction=result.exitFraction;hit.startSolid=result.startSolid;hit.normal=result.normal;
 		}
 		else if(!CSIntersectRoundedHitbox(shape,localStart,localDelta,hit)) continue;
@@ -117,6 +118,49 @@ bool CCSPlayer::TestHitboxes( const Ray_t &ray, unsigned int contentsMask, trace
 	// A tested miss must not fall back to the player's movement hull.
 	return true;
 }
+
+#ifndef CLIENT_DLL
+#include "tier1/utlbuffer.h"
+#include "filesystem.h"
+CON_COMMAND_F(cs_export_player_hitboxes,"Export currently mounted player MDLs and companions for VPK construction.",FCVAR_CHEAT)
+{
+    int exported=0,failed=0;
+    const char *extensions[]={".mdl",".vvd",".dx90.vtx",".phy",".ani"};
+    for(int team=0;team<2;++team) {
+        const CUtlVectorInitialized<const char*> &models=team ? TerroristPlayerModels : CTPlayerModels;
+        for(int i=0;i<models.Count();++i) {
+            char stem[256];Q_StripExtension(models[i],stem,sizeof(stem));
+            for(int ext=0;ext<ARRAYSIZE(extensions);++ext) {
+                char input[256],output[384],folder[384];
+                Q_snprintf(input,sizeof(input),"%s%s",stem,extensions[ext]);
+                CUtlBuffer data;
+                if(!filesystem->ReadFile(input,"GAME",data)) {if(ext<3)++failed;continue;}
+                Q_snprintf(output,sizeof(output),"sourceadvanced_gameplay/%s",input);
+                Q_strncpy(folder,output,sizeof(folder));Q_StripFilename(folder);
+                filesystem->CreateDirHierarchy(folder,"MOD");
+                if(filesystem->WriteFile(output,"MOD",data))++exported;else++failed;
+            }
+        }
+    }
+    Msg("[model-export] files=%d failures=%d destination=sourceadvanced_gameplay\n",exported,failed);
+}
+CON_COMMAND_F(cs_audit_player_scale,"Report model scale, hull, eye height and weapon speed.",FCVAR_CHEAT)
+{
+    for(int i=1;i<=gpGlobals->maxClients;++i) {
+        CCSPlayer *p=ToCSPlayer(UTIL_PlayerByIndex(i));if(!p || !p->IsAlive())continue;
+        CStudioHdr *hdr=p->GetModelPtr();int authored=0,total=0;
+        if(hdr && p->GetHitboxSet()>=0 && p->GetHitboxSet()<hdr->numhitboxsets()) {
+            mstudiohitboxset_t *set=hdr->pHitboxSet(p->GetHitboxSet());total=set->numhitboxes;
+            for(int j=0;j<total;++j)if(set->pHitbox(j)->unused[0]==CS_CAPSULE_MDL_MARKER)++authored;
+        }
+        Msg("[scale-audit] player=%d model=%s scale=%.3f hull=%.3f eye=%.3f fov=%d maxspeed=%.3f actualspeed=%.3f mdl_capsules=%d/%d\n",
+            i,STRING(p->GetModelName()),p->GetModelScale(),p->CollisionProp()->OBBSize().z,p->GetViewOffset().z,p->GetFOV(),p->GetPlayerMaxSpeed(),p->GetAbsVelocity().Length2D(),authored,total);
+    }
+    Msg("[scale-audit] standing_hull=%.1f crouched_hull=%.1f standing_eye=%.1f crouched_eye=%.1f\n",
+        CSGameRules()->GetViewVectors()->m_vHullMax.z,CSGameRules()->GetViewVectors()->m_vDuckHullMax.z,
+        CSGameRules()->GetViewVectors()->m_vView.z,CSGameRules()->GetViewVectors()->m_vDuckView.z);
+}
+#endif
 
 #ifndef CLIENT_DLL
 CON_COMMAND_F( cs_validate_hitboxes, "Validate current player bones and rounded hitboxes without drawing overlays.", FCVAR_CHEAT )

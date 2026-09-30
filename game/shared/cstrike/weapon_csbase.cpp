@@ -2428,7 +2428,8 @@ void CWeaponCSBase::UpdateAccuracyPenalty()
 	else if ( pPlayer->GetGroundEntity() == NULL )
 	{
 		fNewPenalty += weaponInfo.m_fInaccuracyStand[m_weaponMode];
-		fNewPenalty += weaponInfo.m_fInaccuracyJump[m_weaponMode] * weapon_air_spread_scale.GetFloat();
+		if(weaponInfo.m_fInaccuracyJumpInitial[m_weaponMode]>0)
+			fNewPenalty += weaponInfo.m_fInaccuracyJump[m_weaponMode] * weapon_air_spread_scale.GetFloat();
 	}
 	else if ( FBitSet( pPlayer->GetFlags(), FL_DUCKING) )
 	{
@@ -2514,8 +2515,12 @@ float CWeaponCSBase::GetRecoveryTime( void )
 
 void CWeaponCSBase::OnJump( float fImpulse )
 {
-	// The airborne base and vertical-speed penalties are evaluated every frame in
-	// UpdateAccuracyPenalty/GetInaccuracy, as in CS:GO Legacy.
+	// Older profiles express jump inaccuracy per unit of jump impulse (like
+	// landing inaccuracy per unit of impact velocity). Newer profiles have a
+	// distinct jump-initial term evaluated in GetInaccuracy instead.
+	const CCSWeaponInfo &info=GetCSWpnData();
+	if(info.m_fInaccuracyJumpInitial[m_weaponMode]==0 && isfinite(fImpulse))
+		m_fAccuracyPenalty+=info.m_fInaccuracyJump[m_weaponMode]*MAX(0.0f,fImpulse)*weapon_air_spread_scale.GetFloat();
 }
 
 void CWeaponCSBase::OnLand( float fVelocity )

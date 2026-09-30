@@ -849,6 +849,7 @@ void CCSPlayer::SetModelFromClass( void )
 
 void CCSPlayer::Spawn()
 {
+	CSAntiCheat_ResetPlayer(this);
 	m_RateLimitLastCommandTimes.Purge();
 
 	// Get rid of the progress bar...

@@ -17,6 +17,9 @@
 #include "gamerules.h"
 #include "soundent.h"
 #include "player.h"
+#if defined(CSTRIKE_DLL)
+#include "cstrike/map_manager.h"
+#endif
 #include "server_class.h"
 #include "ai_node.h"
 #include "ai_link.h"
@@ -952,6 +955,10 @@ bool CServerGameDLL::IsRestoring()
 bool CServerGameDLL::LevelInit( const char *pMapName, char const *pMapEntities, char const *pOldLevel, char const *pLandmarkName, bool loadGame, bool background )
 {
 	VPROF("CServerGameDLL::LevelInit");
+#if defined(CSTRIKE_DLL)
+	// Reset votes/countdown and refresh the mounted map catalogue per level.
+	MapManager_Init();
+#endif
 
 #ifdef USES_ECON_ITEMS
 	GameItemSchema_t *pItemSchema = ItemSystem()->GetItemSchema();
