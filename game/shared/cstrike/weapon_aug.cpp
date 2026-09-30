@@ -33,6 +33,7 @@ public:
 	virtual void PrimaryAttack();
 
  	virtual float GetInaccuracy() const;
+	virtual float GetMaxSpeed() const;
 	virtual bool Reload();
 	virtual bool Deploy();
 
@@ -110,6 +111,15 @@ float CWeaponAug::GetInaccuracy() const
 	}
 	else
 		return BaseClass::GetInaccuracy();
+}
+
+float CWeaponAug::GetMaxSpeed() const
+{
+	CCSPlayer *pPlayer = GetPlayerOwner();
+	if ( !pPlayer || pPlayer->GetFOV() == pPlayer->GetDefaultFOV() )
+		return BaseClass::GetMaxSpeed();
+
+	return 150.0f;
 }
 
 void CWeaponAug::PrimaryAttack()

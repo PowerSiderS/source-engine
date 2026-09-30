@@ -88,4 +88,24 @@ inline float CSLegacyAirSpeedInaccuracy( float flVerticalSpeed, float flInitialJ
 	return flInaccuracy;
 }
 
+inline bool CSLegacyCanChainJump( bool bBunnyHoppingEnabled, float flStamina, float flStaminaThreshold )
+{
+	return bBunnyHoppingEnabled || flStamina < flStaminaThreshold;
+}
+
+inline float CSLegacyRecoveryTime( float flRecoilIndex, float flInitial, float flFinal, int nTransitionStart, int nTransitionEnd )
+{
+	if ( flFinal < 0.0f )
+		return flInitial;
+
+	if ( nTransitionEnd <= nTransitionStart )
+	{
+		nTransitionStart = 3;
+		nTransitionEnd = 8;
+	}
+
+	const float flFraction = CSLegacyClamp01( ( flRecoilIndex - nTransitionStart ) / (float)( nTransitionEnd - nTransitionStart ) );
+	return flInitial + ( flFinal - flInitial ) * flFraction;
+}
+
 #endif // CS_LEGACY_GAMEPLAY_H

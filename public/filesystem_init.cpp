@@ -541,11 +541,17 @@ static int SortStricmp( char * const * sz1, char * const * sz2 )
 
 FSReturnCode_t FileSystem_LoadSearchPaths( CFSSearchPathsInit &initInfo )
 {
+	FILE *fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] entered pDirectoryName=%s\n", initInfo.m_pDirectoryName ? initInfo.m_pDirectoryName : "null" ); fclose( fpDbg ); }
+
 	if ( !initInfo.m_pFileSystem || !initInfo.m_pDirectoryName )
 		return SetupFileSystemError( false, FS_INVALID_PARAMETERS, "FileSystem_LoadSearchPaths: Invalid parameters specified." );
 
 	KeyValues *pMainFile, *pFileSystemInfo, *pSearchPaths;
 	FSReturnCode_t retVal = LoadGameInfoFile( initInfo.m_pDirectoryName, pMainFile, pFileSystemInfo, pSearchPaths );
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] LoadGameInfoFile returned %d\n", (int)retVal ); fclose( fpDbg ); }
+
 	if ( retVal != FS_OK )
 		return retVal;
 	
@@ -553,6 +559,9 @@ FSReturnCode_t FileSystem_LoadSearchPaths( CFSSearchPathsInit &initInfo )
 	char baseDir[MAX_PATH];
 	if ( !FileSystem_GetBaseDir( baseDir, sizeof( baseDir ) ) )
 		return SetupFileSystemError( false, FS_INVALID_PARAMETERS, "FileSystem_GetBaseDir failed." );
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] baseDir=%s\n", baseDir ); fclose( fpDbg ); }
 
 	Msg("filesystem BaseDir: %s\n", baseDir);
 
@@ -602,6 +611,9 @@ FSReturnCode_t FileSystem_LoadSearchPaths( CFSSearchPathsInit &initInfo )
 		const char *pLocation = pCur->GetString();
 		const char *pszBaseDir = baseDir;
 
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] search path key=%s val=%s\n", pCur->GetName(), pLocation ); fclose( fpDbg ); }
+
 		if ( Q_stristr( pLocation, GAMEINFOPATH_TOKEN ) == pLocation )
 		{
 			pLocation += strlen( GAMEINFOPATH_TOKEN );
@@ -622,14 +634,32 @@ FSReturnCode_t FileSystem_LoadSearchPaths( CFSSearchPathsInit &initInfo )
 		}
 
 
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] pLocation=%s pszBaseDir=%s\n", pLocation, pszBaseDir ); fclose( fpDbg ); }
+
 		CUtlStringList vecFullLocationPaths;
 		V_MakeAbsolutePath( szAbsSearchPath, sizeof( szAbsSearchPath ), pLocation, pszBaseDir );
 
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] szAbsSearchPath=%s\n", szAbsSearchPath ); fclose( fpDbg ); }
+
 		// Now resolve any ./'s.
 		V_FixSlashes( szAbsSearchPath );
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] after V_FixSlashes=%s\n", szAbsSearchPath ); fclose( fpDbg ); }
+
 		if ( !V_RemoveDotSlashes( szAbsSearchPath ) )
+		{
+			fpDbg = fopen( "dedicated_trace.log", "a" );
+			if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] V_RemoveDotSlashes FAILED for %s\n", szAbsSearchPath ); fclose( fpDbg ); }
 			Error( "FileSystem_AddLoadedSearchPath - Can't resolve pathname for '%s'", szAbsSearchPath );
+		}
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] after V_RemoveDotSlashes=%s\n", szAbsSearchPath ); fclose( fpDbg ); }
+
 		V_StripTrailingSlash( szAbsSearchPath );
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] after V_StripTrailingSlash=%s\n", szAbsSearchPath ); fclose( fpDbg ); }
 
 		// Don't bother doing any wildcard expansion unless it has wildcards.  This avoids the weird
 		// thing with xxx_dir.vpk files being referred to simply as xxx.vpk.
@@ -640,7 +670,11 @@ FSReturnCode_t FileSystem_LoadSearchPaths( CFSSearchPathsInit &initInfo )
 		else
 		{
 			FileFindHandle_t findHandle = NULL;
+			fpDbg = fopen( "dedicated_trace.log", "a" );
+			if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] calling FindFirst(%s)\n", szAbsSearchPath ); fclose( fpDbg ); }
 			const char *pszFoundShortName = initInfo.m_pFileSystem->FindFirst( szAbsSearchPath, &findHandle );
+			fpDbg = fopen( "dedicated_trace.log", "a" );
+			if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] FindFirst(%s) returned %s\n", szAbsSearchPath, pszFoundShortName ? pszFoundShortName : "null" ); fclose( fpDbg ); }
 			if ( pszFoundShortName )
 			{
 				do 
@@ -746,6 +780,9 @@ FSReturnCode_t FileSystem_LoadSearchPaths( CFSSearchPathsInit &initInfo )
 #ifdef _DEBUG	
 	// initInfo.m_pFileSystem->PrintSearchPaths();
 #endif
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[FileSystem_LoadSearchPaths] returning FS_OK\n" ); fclose( fpDbg ); }
 
 	return FS_OK;
 }

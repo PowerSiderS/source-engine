@@ -131,7 +131,6 @@ char * CTextConsoleWin32::GetLine( int index, char *buf, int buflen )
 
 		if ( !GetNumberOfConsoleInputEvents( hinput, &numevents ) )
 		{
-			Error("CTextConsoleWin32::GetLine: !GetNumberOfConsoleInputEvents");
 			return NULL;
 		}
 
@@ -140,7 +139,6 @@ char * CTextConsoleWin32::GetLine( int index, char *buf, int buflen )
 
 		if ( !ReadConsoleInput( hinput, recs, ARRAYSIZE( recs ), &numread ) )
 		{
-			Error("CTextConsoleWin32::GetLine: !ReadConsoleInput");
 			return NULL;
 		}
 

@@ -300,6 +300,7 @@ public:
 
 	// Remove all search paths (including write path?)
 	virtual void				RemoveAllSearchPaths( void );
+	virtual void				RemoveAllMapSearchPaths( void ) OVERRIDE;
 
 	// Purpose: Removes all search paths for a given pathID, such as all "GAME" paths.
 	virtual void				RemoveSearchPaths( const char *pathID );
@@ -786,7 +787,6 @@ protected:
 	bool						FindNextFileHelper( FindData_t *pFindData, int *pFoundStoreID );
 	bool						FindNextFileInVPKOrPakHelper( FindData_t *pFindData );
 
-	void						RemoveAllMapSearchPaths( void );
 	void						AddMapPackFile( const char *pPath, const char *pPathID, SearchPathAdd_t addType );
 	void						AddPackFiles( const char *pPath, const CUtlSymbol &pathID, SearchPathAdd_t addType );
 	bool						PreparePackFile( CPackFile &packfile, int offsetofpackinmetafile, int64 filelen );

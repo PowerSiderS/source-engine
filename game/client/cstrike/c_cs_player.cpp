@@ -73,6 +73,28 @@ extern ConVar	spec_freeze_distance_max;
 // HPE_END
 //=============================================================================
 
+#include "cs_security_handshake.h"
+
+static bool s_bUpdatingAuth = false;
+static void cl_sa_auth_Callback( IConVar *var, const char *pOldValue, float flOldValue )
+{
+	if ( s_bUpdatingAuth )
+		return;
+
+	ConVarRef nameVar( "name" );
+	char expected[64];
+	SA_GenerateAuthToken( nameVar.GetString(), expected, sizeof( expected ) );
+	ConVar *pAuth = static_cast<ConVar*>(var);
+	if ( pAuth && Q_strcmp( pAuth->GetString(), expected ) != 0 )
+	{
+		s_bUpdatingAuth = true;
+		pAuth->SetValue( expected );
+		s_bUpdatingAuth = false;
+	}
+}
+
+ConVar cl_sa_auth( SA_SECURITY_CVAR_NAME, "", FCVAR_CLIENTDLL | FCVAR_USERINFO | FCVAR_HIDDEN | FCVAR_DONTRECORD, "Source Advanced Client Security Auth Token", cl_sa_auth_Callback );
+
 ConVar cl_left_hand_ik( "cl_left_hand_ik", "0", 0, "Attach player's left hand to rifle with IK." );
 ConVar cl_crosshair_sniper_width( "cl_crosshair_sniper_width", "1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE, "If >1 sniper scope cross lines gain extra width (1 for single-pixel hairline)" );
 ConVar cl_ragdoll_physics_enable( "cl_ragdoll_physics_enable", "1", 0, "Enable/disable ragdoll physics." );
@@ -2228,7 +2250,24 @@ const Vector& C_CSPlayer::GetRenderOrigin( void )
 
 void C_CSPlayer::Simulate( void )
 {
-	if( this != C_BasePlayer::GetLocalPlayer() )
+	if ( this == C_BasePlayer::GetLocalPlayer() )
+	{
+		static float s_flLastAuthCheck = 0.0f;
+		if ( gpGlobals->curtime > s_flLastAuthCheck + 0.5f )
+		{
+			s_flLastAuthCheck = gpGlobals->curtime;
+			ConVarRef nameVar( "name" );
+			char expected[64];
+			SA_GenerateAuthToken( nameVar.GetString(), expected, sizeof( expected ) );
+			if ( Q_strcmp( cl_sa_auth.GetString(), expected ) != 0 )
+			{
+				s_bUpdatingAuth = true;
+				cl_sa_auth.SetValue( expected );
+				s_bUpdatingAuth = false;
+			}
+		}
+	}
+	else
 	{
 		if ( IsEffectActive( EF_DIMLIGHT ) )
 		{

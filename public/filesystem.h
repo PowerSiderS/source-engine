@@ -928,6 +928,8 @@ public:
 	{
 		return GetCaseCorrectFullPath_Ptr( pFullPath, pDest, (int)maxLenInChars );
 	}
+
+	virtual void			RemoveAllMapSearchPaths( void ) = 0;
 };
 
 //-----------------------------------------------------------------------------

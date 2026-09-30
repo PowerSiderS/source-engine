@@ -685,6 +685,18 @@ bool CBaseServer::ProcessConnectionlessPacket(netpacket_t * packet)
 
 	switch ( c )
 	{
+		case A2S_INFO:
+			{
+				char infoPostfix[64];
+				msg.ReadString( infoPostfix, sizeof( infoPostfix ) );
+				if ( !Q_stricmp( infoPostfix, A2S_KEY_STRING ) &&
+					 s_queryRateChecker.CheckIP( packet->from ) )
+				{
+					ReplyInfo( packet->from );
+				}
+			}
+			break;
+
 		case A2S_GETCHALLENGE :
 			{
 				int clientChallenge = msg.ReadLong();
@@ -799,6 +811,42 @@ bool CBaseServer::ProcessConnectionlessPacket(netpacket_t * packet)
 	}
 
 	return true;
+}
+
+void CBaseServer::ReplyInfo( const netadr_t &adr )
+{
+	static char gamedir[MAX_OSPATH];
+	Q_FileBase( com_gamedir, gamedir, sizeof( gamedir ) );
+
+	CUtlBuffer buf;
+	buf.EnsureCapacity( 2048 );
+	buf.PutUnsignedInt( LittleDWord( CONNECTIONLESS_HEADER ) );
+	buf.PutUnsignedChar( S2A_INFO_SRC );
+	buf.PutUnsignedChar( PROTOCOL_VERSION );
+	buf.PutString( GetName() );
+	buf.PutString( GetMapName() );
+	buf.PutString( gamedir );
+	buf.PutString( serverGameDLL->GetGameDescription() );
+
+	uint16 appId = (uint16)GetSteamAppID();
+	buf.PutShort( LittleWord( appId ) );
+	buf.PutUnsignedChar( GetNumClients() );
+	buf.PutUnsignedChar( GetMaxClients() );
+	buf.PutUnsignedChar( GetNumFakeClients() );
+	buf.PutUnsignedChar( IsDedicated() ? 'd' : 'l' );
+#if defined( _WIN32 )
+	buf.PutUnsignedChar( 'w' );
+#elif defined( OSX )
+	buf.PutUnsignedChar( 'm' );
+#else
+	buf.PutUnsignedChar( 'l' );
+#endif
+	buf.PutUnsignedChar( GetPassword() ? 1 : 0 );
+	buf.PutUnsignedChar( Steam3Server().BSecure() ? 1 : 0 );
+	buf.PutString( GetSteamInfIDVersionInfo().szVersionString );
+	buf.PutUnsignedChar( 0 ); // no optional EDF fields
+
+	NET_SendPacket( NULL, m_Socket, adr, (unsigned char *)buf.Base(), buf.TellPut() );
 }
 
 int CBaseServer::GetNumFakeClients() const

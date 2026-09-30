@@ -126,14 +126,28 @@ void *CStudioRenderContext::QueryInterface( const char *pInterfaceName )
 //-----------------------------------------------------------------------------
 InitReturnVal_t CStudioRenderContext::Init()
 {
+	FILE *fp = fopen( "dedicated_trace.log", "a" );
+	if ( fp ) { fprintf( fp, "[CStudioRenderContext::Init] entered\n" ); fclose( fp ); }
+
 	MathLib_Init( 2.2f, 2.2f, 0.0f, 2.0f );
 
 	InitReturnVal_t nRetVal = BaseClass::Init();
 	if ( nRetVal != INIT_OK )
+	{
+		fp = fopen( "dedicated_trace.log", "a" );
+		if ( fp ) { fprintf( fp, "[CStudioRenderContext::Init] BaseClass::Init failed\n" ); fclose( fp ); }
 		return nRetVal;
+	}
 
 	if( !g_pMaterialSystem || !g_pMaterialSystemHardwareConfig )
+	{
+		fp = fopen( "dedicated_trace.log", "a" );
+		if ( fp ) { fprintf( fp, "[CStudioRenderContext::Init] g_pMaterialSystem or g_pMaterialSystemHardwareConfig is NULL\n" ); fclose( fp ); }
 		return INIT_FAILED;
+	}
+
+	fp = fopen( "dedicated_trace.log", "a" );
+	if ( fp ) { fprintf( fp, "[CStudioRenderContext::Init] calling g_pStudioRenderImp->Init()\n" ); fclose( fp ); }
 
 	return g_pStudioRenderImp->Init();
 }

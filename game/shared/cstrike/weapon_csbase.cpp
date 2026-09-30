@@ -866,7 +866,10 @@ float CWeaponCSBase::GetInaccuracy() const
 		fAccuracy += CSLegacyAirSpeedInaccuracy( flVerticalSpeed, flInitialJumpPenalty );
 	}
 
-	return MIN( fAccuracy, 1.0f );
+	// CS:GO defines this per weapon. Several SMGs and rifles intentionally allow
+	// a value above 1.0 near the end of a long spray.
+	const float flMaxInaccuracy = weaponInfo.m_flMaxInaccuracy > 0.0f ? weaponInfo.m_flMaxInaccuracy : 1.0f;
+	return MIN( fAccuracy, flMaxInaccuracy );
 }
 
 
@@ -2437,12 +2440,8 @@ float CWeaponCSBase::GetRecoveryTime( void )
 
 		if ( flRecoveryTimeFinal != -1.0f )	// uninitialized final recovery values are set to -1.0 from the weapon_base prefab in schema
 		{
-			int nRecoilIndex = m_flRecoilIndex;
-
-			if ( weaponInfo.m_iRecoveryTransitionEndBullet > weaponInfo.m_iRecoveryTransitionStartBullet )
-				flRecoveryTime = RemapValClamped( nRecoilIndex, weaponInfo.m_iRecoveryTransitionStartBullet, weaponInfo.m_iRecoveryTransitionEndBullet, flRecoveryTime, flRecoveryTimeFinal );
-			else
-				flRecoveryTime = flRecoveryTimeFinal;
+			flRecoveryTime = CSLegacyRecoveryTime( m_flRecoilIndex, flRecoveryTime, flRecoveryTimeFinal,
+				weaponInfo.m_iRecoveryTransitionStartBullet, weaponInfo.m_iRecoveryTransitionEndBullet );
 		}
 
 		return flRecoveryTime;
@@ -2454,13 +2453,8 @@ float CWeaponCSBase::GetRecoveryTime( void )
 
 		if ( flRecoveryTimeFinal != -1.0f )	// uninitialized final recovery values are set to -1.0 from the weapon_base prefab in schema
 		{
-			int nRecoilIndex = m_flRecoilIndex;
-
-			// If the script did not provide a valid transition range, just use the final value.
-			if ( weaponInfo.m_iRecoveryTransitionEndBullet > weaponInfo.m_iRecoveryTransitionStartBullet )
-				flRecoveryTime = RemapValClamped( nRecoilIndex, weaponInfo.m_iRecoveryTransitionStartBullet, weaponInfo.m_iRecoveryTransitionEndBullet, flRecoveryTime, flRecoveryTimeFinal );
-			else
-				flRecoveryTime = flRecoveryTimeFinal;
+			flRecoveryTime = CSLegacyRecoveryTime( m_flRecoilIndex, flRecoveryTime, flRecoveryTimeFinal,
+				weaponInfo.m_iRecoveryTransitionStartBullet, weaponInfo.m_iRecoveryTransitionEndBullet );
 		}
 
 		return flRecoveryTime;

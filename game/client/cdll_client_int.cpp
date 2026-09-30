@@ -124,6 +124,7 @@
 #include "sourcevr/isourcevirtualreality.h"
 #include "client_virtualreality.h"
 #include "mumble.h"
+#include "cs_security_handshake.h"
 
 // NVNT includes
 #include "hud_macros.h"
@@ -1141,6 +1142,17 @@ void CHLClient::PostInit()
 
 	g_ClientVirtualReality.StartupComplete();
 
+#ifdef CSTRIKE_DLL
+	ConVarRef nameVar( "name" );
+	ConVarRef authVar( SA_SECURITY_CVAR_NAME );
+	if ( nameVar.IsValid() && authVar.IsValid() )
+	{
+		char expected[64];
+		SA_GenerateAuthToken( nameVar.GetString(), expected, sizeof( expected ) );
+		authVar.SetValue( expected );
+	}
+#endif
+
 #ifdef HL1MP_CLIENT_DLL
 	if ( s_cl_load_hl1_content.GetBool() && steamapicontext && steamapicontext->SteamApps() )
 	{
@@ -1597,6 +1609,17 @@ void CHLClient::LevelInitPreEntity( char const* pMapName )
 	ResetToneMapping(1.0);
 
 	IGameSystem::LevelInitPreEntityAllSystems(pMapName);
+
+#ifdef CSTRIKE_DLL
+	ConVarRef nameVar( "name" );
+	ConVarRef authVar( SA_SECURITY_CVAR_NAME );
+	if ( nameVar.IsValid() && authVar.IsValid() )
+	{
+		char expected[64];
+		SA_GenerateAuthToken( nameVar.GetString(), expected, sizeof( expected ) );
+		authVar.SetValue( expected );
+	}
+#endif
 
 #ifdef USES_ECON_ITEMS
 	GameItemSchema_t *pItemSchema = ItemSystem()->GetItemSchema();

@@ -48,3 +48,19 @@ DEFINE_TESTCASE( LegacyAirInaccuracyTest, CStrikeGameplayTestSuite )
 	Shipping_Assert( NearlyEqual( CSLegacyAirSpeedInaccuracy( 100000.0f, flJumpPenalty ), flJumpPenalty * 2.0f ) );
 	Shipping_Assert( NearlyEqual( CSLegacyAirSpeedInaccuracy( flLegacyJumpImpulse, 0.0f ), 0.0f ) );
 }
+
+DEFINE_TESTCASE( CompetitiveBunnyHopStaminaGateTest, CStrikeGameplayTestSuite )
+{
+	Shipping_Assert( CSLegacyCanChainJump( false, 0.0f, 22.0f ) );
+	Shipping_Assert( CSLegacyCanChainJump( false, 21.99f, 22.0f ) );
+	Shipping_Assert( !CSLegacyCanChainJump( false, 22.0f, 22.0f ) );
+	Shipping_Assert( CSLegacyCanChainJump( true, 80.0f, 22.0f ) );
+}
+
+DEFINE_TESTCASE( LegacySprayRecoveryTransitionTest, CStrikeGameplayTestSuite )
+{
+	Shipping_Assert( NearlyEqual( CSLegacyRecoveryTime( 0.0f, 0.30f, 0.50f, 3, 8 ), 0.30f ) );
+	Shipping_Assert( NearlyEqual( CSLegacyRecoveryTime( 8.0f, 0.30f, 0.50f, 3, 8 ), 0.50f ) );
+	Shipping_Assert( NearlyEqual( CSLegacyRecoveryTime( 5.5f, 0.30f, 0.50f, 0, 0 ), 0.40f ) );
+	Shipping_Assert( NearlyEqual( CSLegacyRecoveryTime( 20.0f, 0.30f, -1.0f, 3, 8 ), 0.30f ) );
+}

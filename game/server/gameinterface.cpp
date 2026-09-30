@@ -118,6 +118,9 @@ extern ConVar tf_mm_servermode;
 
 #ifdef CSTRIKE_DLL // BOTPORT: TODO: move these ifdefs out
 #include "bot/bot.h"
+#include "inetchannelinfo.h"
+#include "cs_security_handshake.h"
+ConVar sv_sourceadvanced( SA_SERVER_SIG_CVAR, "1", FCVAR_GAMEDLL | FCVAR_REPLICATED | FCVAR_NOTIFY, "Source Advanced Dedicated Server Signature" );
 #endif
 
 #ifdef PORTAL
@@ -742,8 +745,12 @@ bool CServerGameDLL::DLLInit( CreateInterfaceFn appSystemFactory,
 	gamestatsuploader->InitConnection();
 #endif
 
+	extern void MapManager_Init();
+	MapManager_Init();
+
 	return true;
 }
+
 
 void CServerGameDLL::PostInit()
 {
@@ -1181,6 +1188,9 @@ void CServerGameDLL::GameFrame( bool simulating )
 	// Don't run frames until fully restored
 	if ( g_InRestore )
 		return;
+
+	extern void MapManager_Update();
+	MapManager_Update();
 
 	if ( CBaseEntity::IsSimulatingOnAlternateTicks() )
 	{
@@ -2653,6 +2663,30 @@ bool CServerGameClients::ClientConnect( edict_t *pEdict, const char *pszName, co
 {	
 	if ( !g_pGameRules )
 		return false;
+
+#ifdef CSTRIKE_DLL
+	CBaseEntity *pEnt = pEdict->GetUnknown() ? pEdict->GetUnknown()->GetBaseEntity() : NULL;
+	bool bIsBot = ( pEnt && (pEnt->GetFlags() & FL_FAKECLIENT) );
+	bool bIsLocal = ( pszAddress && ( Q_strcmp( pszAddress, "loopback" ) == 0 || Q_strcmp( pszAddress, "none" ) == 0 ) );
+
+	if ( !bIsBot && !bIsLocal )
+	{
+		int clientIndex = engine->IndexOfEdict( pEdict );
+		const char *pszClientToken = engine->GetClientConVarValue( clientIndex, SA_SECURITY_CVAR_NAME );
+
+		if ( !SA_VerifyAuthToken( pszName, pszClientToken ) )
+		{
+			Q_snprintf( reject, maxrejectlen, "%s", SA_REJECT_MSG );
+			DevMsg( "[SA-SECURITY] Rejeitada conexao nao autorizada de '%s' [%s] (token: '%s')\n",
+				pszName ? pszName : "unnamed",
+				pszAddress ? pszAddress : "unknown",
+				pszClientToken ? pszClientToken : "<null>" );
+			return false;
+		}
+
+		DevMsg( "[SA-SECURITY] Autorizada conexao oficial de '%s' [%s]\n", pszName, pszAddress );
+	}
+#endif
 	
 	return g_pGameRules->ClientConnected( pEdict, pszName, pszAddress, reject, maxrejectlen );
 }
@@ -2812,6 +2846,24 @@ void CServerGameClients::ClientSettingsChanged( edict_t *pEdict )
 	
 	if ( !player )
 		return;
+
+#ifdef CSTRIKE_DLL
+	// Source Advanced V1 - Check for signature tampering during gameplay
+	if ( !player->IsBot() && !player->IsHLTV() )
+	{
+		INetChannelInfo *nci = engine->GetPlayerNetInfo( player->entindex() );
+		if ( nci && !nci->IsLoopback() )
+		{
+			const char *pszCurrentName = engine->GetClientConVarValue( player->entindex(), "name" );
+			const char *pszCurrentToken = engine->GetClientConVarValue( player->entindex(), SA_SECURITY_CVAR_NAME );
+			if ( !SA_VerifyAuthToken( pszCurrentName, pszCurrentToken ) )
+			{
+				engine->ServerCommand( UTIL_VarArgs( "kickid %d \"Assinatura de DLL adulterada ou nao autorizada.\"\n", player->GetUserID() ) );
+				return;
+			}
+		}
+	}
+#endif
 
 	bool bAllowNetworkingClientSettingsChange = g_pGameRules->IsConnectedUserInfoChangeAllowed( player );
 	if ( bAllowNetworkingClientSettingsChange )

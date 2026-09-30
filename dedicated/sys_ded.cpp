@@ -141,6 +141,9 @@ static bool HandleVCRHook()
 //-----------------------------------------------------------------------------
 void RunServer( void )
 {
+	FILE *fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[RunServer] entered\n" ); fclose( fpDbg ); }
+
 #ifdef _WIN32
 	if(gpszCvars)
 	{
@@ -153,7 +156,11 @@ void RunServer( void )
 	{
 		DoRunVGUIFrame();
 		if ( !engine->RunFrame() )
+		{
+			fpDbg = fopen( "dedicated_trace.log", "a" );
+			if ( fpDbg ) { fprintf( fpDbg, "[RunServer] early engine->RunFrame() returned false at iteration %d\n", i ); fclose( fpDbg ); }
 			return;
+		}
 	}
 
 	// Run final VGUI frame.
@@ -250,21 +257,33 @@ bool CDedicatedAppSystemGroup::Create( )
 
 bool CDedicatedAppSystemGroup::PreInit( )
 {
+	extern IFileSystem *g_pFileSystem;
 	// A little hack needed because dedicated links directly to filesystem .cpp files
-	g_pFullFileSystem = NULL;
+	g_pFullFileSystem = g_pFileSystem;
+
+	FILE *fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] entered, g_pFullFileSystem=%p\n", g_pFullFileSystem ); fclose( fpDbg ); }
 
 	if ( !BaseClass::PreInit() )
+	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] BaseClass::PreInit failed\n" ); fclose( fpDbg ); }
 		return false;
+	}
 
 	CFSSteamSetupInfo steamInfo;
 	steamInfo.m_pDirectoryName = NULL;
 	steamInfo.m_bOnlyUseDirectoryName = false;
 	steamInfo.m_bToolsMode = false;
 	steamInfo.m_bSetSteamDLLPath = false;
-	steamInfo.m_bSteam = g_pFullFileSystem->IsSteam();
+	steamInfo.m_bSteam = g_pFullFileSystem ? g_pFullFileSystem->IsSteam() : false;
 	steamInfo.m_bNoGameInfo = steamInfo.m_bSteam;
 	if ( FileSystem_SetupSteamEnvironment( steamInfo ) != FS_OK )
+	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] FileSystem_SetupSteamEnvironment failed\n" ); fclose( fpDbg ); }
 		return false;
+	}
 
 	CFSMountContentInfo fsInfo;
 	fsInfo.m_pFileSystem = g_pFullFileSystem;
@@ -272,10 +291,27 @@ bool CDedicatedAppSystemGroup::PreInit( )
 	fsInfo.m_pDirectoryName = steamInfo.m_GameInfoPath;
 
 	if ( FileSystem_MountContent( fsInfo ) != FS_OK )
+	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] FileSystem_MountContent failed for %s\n", steamInfo.m_GameInfoPath ); fclose( fpDbg ); }
 		return false;
+	}
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] FileSystem_MountContent succeeded for %s\n", steamInfo.m_GameInfoPath ); fclose( fpDbg ); }
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] calling NET_Init()\n" ); fclose( fpDbg ); }
 
 	if ( !NET_Init() )
+	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] NET_Init failed\n" ); fclose( fpDbg ); }
 		return false;
+	}
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] NET_Init succeeded\n" ); fclose( fpDbg ); }
 
 #ifdef _WIN32
 	g_bVGui = CommandLine()->CheckParm( "-vgui" );
@@ -296,17 +332,33 @@ bool CDedicatedAppSystemGroup::PreInit( )
 	else
 #endif
 	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] calling sys->CreateConsoleWindow()\n" ); fclose( fpDbg ); }
+
 		if ( !sys->CreateConsoleWindow() )
+		{
+			fpDbg = fopen( "dedicated_trace.log", "a" );
+			if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] sys->CreateConsoleWindow failed\n" ); fclose( fpDbg ); }
 			return false;
+		}
 	}
 
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::PreInit] returning true\n" ); fclose( fpDbg ); }
 	return true;
 }
 
 int CDedicatedAppSystemGroup::Main( )
 {
+	FILE *fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::Main] entered\n" ); fclose( fpDbg ); }
+
 	if ( !ConsoleStartup() )
+	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::Main] ConsoleStartup failed\n" ); fclose( fpDbg ); }
 		return -1;
+	}
 
 #ifdef _WIN32
 	if ( g_bVGui )
@@ -322,10 +374,20 @@ int CDedicatedAppSystemGroup::Main( )
 	info.m_pParentAppSystemGroup = this;
 	info.m_bTextMode = CommandLine()->CheckParm( "-textmode" );
 
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::Main] calling engine->ModInit(mod=%s, base=%s)\n", info.m_pInitialMod, info.m_pBaseDirectory ); fclose( fpDbg ); }
+
 	if ( engine->ModInit( info ) )
 	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::Main] engine->ModInit succeeded, shutting down\n" ); fclose( fpDbg ); }
 		engine->ModShutdown();
 	} // if engine->ModInit
+	else
+	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedAppSystemGroup::Main] engine->ModInit returned false\n" ); fclose( fpDbg ); }
+	}
 
 	return 0;
 }
@@ -521,10 +583,24 @@ int main(int argc, char **argv)
 	// Rehook the command line through VCR mode.
 	CommandLine()->CreateCmdLine( VCRHook_GetCommandLine() );
 
+	FILE *fpDbg = fopen( "dedicated_trace.log", "w" );
+	if ( fpDbg ) { fprintf( fpDbg, "[main] entered argc=%d basedir=%s cmdline=%s\n", argc, pBasedir, CommandLine()->GetCmdLine() ); fclose( fpDbg ); }
+
 	if ( !InitInstance() )
+	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[main] InitInstance failed\n" ); fclose( fpDbg ); }
 		return -1;
+	}
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[main] launching steamApplication.Run()\n" ); fclose( fpDbg ); }
 
 	CDedicatedAppSystemGroup dedicatedSystems;
 	CDedicatedSteamApplication steamApplication( &dedicatedSystems );
-	return steamApplication.Run( );
+	int nRet = steamApplication.Run( );
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[main] steamApplication.Run() returned %d\n", nRet ); fclose( fpDbg ); }
+	return nRet;
 }

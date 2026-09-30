@@ -165,6 +165,13 @@ static const char *get_consolelog_filename()
 
 SpewRetval_t DedicatedSpewOutputFunc( SpewType_t spewType, char const *pMsg )
 {
+	FILE *fp = fopen( "dedicated_spew.log", "a" );
+	if ( fp )
+	{
+		fputs( pMsg, fp );
+		fclose( fp );
+	}
+
 	if ( sys )
 	{
 		sys->Printf( "%s", pMsg );

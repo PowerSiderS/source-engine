@@ -2885,7 +2885,11 @@ IMaterial* CMaterialSystem::FindMaterialEx( char const* pMaterialName, const cha
 		}
 	}
 
+	if ( !g_pErrorMaterial )
+		return NULL;
+
 	return g_pErrorMaterial->GetRealTimeVersion();
+
 }
 
 void CMaterialSystem::SetAsyncTextureLoadCache( void* h )

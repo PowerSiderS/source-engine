@@ -18,6 +18,7 @@
 #include "host.h"
 #include "eiface.h"
 #include "server.h"
+#include "filesystem_engine.h"
 #include "utlmap.h"
 
 extern ConVar sv_tags;
@@ -27,12 +28,6 @@ extern ConVar sv_lan;
 #define RETRY_INFO_REQUEST_TIME 0.4 // seconds
 #define MASTER_RESPONSE_TIMEOUT 1.5 // seconds
 #define INFO_REQUEST_TIMEOUT 5.0 // seconds
-
-static char g_MasterServers[][64] =
-{
-	"ms.workbench.network:27010", 
-	"oreo922.cn:27010"
-};
 
 #ifdef DEDICATED
 #define IsLan() false
@@ -96,6 +91,7 @@ public:
 	void RequestLANServerList( const char *gamedir, IServerListResponse *response );
 	void AddServerAddresses( netadr_t **adr, int count );
 	void RequestServerInfo( const netadr_t &adr );
+	void RequestConfiguredServers();
 	void StopRefresh();
 
 private:
@@ -536,17 +532,8 @@ void CMaster::AddServer( netadr_t *adr )
 //-----------------------------------------------------------------------------
 void CMaster::UseDefault ( void )
 {
-	netadr_t adr;
-
-	for( int i = 0; i < ARRAYSIZE(g_MasterServers);i++ )
-	{
-		// Convert to netadr_t
-		if ( NET_StringToAdr ( g_MasterServers[i], &adr ) )
-		{
-			// Add to master list
-			AddServer( &adr );
-		}
-	}
+	// Intentionally empty. Source Advanced server discovery is driven by
+	// cfg/sourceadvanced_servers.txt so it remains private to this engine.
 }
 
 //-----------------------------------------------------------------------------
@@ -658,7 +645,8 @@ void CMaster::Init( void )
 	// So we don't do this a send time.sv_mas
 	m_bInitialized = true;
 
-	UseDefault();
+	// Source Advanced uses its own explicit server list instead of publishing
+	// to, or querying, the global Steam/CS:S server browser.
 }
 
 //-----------------------------------------------------------------------------
@@ -692,6 +680,7 @@ void CMaster::RequestInternetServerList(const char *gamedir, IServerListResponse
 		m_bRefreshing = true;
 		m_serverListResponse = response;
 		m_flRetryRequestTime = m_flStartRequestTime = m_flMasterRequestTime = Plat_FloatTime();
+		RequestConfiguredServers();
 	}
 
 	ALIGN4 char buf[256] ALIGN4_POST;
@@ -712,10 +701,52 @@ void CMaster::RequestInternetServerList(const char *gamedir, IServerListResponse
 
 void CMaster::RequestLANServerList(const char *gamedir, IServerListResponse *response)
 {
-
+	RequestInternetServerList( gamedir, response );
 }
 
 void CMaster::AddServerAddresses( netadr_t **adr, int count )
 {
+	for ( int i = 0; i < count; ++i )
+	{
+		if ( !adr[i] )
+			continue;
 
+		if ( m_serverAddresses.Find( *adr[i] ) == m_serverAddresses.InvalidIndex() )
+		{
+			m_serverAddresses.Insert( *adr[i], false );
+			RequestServerInfo( *adr[i] );
+		}
+	}
+}
+
+void CMaster::RequestConfiguredServers()
+{
+	CUtlBuffer serverList( 0, 0, CUtlBuffer::TEXT_BUFFER );
+	if ( !g_pFileSystem->ReadFile( "cfg/sourceadvanced_servers.txt", "GAME", serverList ) )
+	{
+		DevMsg( "No cfg/sourceadvanced_servers.txt found for the Source Advanced server list.\n" );
+		return;
+	}
+
+	while ( serverList.TellGet() < serverList.TellPut() )
+	{
+		char address[128];
+		address[0] = '\0';
+		serverList.GetString( address, sizeof( address ) );
+		if ( !address[0] )
+			break;
+
+		netadr_t serverAddress;
+		if ( !NET_StringToAdr( address, &serverAddress ) || serverAddress.GetPort() == 0 )
+		{
+			Warning( "Ignoring invalid Source Advanced server address: %s\n", address );
+			continue;
+		}
+
+		if ( m_serverAddresses.Find( serverAddress ) == m_serverAddresses.InvalidIndex() )
+		{
+			m_serverAddresses.Insert( serverAddress, false );
+			RequestServerInfo( serverAddress );
+		}
+	}
 }

@@ -17,6 +17,9 @@ def configure(conf):
 #	conf.define('PROTECTED_THINGS_ENABLE',1)
 #	conf.define('_USE_32BIT_TIME_T',1)
 	conf.define('SUPPORT_PACKED_STORE',1)
+	if conf.options.DEDICATED:
+		conf.define('DEDICATED',1)
+
 
 def build(bld):
 	source = [

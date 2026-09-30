@@ -208,5 +208,5 @@ float CWeaponSG550::GetMaxSpeed() const
 	if ( !pPlayer || pPlayer->GetFOV() == 90 )
 		return BaseClass::GetMaxSpeed();
 	else
-		return 150; // zoomed in
+		return 120; // CS:GO auto-sniper scoped movement speed.
 }

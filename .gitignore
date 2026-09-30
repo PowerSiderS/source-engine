@@ -37,3 +37,9 @@ waf3*/
 .vscode/
 .depproj/
 source-engine.sln
+output/
+output-dedicated/
+check_maps.py
+deploy_dedicated.py
+monitor_server.ps1
+test_server.ps1

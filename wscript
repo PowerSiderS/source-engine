@@ -123,6 +123,7 @@ projects={
 		'dedicated_main',
 		'dmxloader',
 		'engine',
+		'filesystem',
 		'game/server',
 		'ivp/havana',
 		'ivp/havana/havok/hk_base',

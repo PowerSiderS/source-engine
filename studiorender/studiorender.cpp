@@ -21,6 +21,7 @@
 #include "convar.h"
 #include "materialsystem/itexture.h"
 #include "tier2/tier2.h"
+#include "tier0/icommandline.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -68,6 +69,20 @@ CStudioRender::CStudioRender()
 
 	MemAlloc_PopAllocDbgInfo();
 	m_nDecalId = 1;
+
+	m_pMaterialMRMWireframe = NULL;
+	m_pMaterialMRMWireframeZBuffer = NULL;
+	m_pMaterialMRMNormals = NULL;
+	m_pMaterialTangentFrame = NULL;
+	m_pMaterialTranslucentModelHulls = NULL;
+	m_pMaterialSolidModelHulls = NULL;
+	m_pMaterialAdditiveVertexColorVertexAlpha = NULL;
+	m_pMaterialModelBones = NULL;
+	m_pMaterialWorldWireframe = NULL;
+	m_pMaterialModelEnvCubemap = NULL;
+	memset( m_pDepthWrite, 0, sizeof(m_pDepthWrite) );
+	memset( m_pSSAODepthWrite, 0, sizeof(m_pSSAODepthWrite) );
+	m_pGlintBuildMaterial = NULL;
 }
 
 CStudioRender::~CStudioRender()
@@ -78,45 +93,62 @@ CStudioRender::~CStudioRender()
 
 void CStudioRender::InitDebugMaterials( void )
 {
+	FILE *fp = fopen( "dedicated_trace.log", "a" );
+	if ( fp ) { fprintf( fp, "[InitDebugMaterials] calling FindMaterial(//platform/materials/debug/debugmrmwireframe)\n" ); fclose( fp ); }
+
 	m_pMaterialMRMWireframe = 
 		g_pMaterialSystem->FindMaterial( "//platform/materials/debug/debugmrmwireframe", TEXTURE_GROUP_OTHER, true );
-	m_pMaterialMRMWireframe->IncrementReferenceCount();
+
+	fp = fopen( "dedicated_trace.log", "a" );
+	if ( fp ) { fprintf( fp, "[InitDebugMaterials] FindMaterial returned %p\n", m_pMaterialMRMWireframe ); fclose( fp ); }
+
+	if ( m_pMaterialMRMWireframe )
+		m_pMaterialMRMWireframe->IncrementReferenceCount();
 
 	m_pMaterialMRMWireframeZBuffer = 
 		g_pMaterialSystem->FindMaterial( "//platform/materials/debug/debugmrmwireframezbuffer", TEXTURE_GROUP_OTHER, true );
-	m_pMaterialMRMWireframeZBuffer->IncrementReferenceCount();
+	if ( m_pMaterialMRMWireframeZBuffer )
+		m_pMaterialMRMWireframeZBuffer->IncrementReferenceCount();
 
 	m_pMaterialMRMNormals = 
 		g_pMaterialSystem->FindMaterial( "//platform/materials/debug/debugmrmnormals", TEXTURE_GROUP_OTHER, true );
-	m_pMaterialMRMNormals->IncrementReferenceCount();
+	if ( m_pMaterialMRMNormals )
+		m_pMaterialMRMNormals->IncrementReferenceCount();
 
 	m_pMaterialTangentFrame = 
 		g_pMaterialSystem->FindMaterial( "//platform/materials/debug/debugvertexcolor", TEXTURE_GROUP_OTHER, true );
-	m_pMaterialTangentFrame->IncrementReferenceCount();
+	if ( m_pMaterialTangentFrame )
+		m_pMaterialTangentFrame->IncrementReferenceCount();
 
 	m_pMaterialTranslucentModelHulls = 
 		g_pMaterialSystem->FindMaterial( "//platform/materials/debug/debugtranslucentmodelhulls", TEXTURE_GROUP_OTHER, true );
-	m_pMaterialTranslucentModelHulls->IncrementReferenceCount();
+	if ( m_pMaterialTranslucentModelHulls )
+		m_pMaterialTranslucentModelHulls->IncrementReferenceCount();
 
 	m_pMaterialSolidModelHulls = 
 		g_pMaterialSystem->FindMaterial( "//platform/materials/debug/debugsolidmodelhulls", TEXTURE_GROUP_OTHER, true );
-	m_pMaterialSolidModelHulls->IncrementReferenceCount();
+	if ( m_pMaterialSolidModelHulls )
+		m_pMaterialSolidModelHulls->IncrementReferenceCount();
 
 	m_pMaterialAdditiveVertexColorVertexAlpha = 
 		g_pMaterialSystem->FindMaterial( "//platform/materials/debug/additivevertexcolorvertexalpha", TEXTURE_GROUP_OTHER, true );
-	m_pMaterialAdditiveVertexColorVertexAlpha->IncrementReferenceCount();
+	if ( m_pMaterialAdditiveVertexColorVertexAlpha )
+		m_pMaterialAdditiveVertexColorVertexAlpha->IncrementReferenceCount();
 
 	m_pMaterialModelBones = 
 		g_pMaterialSystem->FindMaterial( "//platform/materials/debug/debugmodelbones", TEXTURE_GROUP_OTHER, true );
-	m_pMaterialModelBones->IncrementReferenceCount();
+	if ( m_pMaterialModelBones )
+		m_pMaterialModelBones->IncrementReferenceCount();
 
 	m_pMaterialModelEnvCubemap =
 		g_pMaterialSystem->FindMaterial( "//platform/materials/debug/env_cubemap_model", TEXTURE_GROUP_OTHER, true );
-	m_pMaterialModelEnvCubemap->IncrementReferenceCount();
+	if ( m_pMaterialModelEnvCubemap )
+		m_pMaterialModelEnvCubemap->IncrementReferenceCount();
 	
 	m_pMaterialWorldWireframe = 
 		g_pMaterialSystem->FindMaterial( "//platform/materials/debug/debugworldwireframe", TEXTURE_GROUP_OTHER, true );
-	m_pMaterialWorldWireframe->IncrementReferenceCount();
+	if ( m_pMaterialWorldWireframe )
+		m_pMaterialWorldWireframe->IncrementReferenceCount();
 
 	if( g_pMaterialSystemHardwareConfig->GetDXSupportLevel() >= 90 )
 	{
@@ -289,12 +321,35 @@ static void RestoreMaterialSystemObjects( int nChangeFlags )
 //-----------------------------------------------------------------------------
 InitReturnVal_t CStudioRender::Init()
 {
+	FILE *fp = fopen( "dedicated_trace.log", "a" );
+	if ( fp ) { fprintf( fp, "[CStudioRender::Init] entered, g_pMaterialSystem=%p, g_pMaterialSystemHardwareConfig=%p\n", g_pMaterialSystem, g_pMaterialSystemHardwareConfig ); fclose( fp ); }
+
 	if ( g_pMaterialSystem && g_pMaterialSystemHardwareConfig )
 	{
 		g_pMaterialSystem->AddReleaseFunc( ReleaseMaterialSystemObjects );
 		g_pMaterialSystem->AddRestoreFunc( RestoreMaterialSystemObjects );
 
-		InitDebugMaterials();
+		bool bIsDedicated = ( CommandLine()->FindParm( "-dedicated" ) != 0 ) || ( CommandLine()->FindParm( "-console" ) != 0 );
+		if ( !bIsDedicated && g_pMaterialSystemHardwareConfig->GetShaderDLLName() && !Q_stricmp( g_pMaterialSystemHardwareConfig->GetShaderDLLName(), "UNKNOWN" ) )
+		{
+			bIsDedicated = true;
+		}
+
+		if ( !bIsDedicated )
+		{
+			fp = fopen( "dedicated_trace.log", "a" );
+			if ( fp ) { fprintf( fp, "[CStudioRender::Init] calling InitDebugMaterials()\n" ); fclose( fp ); }
+
+			InitDebugMaterials();
+
+			fp = fopen( "dedicated_trace.log", "a" );
+			if ( fp ) { fprintf( fp, "[CStudioRender::Init] InitDebugMaterials() returned\n" ); fclose( fp ); }
+		}
+		else
+		{
+			fp = fopen( "dedicated_trace.log", "a" );
+			if ( fp ) { fprintf( fp, "[CStudioRender::Init] skipping InitDebugMaterials() for dedicated server\n" ); fclose( fp ); }
+		}
 
 		return INIT_OK;
 	}

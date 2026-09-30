@@ -138,6 +138,7 @@ public: // IConnectionlessPacketHandler implementation
 	float	GetFinalTickTime( void ) const;
 
 	virtual bool CheckIPRestrictions( const netadr_t &adr, int nAuthProtocol );
+	void ReplyInfo( const netadr_t &adr );
 
 	void	SetMasterServerRulesDirty();
 	void	SendQueryPortToClient( netadr_t &adr );

@@ -20,14 +20,18 @@
 	#include "KeyValues.h"
 #endif
 
-#define STAMINA_MAX				100.0
-#define STAMINA_COST_JUMP		25.0
-#define STAMINA_COST_FALL		20.0
-#define STAMINA_RECOVER_RATE	19.0
+#define STAMINA_RANGE				100.0
+ConVar sv_staminajumpcost( "sv_staminajumpcost", ".080", FCVAR_REPLICATED | FCVAR_NOTIFY, "Stamina penalty for jumping", true, 0.0, false, 0.0 );
+ConVar sv_staminalandcost( "sv_staminalandcost", ".050", FCVAR_REPLICATED | FCVAR_NOTIFY, "Stamina penalty for landing", true, 0.0, false, 0.0 );
+ConVar sv_staminarecoveryrate( "sv_staminarecoveryrate", "60", FCVAR_REPLICATED | FCVAR_NOTIFY, "Rate at which stamina recovers (units/sec)", true, 0.0, false, 0.0 );
+ConVar sv_staminamax( "sv_staminamax", "80", FCVAR_REPLICATED | FCVAR_NOTIFY, "Maximum stamina penalty", true, 0.0, true, 100.0 );
+ConVar sv_jump_impulse( "sv_jump_impulse", "301.993377", FCVAR_REPLICATED | FCVAR_NOTIFY, "Initial upward velocity for player jumps; sqrt(2*gravity*height).", true, 0.0f, false, 0.0f );
+ConVar sv_autobunnyhopping( "sv_autobunnyhopping", "0", FCVAR_REPLICATED | FCVAR_NOTIFY, "Players automatically re-jump while holding jump button" );
+ConVar sv_bunnyhop_stamina_threshold( "sv_bunnyhop_stamina_threshold", "22", FCVAR_REPLICATED | FCVAR_NOTIFY, "Maximum stamina that still permits another immediate jump when bunny hopping is disabled", true, 0.0f, true, 100.0f );
 
 extern bool g_bMovementOptimizations;
 
-ConVar sv_timebetweenducks( "sv_timebetweenducks", "0", FCVAR_REPLICATED, "Minimum time before recognizing consecutive duck key", true, 0.0, true, 2.0 );
+ConVar sv_timebetweenducks( "sv_timebetweenducks", "0.4", FCVAR_REPLICATED | FCVAR_NOTIFY, "Minimum time before recognizing consecutive duck key", true, 0.0, true, 2.0 );
 ConVar sv_enableboost( "sv_enableboost", "0", FCVAR_REPLICATED | FCVAR_NOTIFY, "Allow boost exploits");
 ConVar cs_autojump( "cs_autojump", "0", FCVAR_REPLICATED | FCVAR_NOTIFY );
 
@@ -218,6 +222,13 @@ void CCSGameMovement::CheckParameters( void )
 
 
 		mv->m_flMaxSpeed *= flSpeedFactor;
+
+		if ( m_pCSPlayer->m_flStamina > 0 )
+		{
+			float fSpeedScale = clamp( 1.0f - m_pCSPlayer->m_flStamina / STAMINA_RANGE, 0.0f, 1.0f );
+			fSpeedScale *= fSpeedScale;
+			mv->m_flMaxSpeed *= fSpeedScale;
+		}
 
 		if ( g_bMovementOptimizations )
 		{
@@ -442,26 +453,6 @@ void CCSGameMovement::PlayerMove()
 
 void CCSGameMovement::WalkMove( void )
 {
-	if ( m_pCSPlayer->m_flStamina > 0 )
-	{
-		float flRatio;
-
-		flRatio = CSLegacyStaminaRatio( m_pCSPlayer->m_flStamina, STAMINA_RECOVER_RATE, STAMINA_MAX );
-
-		// This Goldsrc code was run with variable timesteps and it had framerate dependencies.
-		// People looking at Goldsrc for reference are usually
-		// (these days) measuring the stoppage at 60fps or greater, so we need
-		// to account for the fact that Goldsrc was applying more stopping power
-		// since it applied the slowdown across more frames.
-		float flReferenceFrametime = 1.0f / 70.0f;
-		float flFrametimeRatio = gpGlobals->frametime / flReferenceFrametime;
-
-		flRatio = pow( flRatio, flFrametimeRatio );
-
-		mv->m_vecVelocity.x *= flRatio;
-		mv->m_vecVelocity.y *= flRatio;
-	}
-
 	BaseClass::WalkMove();
 
 	CheckForLadders( player->GetGroundEntity() != NULL );
@@ -506,7 +497,7 @@ bool CCSGameMovement::LadderMove( void )
  */
 float CCSGameMovement::ClimbSpeed( void ) const
 {
-	if ( mv->m_nButtons & IN_DUCK )
+	if ( ( mv->m_nButtons & IN_DUCK ) || ( mv->m_nButtons & IN_SPEED ) )
 	{
 		return BaseClass::ClimbSpeed() * CS_PLAYER_SPEED_CLIMB_MODIFIER;
 	}
@@ -602,11 +593,9 @@ void CCSGameMovement::CheckForLadders( bool wasOnGround )
 
 void CCSGameMovement::ReduceTimers( void )
 {
-	float frame_msec = 1000.0f * gpGlobals->frametime;
-
 	if ( m_pCSPlayer->m_flStamina > 0 )
 	{
-		m_pCSPlayer->m_flStamina -= frame_msec;
+		m_pCSPlayer->m_flStamina -= gpGlobals->frametime * sv_staminarecoveryrate.GetFloat();
 
 		if ( m_pCSPlayer->m_flStamina < 0 )
 		{
@@ -695,9 +684,19 @@ bool CCSGameMovement::CheckJumpButton( void )
 	}
 
 	if ( (mv->m_nOldButtons & IN_JUMP) &&
-		(!cs_autojump.GetBool() && m_pCSPlayer->GetGroundEntity()) )
+		(!cs_autojump.GetBool() && !sv_autobunnyhopping.GetBool() && m_pCSPlayer->GetGroundEntity()) )
 	{
 		return false;		// don't pogo stick
+	}
+
+	// Competitive movement must still reward a well-timed hop, but repeated wheel
+	// spam cannot bypass the landing/jump stamina system indefinitely. The first
+	// hop is unaffected; a chain must pause briefly once stamina accumulates.
+	if ( !CSLegacyCanChainJump( sv_enablebunnyhopping.GetBool(),
+		 m_pCSPlayer->m_flStamina, sv_bunnyhop_stamina_threshold.GetFloat() ) )
+	{
+		mv->m_nOldButtons |= IN_JUMP;
+		return false;
 	}
 
 	if ( !sv_enablebunnyhopping.GetBool() )
@@ -731,30 +730,17 @@ bool CCSGameMovement::CheckJumpButton( void )
 	float startz = mv->m_vecVelocity[2];
 	if ( m_pCSPlayer->m_duckUntilOnGround || (  m_pCSPlayer->m_Local.m_bDucking ) || (  m_pCSPlayer->GetFlags() & FL_DUCKING ) )
 	{
-		// d = 0.5 * g * t^2		- distance traveled with linear accel
-		// t = sqrt(2.0 * 45 / g)	- how long to fall 45 units
-		// v = g * t				- velocity at the end (just invert it to jump up that high)
-		// v = g * sqrt(2.0 * 45 / g )
-		// v^2 = g * g * 2.0 * 45 / g
-		// v = sqrt( g * 2.0 * 45 )
-
-		mv->m_vecVelocity[2] = flGroundFactor * sqrt(2 * 800 * 57.0);  // 2 * gravity * height
+		mv->m_vecVelocity[2] = flGroundFactor * sv_jump_impulse.GetFloat();
 	}
 	else
 	{
-		mv->m_vecVelocity[2] += flGroundFactor * sqrt(2 * 800 * 57.0);  // 2 * gravity * height
+		mv->m_vecVelocity[2] += flGroundFactor * sv_jump_impulse.GetFloat();
 	}
 
 	if ( m_pCSPlayer->m_flStamina > 0 )
 	{
-		float flRatio;
-
-		flRatio = CSLegacyStaminaRatio( m_pCSPlayer->m_flStamina, STAMINA_RECOVER_RATE, STAMINA_MAX );
-
-		mv->m_vecVelocity[2] *= flRatio;
+		mv->m_vecVelocity[2] *= clamp( 1.0f - m_pCSPlayer->m_flStamina / STAMINA_RANGE, 0.0f, 1.0f );
 	}
-
-	m_pCSPlayer->m_flStamina = ( STAMINA_COST_JUMP / STAMINA_RECOVER_RATE ) * 1000.0;
 
 	FinishGravity();
 
@@ -1167,11 +1153,16 @@ void CCSGameMovement::Duck( void )
 
 void CCSGameMovement::OnJump( float fImpulse )
 {
+	float flStamCost = sv_staminajumpcost.GetFloat();
+	m_pCSPlayer->m_flStamina = clamp( m_pCSPlayer->m_flStamina + flStamCost * fImpulse, 0.0f, sv_staminamax.GetFloat() );
+
 	m_pCSPlayer->OnJump( fImpulse );
 }	
 
 void CCSGameMovement::OnLand( float fVelocity )
 {
+	m_pCSPlayer->m_flStamina = clamp( m_pCSPlayer->m_flStamina + sv_staminalandcost.GetFloat() * fVelocity, 0.0f, sv_staminamax.GetFloat() );
+
 	m_pCSPlayer->OnLand( fVelocity );
 }
 

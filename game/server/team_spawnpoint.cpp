@@ -45,7 +45,12 @@ void CTeamSpawnPoint::Activate( void )
 	}
 	else
 	{
-		Warning( "info_player_teamspawn with invalid team number: %d\n", GetTeamNumber() );
+		// CS:GO-authored maps can contain neutral team spawns used only by
+		// other game modes. They are intentionally ignored by CS rules.
+		if ( GetTeamNumber() != TEAM_UNASSIGNED )
+		{
+			Warning( "info_player_teamspawn with invalid team number: %d\n", GetTeamNumber() );
+		}
 		UTIL_Remove( this );
 	}
 }

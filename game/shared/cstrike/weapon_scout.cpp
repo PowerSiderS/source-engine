@@ -201,7 +201,7 @@ float CWeaponScout::GetMaxSpeed() const
 	if ( pPlayer->GetFOV() == pPlayer->GetDefaultFOV() )
 		return BaseClass::GetMaxSpeed();
 	else
-		return 220;	// zoomed in.
+		return 120;	// CS:GO SSG 08 scoped movement speed.
 }
 
 

@@ -275,7 +275,7 @@ float CWeaponAWP::GetMaxSpeed() const
 	else
 	{
 		// Slower speed when zoomed in.
-		return 150;
+		return 100;
 	}
 }
 

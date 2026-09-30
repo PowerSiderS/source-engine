@@ -739,14 +739,26 @@ static eSteamInfoInit Sys_TryInitSteamInfo( void *pvAPI, SteamInfVersionInfo_t& 
 	VerInfo.AppID = k_uAppIdInvalid;
 	VerInfo.ServerAppID = k_uAppIdInvalid;
 
+	FILE *fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[Sys_TryInitSteamInfo] entered, g_pFileSystem=%p\n", g_pFileSystem ); fclose( fpDbg ); }
+
 	// Filesystem may or may not be up
 	CUtlBuffer infBuf;
 	bool bFoundInf = false;
-	if ( g_pFileSystem )
+	if ( com_gamedir[0] && g_pFileSystem )
 	{
-		FileHandle_t fh;
-		fh = g_pFileSystem->Open( "steam.inf", "rb", "GAME" );
-		bFoundInf = fh && g_pFileSystem->ReadToBuffer( fh, infBuf );
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[Sys_TryInitSteamInfo] trying g_pFileSystem->Open('steam.inf')\n" ); fclose( fpDbg ); }
+
+		FileHandle_t fh = g_pFileSystem->Open( "steam.inf", "rb", "GAME" );
+		if ( fh )
+		{
+			bFoundInf = g_pFileSystem->ReadToBuffer( fh, infBuf );
+			g_pFileSystem->Close( fh );
+		}
+
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[Sys_TryInitSteamInfo] g_pFileSystem->Open returned bFoundInf=%d\n", (int)bFoundInf ); fclose( fpDbg ); }
 	}
 
 	if ( !bFoundInf )
@@ -756,6 +768,9 @@ static eSteamInfoInit Sys_TryInitSteamInfo( void *pvAPI, SteamInfVersionInfo_t& 
 		char szModSteamInfPath[ MAX_PATH ] = { 0 };
 		V_ComposeFileName( pchMod, "steam.inf", szModSteamInfPath, sizeof( szModSteamInfPath ) );
 		V_MakeAbsolutePath( szFullPath, sizeof( szFullPath ), szModSteamInfPath, pchBaseDir );
+
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[Sys_TryInitSteamInfo] trying raw fopen('%s')\n", szFullPath ); fclose( fpDbg ); }
 
 		// Try opening steam.inf
 		FILE *fp = fopen( szFullPath, "rb" );
@@ -875,7 +890,7 @@ static eSteamInfoInit Sys_TryInitSteamInfo( void *pvAPI, SteamInfVersionInfo_t& 
 
 #ifndef NO_STEAM
 	// If -nobreakpad was specified or we found metamod or sourcemod, don't register breakpad.
-	bool bUseBreakpad = !CommandLine()->FindParm( "-nobreakpad" ) && ( !bDedicated || !IsSourceModLoaded() );
+	bool bUseBreakpad = !CommandLine()->FindParm( "-nobreakpad" ) && !bDedicated;
 	AppId_t BreakpadAppId = bDedicated ? VerInfo.ServerAppID : VerInfo.AppID;
 	Assert( BreakpadAppId != k_uAppIdInvalid || initState < eSteamInfo_Initialized );
 	if ( BreakpadAppId != k_uAppIdInvalid && initState > previousInitState && bUseBreakpad )
@@ -2079,16 +2094,33 @@ int CModAppSystemGroup::Main()
 {
 	int nRunResult = RUN_OK;
 
+	FILE *fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CModAppSystemGroup::Main] entered, IsServerOnly=%d\n", (int)IsServerOnly() ); fclose( fpDbg ); }
+
 	if ( IsServerOnly() )
 	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[CModAppSystemGroup::Main] calling eng->Load(true, %s)\n", host_parms.basedir ); fclose( fpDbg ); }
+
 		// Start up the game engine
 		if ( eng->Load( true, host_parms.basedir ) )
 		{
+			fpDbg = fopen( "dedicated_trace.log", "a" );
+			if ( fpDbg ) { fprintf( fpDbg, "[CModAppSystemGroup::Main] eng->Load succeeded, calling dedicated->RunServer()\n" ); fclose( fpDbg ); }
+
 			// If we're using STEAM, pass the map cycle list as resource hints...
 			// Dedicated server drives frame loop manually
 			dedicated->RunServer();
 
+			fpDbg = fopen( "dedicated_trace.log", "a" );
+			if ( fpDbg ) { fprintf( fpDbg, "[CModAppSystemGroup::Main] dedicated->RunServer finished\n" ); fclose( fpDbg ); }
+
 			SV_ShutdownGameDLL();
+		}
+		else
+		{
+			fpDbg = fopen( "dedicated_trace.log", "a" );
+			if ( fpDbg ) { fprintf( fpDbg, "[CModAppSystemGroup::Main] eng->Load(true) returned false!\n" ); fclose( fpDbg ); }
 		}
 	}
 	else
@@ -2368,9 +2400,15 @@ void *CDedicatedServerAPI::QueryInterface( const char *pInterfaceName )
 //-----------------------------------------------------------------------------
 bool CDedicatedServerAPI::ModInit( ModInfo_t &info )
 {
+	FILE *fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedServerAPI::ModInit] entered\n" ); fclose( fpDbg ); }
+
 	// Setup and write out steam_appid.txt before we launch
 	bool bDedicated = true;
 	eSteamInfoInit steamInfo = Sys_TryInitSteamInfo( this, g_SteamInfIDVersionInfo, info.m_pInitialMod, info.m_pBaseDirectory, bDedicated );
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedServerAPI::ModInit] steamInfo=%d\n", (int)steamInfo ); fclose( fpDbg ); }
 
 	eng->SetQuitting( IEngine::QUIT_NOTQUITTING );
 
@@ -2381,7 +2419,13 @@ bool CDedicatedServerAPI::ModInit( ModInfo_t &info )
 
 	g_bTextMode = info.m_bTextMode;
 
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedServerAPI::ModInit] calling COM_InitFilesystem\n" ); fclose( fpDbg ); }
+
 	TRACEINIT( COM_InitFilesystem( info.m_pInitialMod ), COM_ShutdownFileSystem() );
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedServerAPI::ModInit] COM_InitFilesystem finished\n" ); fclose( fpDbg ); }
 
 	if ( steamInfo != eSteamInfo_Initialized )
 	{
@@ -2409,7 +2453,13 @@ bool CDedicatedServerAPI::ModInit( ModInfo_t &info )
 	else
 		g_pFullFileSystem->EnableWhitelistFileTracking( false, false, false );
 
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedServerAPI::ModInit] calling materials->ModInit()\n" ); fclose( fpDbg ); }
+
 	materials->ModInit();
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedServerAPI::ModInit] calling game->Init(NULL)\n" ); fclose( fpDbg ); }
 
 	// Setup the material system config record, CreateGameWindow depends on it
 	// (when we're running stand-alone)
@@ -2420,6 +2470,9 @@ bool CDedicatedServerAPI::ModInit( ModInfo_t &info )
 	// Initialize general game stuff and create the main window
 	if ( game->Init( NULL ) )
 	{
+		fpDbg = fopen( "dedicated_trace.log", "a" );
+		if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedServerAPI::ModInit] game->Init succeeded, running m_pDedicatedServer\n" ); fclose( fpDbg ); }
+
 		m_pDedicatedServer = new CModAppSystemGroup( true, info.m_pParentAppSystemGroup );
 
 		// Store off the app system factory...
@@ -2428,6 +2481,9 @@ bool CDedicatedServerAPI::ModInit( ModInfo_t &info )
 		m_pDedicatedServer->Run();
 		return true;
 	}
+
+	fpDbg = fopen( "dedicated_trace.log", "a" );
+	if ( fpDbg ) { fprintf( fpDbg, "[CDedicatedServerAPI::ModInit] game->Init failed\n" ); fclose( fpDbg ); }
 
 	return false;
 }

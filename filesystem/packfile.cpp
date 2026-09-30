@@ -122,9 +122,9 @@ CFileHandle *CZipPackFile::OpenFile( const char *pFileName, const char *pOptions
 	{
 		m_mutex.Lock();
 #if defined( SUPPORT_PACKED_STORE )
-		if ( m_nOpenFiles == 0 && m_hPackFileHandleFS == NULL && !m_hPackFileHandleVPK )
+		if ( m_hPackFileHandleFS == NULL && !m_hPackFileHandleVPK )
 #else
-		if ( m_nOpenFiles == 0 && m_hPackFileHandleFS == NULL )
+		if ( m_hPackFileHandleFS == NULL )
 #endif
 		{
 			// Try to open it as a regular file first
@@ -281,6 +281,10 @@ int CZipPackFile::ReadFromPack( int nEntryIndex, void* pBuffer, int nDestBytes, 
 
 	int nBytesRead = 0;
 	// Seek to the start of the read area and perform the read: TODO: CHANGE THIS INTO A CFileHandle
+	if ( !m_hPackFileHandleFS )
+	{
+		m_hPackFileHandleFS = m_fs->Trace_FOpen( m_ZipName, "rb", 0, NULL );
+	}
 	if ( m_hPackFileHandleFS )
 	{
 		m_fs->FS_fseek( m_hPackFileHandleFS, m_nBaseOffset + nOffset, SEEK_SET );
@@ -848,14 +852,9 @@ CZipPackFileHandle::~CZipPackFileHandle()
 {
 	m_pOwner->m_mutex.Lock();
 	--m_pOwner->m_nOpenFiles;
-	// XXX(johns) this doesn't go here, the hell
-	if ( m_pOwner->m_nOpenFiles == 0 && m_pOwner->m_bIsMapPath )
+	if ( m_pOwner->m_nOpenFiles < 0 )
 	{
-		if ( m_pOwner->m_hPackFileHandleFS )
-		{
-			m_pOwner->FileSystem()->Trace_FClose( m_pOwner->m_hPackFileHandleFS );
-			m_pOwner->m_hPackFileHandleFS = NULL;
-		}
+		m_pOwner->m_nOpenFiles = 0;
 	}
 	m_pOwner->Release();
 	m_pOwner->m_mutex.Unlock();
@@ -863,6 +862,15 @@ CZipPackFileHandle::~CZipPackFileHandle()
 
 void CZipPackFileHandle::SetBufferSize( int nBytes )
 {
+	if ( !m_pOwner->m_hPackFileHandleFS )
+	{
+		m_pOwner->m_mutex.Lock();
+		if ( !m_pOwner->m_hPackFileHandleFS )
+		{
+			m_pOwner->m_hPackFileHandleFS = m_pOwner->FileSystem()->Trace_FOpen( m_pOwner->m_ZipName, "rb", 0, NULL );
+		}
+		m_pOwner->m_mutex.Unlock();
+	}
 	if ( m_pOwner->m_hPackFileHandleFS )
 	{
 		m_pOwner->FileSystem()->FS_setbufsize( m_pOwner->m_hPackFileHandleFS, nBytes );

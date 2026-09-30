@@ -238,7 +238,10 @@ bool CSys::CreateConsoleWindow( void )
 {
 	if ( !AllocConsole () )
 	{
-		return false;
+		if ( GetConsoleWindow() == NULL )
+		{
+			AttachConsole( ATTACH_PARENT_PROCESS );
+		}
 	}
 	
 	InitConProc();

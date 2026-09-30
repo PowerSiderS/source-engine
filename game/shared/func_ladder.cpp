@@ -444,6 +444,12 @@ BEGIN_NETWORK_TABLE( CFuncLadder, DT_FuncLadder )
 END_NETWORK_TABLE()
 
 LINK_ENTITY_TO_CLASS( func_useableladder, CFuncLadder );
+#if !defined( CLIENT_DLL )
+// VBSP converts brush-based func_ladder entities into info_ladder records.
+// Treat those records as the same networked ladder implementation so maps
+// compiled by newer branches keep working instead of dropping their ladders.
+LINK_ENTITY_TO_CLASS( info_ladder, CFuncLadder );
+#endif
 
 //---------------------------------------------------------
 // Save/Restore

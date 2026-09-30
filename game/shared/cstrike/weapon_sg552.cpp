@@ -145,7 +145,7 @@ float CWeaponSG552::GetMaxSpeed() const
 	if ( !pPlayer || pPlayer->GetFOV() == pPlayer->GetDefaultFOV() )
 		return BaseClass::GetMaxSpeed();
 	else
-		return 200; // zoomed in.
+		return 150; // CS:GO SG 553 scoped movement speed.
 }	
 
 

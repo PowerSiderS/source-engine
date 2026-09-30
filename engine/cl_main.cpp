@@ -622,6 +622,12 @@ void CL_ClearState ( void )
 	memset (cl_dlights, 0, sizeof(cl_dlights));
 	memset (cl_elights, 0, sizeof(cl_elights));
 
+	// Ensure world model loaded flag is cleared so reconnect forces full reload of map pakfile and materials
+	if ( host_state.worldmodel )
+	{
+		host_state.worldmodel->nLoadFlags &= ~IModelLoader::FMODELLOADER_LOADED;
+	}
+
 	// Wipe the hunk ( unless the server is active )
 	Host_FreeStateAndWorld( false );
 	Host_FreeToLowMark( false );

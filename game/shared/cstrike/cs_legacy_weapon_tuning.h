@@ -38,6 +38,42 @@ static const CSLegacyWeaponTuning g_CSLegacyWeaponTuning[] =
 	{ WEAPON_P90, { 245.0f, 1, 26, 1.5f, 1, 4096.0f, 0.84f, 1, 0.07f, 0.07f, 0.001000f, 0.001000f, 0.010240f, 0.010240f, 0.013650f, 0.013650f, 0.090080f, 0.090080f, 0.104600f, 0.104600f, 0.000082f, 0.000082f, 0.132170f, 0.132170f, 0.002850f, 0.002850f, 0.031000f, 0.031000f, 0.0f, 0.0f, 70.0f, 70.0f, 16.0f, 16.0f, 1.0f, 1.0f, 6213, 0.265784f, 0.265784f, 0.372098f, 0.372098f, 0, 0 } },
 };
 
+inline float CSLegacyWeaponMaxSpeed( CSWeaponID id, float flFallback )
+{
+	switch ( id )
+	{
+	case WEAPON_P228: case WEAPON_GLOCK: case WEAPON_USP:
+	case WEAPON_ELITE: case WEAPON_FIVESEVEN:
+		return 240.0f;
+	case WEAPON_DEAGLE:
+		return 230.0f;
+	case WEAPON_SCOUT:
+		return 230.0f;
+	case WEAPON_AWP:
+		return 200.0f;
+	case WEAPON_XM1014:
+		return 215.0f;
+	case WEAPON_MAC10: case WEAPON_TMP:
+		return 240.0f;
+	case WEAPON_MP5NAVY:
+		return 220.0f;
+	case WEAPON_UMP45: case WEAPON_P90:
+		return 230.0f;
+	case WEAPON_AUG:
+		return 220.0f;
+	case WEAPON_SG552:
+		return 210.0f;
+	case WEAPON_SG550: case WEAPON_G3SG1:
+		return 215.0f;
+	case WEAPON_M249:
+		return 195.0f;
+	case WEAPON_M4A1:
+		return 225.0f;
+	default:
+		return flFallback;
+	}
+}
+
 inline void CSApplyLegacyWeaponTuning( CCSWeaponInfo &info, CSWeaponID id )
 {
 	const CSLegacyWeaponTuning *t = NULL;
@@ -48,7 +84,7 @@ inline void CSApplyLegacyWeaponTuning( CCSWeaponInfo &info, CSWeaponID id )
 	if ( !t ) return;
 	const float *v = t->v;
 	int n = 0;
-	info.m_flMaxSpeed = v[n++]; info.m_bFullAuto = v[n++] != 0.0f; info.m_iDamage = (int)v[n++]; info.m_flArmorRatio = v[n++]; info.m_iPenetration = (int)v[n++];
+	info.m_flMaxSpeed = CSLegacyWeaponMaxSpeed( id, v[n++] ); info.m_bFullAuto = v[n++] != 0.0f; info.m_iDamage = (int)v[n++]; info.m_flArmorRatio = v[n++]; info.m_iPenetration = (int)v[n++];
 	info.m_flRange = v[n++]; info.m_flRangeModifier = v[n++]; info.m_iBullets = (int)v[n++]; info.m_flCycleTime[0] = v[n++]; info.m_flCycleTime[1] = v[n++];
 	info.m_fSpread[0] = v[n++]; info.m_fSpread[1] = v[n++]; info.m_fInaccuracyCrouch[0] = v[n++]; info.m_fInaccuracyCrouch[1] = v[n++];
 	info.m_fInaccuracyStand[0] = v[n++]; info.m_fInaccuracyStand[1] = v[n++]; info.m_fInaccuracyJump[0] = v[n++]; info.m_fInaccuracyJump[1] = v[n++];

@@ -1144,19 +1144,6 @@ void CBaseFileSystem::AddMapPackFile( const char *pPath, const char *pPathID, Se
 		}
 	}
 
-	int c = m_SearchPaths.Count();
-	for ( int i = c - 1; i >= 0; i-- )
-	{
-		if ( !( m_SearchPaths[i].GetPackFile() && m_SearchPaths[i].GetPackFile()->m_bIsMapPath ) )
-			continue;
-		
-		if ( V_stricmp( m_SearchPaths[i].GetPackFile()->m_ZipName.Get(), fullpath ) == 0 )
-		{
-			// Already set as map path
-			return;
-		}
-	}
-
 	RemoveAllMapSearchPaths();
 
 	CUtlSymbol pathSymbol = g_PathIDTable.AddString( newPath );
@@ -1181,6 +1168,10 @@ void CBaseFileSystem::AddMapPackFile( const char *pPath, const char *pPathID, Se
 				sp->m_bIsRemotePath = true;
 			}
 			SetSearchPathIsTrustedSource( sp );
+			if ( !pf->m_hPackFileHandleFS )
+			{
+				pf->m_hPackFileHandleFS = Trace_FOpen( fullpath, "rb", 0, NULL );
+			}
 			return;
 		}
 	}
@@ -1284,9 +1275,9 @@ void CBaseFileSystem::BeginMapAccess()
 				pPackFile->m_mutex.Lock();
 
 #if defined( SUPPORT_PACKED_STORE )
-				if ( pPackFile->m_nOpenFiles == 0 && pPackFile->m_hPackFileHandleFS == NULL && !pPackFile->m_hPackFileHandleVPK )
+				if ( pPackFile->m_hPackFileHandleFS == NULL && !pPackFile->m_hPackFileHandleVPK )
 #else
-				if ( pPackFile->m_nOpenFiles == 0 && pPackFile->m_hPackFileHandleFS == NULL )
+				if ( pPackFile->m_hPackFileHandleFS == NULL )
 #endif
 				{
 					// Try opening the file as a regular file 
@@ -1322,8 +1313,9 @@ void CBaseFileSystem::EndMapAccess()
 			{
 				pPackFile->m_mutex.Lock();
 				pPackFile->m_nOpenFiles--;
-				if ( pPackFile->m_nOpenFiles == 0  )
+				if ( pPackFile->m_nOpenFiles <= 0 )
 				{
+					pPackFile->m_nOpenFiles = 0;
 					if ( pPackFile->m_hPackFileHandleFS )
 					{
 						Trace_FClose( pPackFile->m_hPackFileHandleFS );
@@ -3992,6 +3984,7 @@ const char *CBaseFileSystem::FindFirstHelper( const char *pWildCardT, const char
  	Assert(pHandle);
 
 	FileFindHandle_t hTmpHandle = m_FindData.AddToTail();
+
 	FindData_t *pFindData = &m_FindData[hTmpHandle];
 	Assert( pFindData );
 	if ( pPathID )
@@ -4015,6 +4008,7 @@ const char *CBaseFileSystem::FindFirstHelper( const char *pWildCardT, const char
 		pFindData->currentSearchPathID = -1;
 	}
 	else
+
 	{
 		int c = m_SearchPaths.Count();
 		for(	pFindData->currentSearchPathID = 0;
@@ -4317,29 +4311,9 @@ bool CBaseFileSystem::FixUpPath( const char *pFileName, char *pFixedUpFileName, 
 	{
 		V_strlower( pFixedUpFileName );
 	}
-	else 
-	{
-		//  Get the BASE_PATH, skip past  - if necessary, and lowercase the rest
-		//  Not just yet...
 
-
-		int iBaseLength = 0;
-		char pBaseDir[MAX_PATH];
-
-		//  Need to get "BASE_PATH" from the filesystem paths, and then check this name against it.
-		//
-		iBaseLength = GetSearchPath( "BASE_PATH", true, pBaseDir, sizeof( pBaseDir ) );
-		if ( iBaseLength )
-		{
-			//  If the first part of the pFixedUpFilename is pBaseDir
-			//  then lowercase the part after that.
-			if ( *pBaseDir && (iBaseLength+1 < V_strlen( pFixedUpFileName ) ) && (0 != V_strncmp( pBaseDir, pFixedUpFileName, iBaseLength ) )  )
-			{
-				V_strlower( &pFixedUpFileName[iBaseLength-1] );
-			}
-		}
-	    
-	}
+	return true;
+}
 
 //	Msg("CBaseFileSystem::FixUpPath: Converted %s to %s\n", pFileName, pFixedUpFileName);  // too noisy
 
@@ -4349,8 +4323,7 @@ bool CBaseFileSystem::FixUpPath( const char *pFileName, char *pFixedUpFileName, 
 	    printf("FixUpPath->Converting %s to %s\n",pFileName, pFixedUpFileName);
 	}
 #endif // NEVER
-	return true;
-}
+
 
 
 //-----------------------------------------------------------------------------

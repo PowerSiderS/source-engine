@@ -307,7 +307,24 @@ InitReturnVal_t CAppSystemGroup::InitSystems()
 {
 	for (int i = 0; i < m_Systems.Count(); ++i )
 	{
+		char const *pszSystemName = "(Unknown)";
+		for ( int j = m_SystemDict.First(); j != m_SystemDict.InvalidIndex(); j = m_SystemDict.Next( j ) )
+		{
+			if ( m_SystemDict[ j ] == i )
+			{
+				pszSystemName = m_SystemDict.GetElementName( j );
+				break;
+			}
+		}
+
+		FILE *fp = fopen( "dedicated_trace.log", "a" );
+		if ( fp ) { fprintf( fp, "[InitSystems] init system %d: %s\n", i, pszSystemName ); fclose( fp ); }
+
 		InitReturnVal_t nRetVal = m_Systems[i]->Init();
+
+		fp = fopen( "dedicated_trace.log", "a" );
+		if ( fp ) { fprintf( fp, "[InitSystems] system %d (%s) returned %d\n", i, pszSystemName, (int)nRetVal ); fclose( fp ); }
+
 		if ( nRetVal != INIT_OK )
 		{
 			ReportStartupFailure( INITIALIZATION, i );

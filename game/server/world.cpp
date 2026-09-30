@@ -584,7 +584,10 @@ void CWorld::Precache( void )
 	stepsize.SetValue( 18 );
 
 	ConVarRef roomtype( "room_type" );
-	roomtype.SetValue( 0 );
+	if ( roomtype.IsValid() )
+	{
+		roomtype.SetValue( 0 );
+	}
 
 	// Set up game rules
 	Assert( !g_pGameRules );

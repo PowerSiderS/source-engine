@@ -95,6 +95,7 @@ public:
 	virtual void Shutdown()																						{ m_pFileSystemPassThru->Shutdown(); }
 
 	virtual void			RemoveAllSearchPaths( void )														{ m_pFileSystemPassThru->RemoveAllSearchPaths(); }
+	virtual void			RemoveAllMapSearchPaths( void )														{ m_pFileSystemPassThru->RemoveAllMapSearchPaths(); }
 	virtual void			AddSearchPath( const char *pPath, const char *pathID, SearchPathAdd_t addType )		{ m_pFileSystemPassThru->AddSearchPath( pPath, pathID, addType ); }
 	virtual bool			RemoveSearchPath( const char *pPath, const char *pathID )							{ return m_pFileSystemPassThru->RemoveSearchPath( pPath, pathID ); }
 	virtual void			RemoveFile( char const* pRelativePath, const char *pathID )							{ m_pFileSystemPassThru->RemoveFile( pRelativePath, pathID ); }

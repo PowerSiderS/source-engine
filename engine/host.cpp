@@ -4237,8 +4237,19 @@ void Host_Init( bool bDedicated )
 	TRACEINIT( S_Init(), S_Shutdown() );
 #endif
 
-	// Execute valve.rc
-	Cbuf_AddText( "exec valve.rc\n" );
+	// Execute valve.rc. Stock Source games use this file to run stuffcmds,
+	// which moves command-line +commands (for example +map) into the command
+	// buffer. Standalone dedicated packages do not always ship valve.rc, so
+	// keep the server bootable by running stuffcmds directly when it is absent.
+	if ( g_pFileSystem->FileExists( "cfg/valve.rc" ) )
+	{
+		Cbuf_AddText( "exec valve.rc\n" );
+	}
+	else if ( sv.IsDedicated() )
+	{
+		ConMsg( "cfg/valve.rc not found; executing dedicated command-line commands directly.\n" );
+		Cbuf_AddText( "stuffcmds\n" );
+	}
 
 #if defined( REPLAY_ENABLED )
 	// Execute replay.cfg if this is TF and they want to use the replay system
@@ -4798,12 +4809,35 @@ void Host_FreeStateAndWorld( bool server )
 #endif
 
 	// The world model relies on the low hunk, so we need to force it to unload
+	char worldModelName[MAX_PATH];
+	worldModelName[0] = '\0';
 	if ( host_state.worldmodel )
 	{
-		modelloader->UnreferenceModel( host_state.worldmodel, IModelLoader::FMODELLOADER_SERVER );
-		modelloader->UnreferenceModel( host_state.worldmodel, IModelLoader::FMODELLOADER_CLIENT );
+		V_strncpy( worldModelName, host_state.worldmodel->strName, sizeof( worldModelName ) );
+
+		// Clear all reference flags from the world model so it can be completely unloaded
+		modelloader->UnreferenceModel( host_state.worldmodel, (IModelLoader::REFERENCETYPE)(IModelLoader::FMODELLOADER_REFERENCEMASK & ~IModelLoader::FMODELLOADER_DYNAMIC) );
 		host_state.SetWorldModel( NULL );
 		bNeedsPurge = server && true;
+	}
+
+#ifndef SWDS
+	if ( !server )
+	{
+		modelloader->UnreferenceAllModels( IModelLoader::FMODELLOADER_CLIENT );
+		modelloader->UnreferenceAllModels( IModelLoader::FMODELLOADER_CLIENTDLL );
+	}
+#endif
+
+	// Make sure map search paths are cleaned up on disconnect / map unload
+	if ( worldModelName[0] && g_pFileSystem )
+	{
+		g_pFileSystem->RemoveSearchPath( worldModelName, "GAME" );
+	}
+
+	if ( g_pFileSystem )
+	{
+		g_pFileSystem->RemoveAllMapSearchPaths();
 	}
 
 	// Unload and reset dynamic models

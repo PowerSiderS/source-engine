@@ -151,6 +151,10 @@ void Host_Say( edict_t *pEdict, const CCommand &args, bool teamonly )
 	if ( !p )
 		return;
 
+	extern bool MapManager_HandleChat( CBasePlayer *pPlayer, const char *pChatText );
+	if ( MapManager_HandleChat( pPlayer, p ) )
+		return;
+
 	if ( pEdict )
 	{
 		if ( !pPlayer->CanSpeak() )

@@ -3587,6 +3587,11 @@ model_t	*CModelLoader::LoadModel( model_t *mod, REFERENCETYPE *pReferencetype )
 	// Check if brushes or sprites are loaded
 	if ( FMODELLOADER_LOADED & mod->nLoadFlags ) 
 	{
+		// Even if the brush model is still in memory, ensure its embedded search path is mounted in GAME
+		if ( mod->type == mod_brush && g_pFileSystem )
+		{
+			g_pFileSystem->AddSearchPath( mod->strName, "GAME", PATH_ADD_TO_HEAD );
+		}
 		return mod;
 	}
 

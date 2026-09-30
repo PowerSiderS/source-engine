@@ -804,7 +804,10 @@ void Host_Map_Helper( const CCommand &args, bool bEditmode, bool bBackground, bo
 	// In our case, we don't care because we're looking for anything on the order of second precision, which 
 	// covers runtime up to around 4 months.
 	static ConVarRef dev_loadtime_map_start( "dev_loadtime_map_start" );
-	dev_loadtime_map_start.SetValue( (float)Plat_FloatTime() );
+	if ( dev_loadtime_map_start.IsValid() )
+	{
+		dev_loadtime_map_start.SetValue( (float)Plat_FloatTime() );
+	}
 
 	// If I was in edit mode reload config file
 	// to overwrite WC edit key bindings
