@@ -53,6 +53,9 @@
 #include "tier1/fmtstr.h"
 #include "history_resource.h"
 #include "cs_client_gamestats.h"
+#include "cs_hud_theme.h"
+
+ConVar cl_hud_pink( "cl_hud_pink", "1", FCVAR_ARCHIVE, "Use the pink Source Advanced HUD. Reload with hud_reloadscheme." );
 
 // [tj] We need to forward declare this, since the definition is all inside the implementation file 
 class CHudHintDisplay;

@@ -274,7 +274,7 @@ int CHostage::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 			gameeventmanager->FireEvent( event );
 		}
 
-		player->AddAccount( -((int)actualDamage * 20)  );
+		player->AddAccount( -((int)actualDamage * 30)  );
 	}
 
 	return BaseClass::OnTakeDamage_Alive( info );
@@ -364,7 +364,7 @@ void CHostage::Event_Killed( const CTakeDamageInfo &info )
 		}
 
 		// monetary penalty for killing the hostage
-		attacker->AddAccount( -( 500 + ((int)info.GetDamage() * 20) ) );
+		attacker->AddAccount( -1000 );
 
 		// check for hostage-killer abuse
 		if (attacker->GetTeamNumber() == TEAM_TERRORIST)
@@ -946,11 +946,11 @@ bool CHostage::IsVisible( const Vector &pos, bool testFOV ) const
 void CHostage::GiveCTUseBonus( CCSPlayer *rescuer )
 {
 	// money to team
-	const int teamBonus = 100;
+	const int teamBonus = 600;
 	CSGameRules()->m_iAccountCT += teamBonus;
 
 	// money to rescuer
-	const int rescuerBonus = 150;
+	const int rescuerBonus = 300;
 	rescuer->AddAccount( rescuerBonus );
 }
 

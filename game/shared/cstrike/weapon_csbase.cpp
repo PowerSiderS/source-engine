@@ -1779,6 +1779,8 @@ void CWeaponCSBase::DefaultTouch(CBaseEntity *pOther)
 
 		for ( int iGroup = 1; iGroup < iNumBodygroupIndices; iGroup++ )
 		{
+		if ( !Q_strnicmp( vm->GetBodygroupName( iGroup ), "sa_embedded_arms_", 17 ) )
+			continue;
 		vm->SetBodygroup( iGroup, (m_iClip1 >= iGroup) ? 0 : 1 );
 		}
 		}
@@ -1799,6 +1801,8 @@ void CWeaponCSBase::DefaultTouch(CBaseEntity *pOther)
 
 		for ( int iGroup = 1; iGroup < iNumBodygroupIndices; iGroup++ )
 		{
+		if ( !Q_strnicmp( vm->GetBodygroupName( iGroup ), "sa_embedded_arms_", 17 ) )
+			continue;
 		vm->SetBodygroup( iGroup, (iNextClip >= iGroup) ? 0 : 1 );
 		}
 		}

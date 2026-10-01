@@ -1,0 +1,161 @@
+{
+  "snapshot": "2026-10-01",
+  "production_installed": false,
+  "policy": "Concluído somente com evidência de build/teste; adaptações não implicam identidade CS2/CSGO2015.",
+  "items": [
+    {
+      "id": "01",
+      "title": "Inventário dos arquivos locais do CS2",
+      "status": "Concluído",
+      "details": "VPK lido com CRC; snapshot de 2026-10-01.",
+      "evidence": "cs2-economy-reference"
+    },
+    {
+      "id": "02",
+      "title": "Ferramenta de extração Source 2 Viewer",
+      "status": "Concluído",
+      "details": "CLI 20.0 do projeto original; SHA-256 da release verificado.",
+      "evidence": "cs2-economy-reference/vrf-cli"
+    },
+    {
+      "id": "03",
+      "title": "Hitboxes de jogadores",
+      "status": "Em teste",
+      "details": "19 cápsulas × 8 rigs; radii/endpoints CS2 adaptados às poses Source 1; 152 geometrias auditadas.",
+      "evidence": "cs2-hitbox-import/asset-audit.json"
+    },
+    {
+      "id": "04",
+      "title": "Bones e alinhamento animado",
+      "status": "Em teste",
+      "details": "Esqueleto e animações Source 1 preservados; ainda precisa teste em pé/agachado/rotação/disparo.",
+      "evidence": "cs2-hitbox-import"
+    },
+    {
+      "id": "05",
+      "title": "Recoil e spray por arma",
+      "status": "Em teste",
+      "details": "34 perfis atuais compilados; sementes/amplitudes/variâncias extraídas. Gerador determinístico Source 1 permanece; equivalência Source 2 não comprovada.",
+      "evidence": "references/cs2/weapon_profiles.json"
+    },
+    {
+      "id": "06",
+      "title": "Precisão e recuperação",
+      "status": "Em teste",
+      "details": "Valores por modo, postura, movimento, salto e transição de recuperação copiados para os 34 perfis.",
+      "evidence": "references/cs2/weapon_profiles.json"
+    },
+    {
+      "id": "07",
+      "title": "Economia e preços",
+      "status": "Em teste",
+      "details": "38 entradas, bônus de perda progressivo, recompensas de arma/objetivo, MR12 e munição gratuita; falta validação de transações reais.",
+      "evidence": "game/shared/cstrike/cs_economy.h"
+    },
+    {
+      "id": "08",
+      "title": "HUD clássico CS:GO rosa",
+      "status": "Em teste",
+      "details": "Layout VGUI: radar/dinheiro, relógio/placar/vivos, vida/colete e munição; atlas de ícones limpos.",
+      "evidence": "hud-pink"
+    },
+    {
+      "id": "09",
+      "title": "Menu e inventário estilo CS:GO",
+      "status": "Em implementação",
+      "details": "Grade e categorias locais; acesso direto em janela ampla. Não importa serviços Steam/Panorama.",
+      "evidence": "gameui/OptionsSubInventory.cpp"
+    },
+    {
+      "id": "10",
+      "title": "Animações de armas",
+      "status": "Em teste",
+      "details": "24 modelos Source 1 do pacote fornecido, motion original preservado. Não são uma extração direta/autenticada dos modelos Source 2.",
+      "evidence": "cs2-animation-import"
+    },
+    {
+      "id": "11",
+      "title": "Luvas CSSO e pulsos",
+      "status": "Em teste",
+      "details": "20 estilos × 3 rigs; quatro malhas sport.smd antes não ocultadas foram corrigidas. Revisão visual restante.",
+      "evidence": "csso-glove-import"
+    },
+    {
+      "id": "12",
+      "title": "Áudio CS2",
+      "status": "Em implementação",
+      "details": "Conversão de disparos locais para PCM compatível; mixagem espacial/acústica Source 1 continua.",
+      "evidence": "cs2-audio-reference"
+    },
+    {
+      "id": "13",
+      "title": "Dano, headshot e penetração",
+      "status": "Parcial",
+      "details": "Dano base, alcance e armor ratio nos perfis; multiplicador por arma, penetração float/materiais ainda exigem integração.",
+      "evidence": "game/shared/cstrike/fx_cs_shared.cpp"
+    },
+    {
+      "id": "14",
+      "title": "Granadas e utilitários",
+      "status": "Pendente",
+      "details": "Arremessos já existentes; revisar com medições gravidade/quiques/pavio/HE/flash/fogo. Não copiar algoritmos desconhecidos dos assets.",
+      "evidence": "game/shared/cstrike"
+    },
+    {
+      "id": "15",
+      "title": "Movimentação e bunny hop",
+      "status": "Pendente",
+      "details": "Velocidade por arma atualizada; aceleração/fadiga/counter-strafe/ladders precisam validação separada.",
+      "evidence": "game/shared/cstrike/cs_gamemovement.cpp"
+    },
+    {
+      "id": "16",
+      "title": "Modelos Source 2 completos",
+      "status": "Requer conversão",
+      "details": "VMDL/VMESH/material Source 2 não carrega como MDL/VTX/VVD. Exportar e retargetar malha/material/animação exige pipeline próprio.",
+      "evidence": "cs2-hitbox-reference"
+    },
+    {
+      "id": "17",
+      "title": "Smoke volumétrica CS2",
+      "status": "Requer implementação própria",
+      "details": "Partículas e assets não fornecem o código de voxels, sincronização e interação com balas.",
+      "evidence": ""
+    },
+    {
+      "id": "18",
+      "title": "Subtick e networking CS2",
+      "status": "Requer implementação própria",
+      "details": "Esta engine mantém ticks Source 1; nenhum asset converte seu protocolo e predição para Source 2.",
+      "evidence": ""
+    },
+    {
+      "id": "19",
+      "title": "Carregamentos e resolução",
+      "status": "Parcial",
+      "details": "Correções de engine existentes; relatório de tempo real dos dez mapas e conexão dedicada ainda incompleto.",
+      "evidence": "native-knife-engine-20260930/map-loading-profile"
+    },
+    {
+      "id": "20",
+      "title": "Mapas do usuário e dedicated",
+      "status": "Em teste",
+      "details": "Usar somente catálogo local permitido; VPK/DLLs comuns e auditoria nativa no servidor.",
+      "evidence": "animation-gloves-update/dedicated-test"
+    },
+    {
+      "id": "21",
+      "title": "Proporção de tela esticada",
+      "status": "Pendente",
+      "details": "Separar proporção de renderização da resolução de saída; pedido anterior ainda não concluído.",
+      "evidence": ""
+    },
+    {
+      "id": "22",
+      "title": "Anti-cheat",
+      "status": "Parcial",
+      "details": "Sistema existente; não pode importar VAC/serviços privados da Valve como assets. Revisão futura contra falsos positivos.",
+      "evidence": "game/server/cstrike/cs_anticheat.cpp"
+    }
+  ]
+}

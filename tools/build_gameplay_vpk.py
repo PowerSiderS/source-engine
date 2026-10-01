@@ -120,8 +120,12 @@ def verify_vpk(path, stage):
                 if payload != expected:
                     raise ValueError('VPK does not match staging: ' + key)
                 entries[key] = sha(payload)
-    expected_names = {p.relative_to(stage).as_posix() for p in stage.rglob('*') if p.is_file()}
-    if set(entries) != expected_names:
+    # Valve's Windows VPK builder normalizes resource and font paths to lowercase.
+    expected_paths = [p.relative_to(stage).as_posix().lower() for p in stage.rglob('*') if p.is_file()]
+    expected_names = set(expected_paths)
+    if len(expected_paths) != len(expected_names):
+        raise ValueError('Case-colliding staging paths')
+    if {name.lower() for name in entries} != expected_names:
         raise ValueError('VPK file inventory mismatch')
     return entries
 

@@ -396,8 +396,8 @@ public:
 	short m_iNumCTWins;
 	short m_iNumTerroristWins;
 
-	int m_iNumConsecutiveCTLoses;		//SupraFiend: the number of rounds the CTs have lost in a row.
-	int m_iNumConsecutiveTerroristLoses;//SupraFiend: the number of rounds the Terrorists have lost in a row.
+	int m_iCTLossLevel; // Independent capped economic levels, not win/loss streaks.
+	int m_iTLossLevel;
 
 	int m_iSpawnPointCount_Terrorist;		// Number of Terrorist spawn points
 	int m_iSpawnPointCount_CT;				// Number of CT spawn points
@@ -406,7 +406,7 @@ public:
 	bool m_bCTCantBuy;
 	bool m_bMapHasBuyZone;
 
-	int m_iLoserBonus;			// SupraFiend: the amount of money the losing team gets. This scales up as they lose more rounds in a row
+	
 	float m_tmNextPeriodicThink;
 
 

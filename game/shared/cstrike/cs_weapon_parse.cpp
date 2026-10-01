@@ -9,6 +9,8 @@
 #include "cs_weapon_parse.h"
 #include "cs_legacy_weapon_tuning.h"
 #include "cs_2015_weapon_profiles.h"
+#include "cs2_weapon_profiles.h"
+#include "cs_economy.h"
 #include "cs_shareddefs.h"
 #include "weapon_csbase.h"
 #include "icvar.h"
@@ -284,6 +286,7 @@ CCSWeaponInfo::CCSWeaponInfo()
 {
 	m_flMaxSpeed = 1; // This should always be set in the script.
 	m_flMaxSpeedAlt = 1;
+	m_flHeadshotMultiplier = 4.0f;
 	m_szAddonModel[0] = 0;
 
 	m_fRecoilAngle[0] = m_fRecoilAngle[1] = 0.0f;
@@ -366,6 +369,7 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 
 	m_iPenetration		= pKeyValuesData->GetInt( "Penetration", 1 );
 	m_iDamage			= pKeyValuesData->GetInt( "Damage", 42 ); // Douglas Adams 1952 - 2001
+	m_flHeadshotMultiplier = pKeyValuesData->GetFloat("HeadshotMultiplier",4.0f);
 	m_flRange			= pKeyValuesData->GetFloat( "Range", 8192.0f );
 	m_flRangeModifier	= pKeyValuesData->GetFloat( "RangeModifier", 0.98f );
 	m_iBullets			= pKeyValuesData->GetInt( "Bullets", 1 );
@@ -476,6 +480,11 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	const CSWeaponID balanceID=AliasToWeaponID(GetTranslatedWeaponAlias(balanceAlias));
 	CSApplyLegacyWeaponTuning(*this,balanceID);
 	CSApply2015WeaponProfile(*this,balanceID);
+	CSApplyCS2WeaponProfile(*this,balanceID);
+	if (const CSEconomyWeapon *economy = CSEconomyWeaponForID(balanceID))
+	{
+		SetWeaponPrice(economy->price); SetDefaultPrice(economy->price); SetPreviousPrice(economy->price);
+	}
 
 	// Read the addon model.
 	Q_strncpy( m_szAddonModel, pKeyValuesData->GetString( "AddonModel" ), sizeof( m_szAddonModel ) );
@@ -616,6 +625,23 @@ void WeaponRecoilData::GenerateRecoilPattern( CSWeaponID id )
 WeaponRecoilData g_WeaponRecoilData;
 
 #ifndef CLIENT_DLL
+CON_COMMAND_F( cs_validate_economy, "Audit compiled prices and loss-bonus transitions.", FCVAR_CHEAT )
+{
+    int failed=0, checked=0;
+    for (int i=0; i<ARRAYSIZE(g_CSEconomyWeapons); ++i)
+    {
+        const CSEconomyWeapon &entry=g_CSEconomyWeapons[i];
+        const CCSWeaponInfo *info=GetWeaponInfo(entry.id);
+        const bool valid=info && info->GetWeaponPrice()==entry.price;
+        ++checked; if (!valid) ++failed;
+        Msg("[economy-audit] %s %s reference=%s price=%d kill=%d\n",valid ? "PASS" : "FAIL",WeaponIdAsString(entry.id),entry.reference,info ? info->GetWeaponPrice() : -1,entry.killAward);
+    }
+    const int awards[]={1400,1900,2400,2900,3400};
+    for (int i=0; i<5; ++i)
+        if (CSEconomyLossAward(i)!=awards[i] || CSEconomyNextLossLevel(i,false)!=MIN(i+1,4) || CSEconomyNextLossLevel(i,true)!=MAX(i-1,0)) ++failed;
+    Msg("[economy-audit] checked=%d failures=%d loss_steps=1400,1900,2400,2900,3400\n",checked,failed);
+}
+
 CON_COMMAND_F( cs_validate_weapon_balance, "Compare effective weapon data with the compiled balance table.", FCVAR_CHEAT )
 {
 	int checked=0,failed=0;
@@ -623,7 +649,7 @@ CON_COMMAND_F( cs_validate_weapon_balance, "Compare effective weapon data with t
 	{
 		CSWeaponID id=g_CSLegacyWeaponTuning[i].id; const CCSWeaponInfo *loaded=GetWeaponInfo(id);
 		if (!loaded) { ++failed; Warning("[balance-audit] missing %s\n",WeaponIdAsString(id)); continue; }
-		CCSWeaponInfo expected=*loaded; CSApplyLegacyWeaponTuning(expected,id); CSApply2015WeaponProfile(expected,id);
+		CCSWeaponInfo expected=*loaded; CSApplyLegacyWeaponTuning(expected,id); CSApply2015WeaponProfile(expected,id); CSApplyCS2WeaponProfile(expected,id);
 		bool valid=loaded->iMaxClip1==expected.iMaxClip1 && loaded->iDefaultClip1==expected.iDefaultClip1 && loaded->m_iDamage==expected.m_iDamage && loaded->m_iPenetration==expected.m_iPenetration && loaded->m_flRange==expected.m_flRange && loaded->m_flRangeModifier==expected.m_flRangeModifier && loaded->m_iRecoilSeed==expected.m_iRecoilSeed;
 		for (int mode=0;mode<2;++mode) valid=valid && loaded->m_flCycleTime[mode]==expected.m_flCycleTime[mode] && loaded->m_fSpread[mode]==expected.m_fSpread[mode] && loaded->m_fInaccuracyStand[mode]==expected.m_fInaccuracyStand[mode] && loaded->m_fInaccuracyMove[mode]==expected.m_fInaccuracyMove[mode] && loaded->m_fRecoilMagnitude[mode]==expected.m_fRecoilMagnitude[mode];
 		++checked; if (!valid) ++failed;
@@ -635,7 +661,7 @@ CON_COMMAND_F( cs_export_gunplay, "Export loaded weapon profiles and seeded reco
 {
 	FileHandle_t file = filesystem->Open("gunplay_audit.csv","wt","MOD");
 	if ( file == FILESYSTEM_INVALID_HANDLE ) { Warning("Cannot write gunplay_audit.csv\n"); return; }
-	filesystem->FPrintf(file,"weapon,mode,shot,seed,angle,magnitude,cycle,spread,crouch,stand,move,jump,fire,recovery_crouch,recovery_crouch_final,recovery_stand,recovery_stand_final\n");
+	filesystem->FPrintf(file,"weapon,mode,shot,seed,angle,magnitude,cycle,spread,crouch,stand,move,jump,fire,recovery_crouch,recovery_crouch_final,recovery_stand,recovery_stand_final,land,ladder,jump_initial,recoil_angle,recoil_angle_variance,recoil_magnitude,recoil_magnitude_variance,transition_start,transition_end,maxspeed,damage,armor_ratio,headshot_multiplier,range,range_modifier,clip\n");
 	int rows = 0;
 	for ( int index = 0; index < ARRAYSIZE(g_CSLegacyWeaponTuning); ++index )
 	{
@@ -651,10 +677,12 @@ CON_COMMAND_F( cs_export_gunplay, "Export loaded weapon profiles and seeded reco
 				weapon_recoil_suppression_shots.GetInt(),weapon_recoil_suppression_factor.GetFloat(),weapon_recoil_variance.GetFloat(),offsets,64);
 			for ( int shot = 0; shot < 64; ++shot )
 			{
-				filesystem->FPrintf(file,"%s,%d,%d,%d,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g\n",
+				filesystem->FPrintf(file,"%s,%d,%d,%d,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%d,%d,%.9g,%d,%.9g,%.9g,%.9g,%.9g,%d\n",
 					WeaponIdAsString(id),mode,shot,info->m_iRecoilSeed,offsets[shot].fAngle,offsets[shot].fMagnitude,
 					info->m_flCycleTime[mode],info->m_fSpread[mode],info->m_fInaccuracyCrouch[mode],info->m_fInaccuracyStand[mode],info->m_fInaccuracyMove[mode],info->m_fInaccuracyJump[mode],info->m_fInaccuracyImpulseFire[mode],
-					info->m_fRecoveryTimeCrouch,info->m_fRecoveryTimeCrouchFinal,info->m_fRecoveryTimeStand,info->m_fRecoveryTimeStandFinal);
+					info->m_fRecoveryTimeCrouch,info->m_fRecoveryTimeCrouchFinal,info->m_fRecoveryTimeStand,info->m_fRecoveryTimeStandFinal,
+					info->m_fInaccuracyLand[mode],info->m_fInaccuracyLadder[mode],info->m_fInaccuracyJumpInitial[mode],info->m_fRecoilAngle[mode],info->m_fRecoilAngleVariance[mode],info->m_fRecoilMagnitude[mode],info->m_fRecoilMagnitudeVariance[mode],
+					info->m_iRecoveryTransitionStartBullet,info->m_iRecoveryTransitionEndBullet,mode ? info->m_flMaxSpeedAlt : info->m_flMaxSpeed,info->m_iDamage,info->m_flArmorRatio,info->m_flHeadshotMultiplier,info->m_flRange,info->m_flRangeModifier,info->iMaxClip1);
 				++rows;
 			}
 		}

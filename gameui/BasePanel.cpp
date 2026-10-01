@@ -54,6 +54,8 @@ using namespace vgui;
 #include "LoadGameDialog.h"
 #include "SaveGameDialog.h"
 #include "OptionsDialog.h"
+#include "OptionsSubInventory.h"
+#include "vgui_controls/Frame.h"
 #include "ModOptionsDialog.h"
 #include "CreateMultiplayerGameDialog.h"
 #include "ChangeGameDialog.h"
@@ -101,6 +103,35 @@ using namespace vgui;
 #define MAIN_MENU_INDENT_X360 10
 
 ConVar vgui_message_dialog_modal( "vgui_message_dialog_modal", "1", FCVAR_ARCHIVE );
+
+// A separate inventory keeps the cosmetic grid usable at the actual screen size.
+class CInventoryFrame : public vgui::Frame
+{
+    DECLARE_CLASS_SIMPLE(CInventoryFrame,vgui::Frame);
+public:
+    CInventoryFrame(vgui::Panel *parent) : BaseClass(parent,"SourceAdvancedInventory")
+    {
+        SetTitle("INVENTARIO",true); SetSizeable(false); SetDeleteSelfOnClose(true);
+        SetBgColor(Color(18,21,25,255)); SetPaintBackgroundEnabled(true);
+        m_Page=new COptionsSubInventory(this);
+    }
+    virtual void PerformLayout()
+    {
+        BaseClass::PerformLayout();
+        int w,h; vgui::surface()->GetScreenSize(w,h);
+        SetBounds(w/25,h/25,w-w*2/25,h-h*2/25);
+        m_Page->SetBounds(12,40,GetWide()-24,GetTall()-52);
+    }
+private:
+    COptionsSubInventory *m_Page;
+};
+static vgui::DHANDLE<CInventoryFrame> g_hInventoryFrame;
+
+CON_COMMAND(open_inventory,"Open the local inventory without restarting the match.")
+{
+    GameUI().ActivateGameUI();
+    GameUI().SendMainMenuCommand("OpenInventoryDialog");
+}
 
 extern vgui::DHANDLE<CLoadingDialog> g_hLoadingDialog;
 static CBasePanel	*g_pBasePanel = NULL;
@@ -1512,6 +1543,13 @@ void CBasePanel::CreateGameMenu()
 	datafile->UsesEscapeSequences( true );	// VGUI uses escape sequences
 	if (datafile->LoadFromFile( g_pFullFileSystem, "Resource/GameMenu.res" ) )
 	{
+		if (g_pFullFileSystem->FileExists("scripts/skins_manifest.txt","MOD"))
+		{
+			KeyValues *inventory=datafile->FindKey("SourceAdvancedInventory",true);
+			inventory->SetString("label","Inventario");
+			inventory->SetString("command","OpenInventoryDialog");
+			inventory->SetInt("InGameOrder",25);
+		}
 		m_pGameMenu = RecursiveLoadGameMenu(datafile);
 	}
 
@@ -2079,6 +2117,12 @@ void CBasePanel::RunMenuCommand(const char *command)
 	else if ( !Q_stricmp( command, "OpenBonusMapsDialog" ) )
 	{
 		OnOpenBonusMapsDialog();
+	}
+	else if ( !Q_stricmp( command, "OpenInventoryDialog" ) )
+	{
+		if (!g_hInventoryFrame.Get()) g_hInventoryFrame=new CInventoryFrame(this);
+		g_hInventoryFrame->Activate();
+		g_hInventoryFrame->InvalidateLayout();
 	}
 	else if ( !Q_stricmp( command, "OpenOptionsDialog" ) )
 	{

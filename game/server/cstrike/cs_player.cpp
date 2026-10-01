@@ -2320,7 +2320,13 @@ void CCSPlayer::TraceAttack( const CTakeDamageInfo &info, const Vector &vecDir, 
 				bShouldSpark = true;
 			}
 
-			flDamage *= 4;
+			{
+				float multiplier=4.0f;
+				CWeaponCSBase *weapon=pAttacker ? dynamic_cast<CWeaponCSBase *>(pAttacker->GetActiveWeapon()) : NULL;
+				if ((info.GetDamageType() & DMG_BULLET) && weapon)
+					multiplier=weapon->GetCSWpnData().m_flHeadshotMultiplier;
+				flDamage *= multiplier;
+			}
 
 			if ( !m_bHasHelmet )
 			{
@@ -3677,7 +3683,12 @@ BuyResult_e CCSPlayer::HandleCommand_Buy_Internal( const char* wpnName )
 			if ( bPurchase && pWeaponInfo->iSlot == WEAPON_SLOT_PISTOL )
 				m_bUsingDefaultPistol = false;
 
-			GiveNamedItem( pWeaponInfo->szClassName );
+            CBaseCombatWeapon *pBoughtWeapon = dynamic_cast<CBaseCombatWeapon *>(GiveNamedItem(pWeaponInfo->szClassName));
+            if (pBoughtWeapon && pWeaponInfo->m_WeaponType != WEAPONTYPE_GRENADE)
+            {
+                const int ammo = pBoughtWeapon->GetPrimaryAmmoType();
+                if (ammo >= 0) GiveAmmo(GetAmmoDef()->MaxCarry(ammo), ammo, true);
+            }
             AddAccount( -pWeaponInfo->GetWeaponPrice(), true, true, pWeaponInfo->szClassName );
 			BlackMarketAddWeapon( wpnName, this );
 		}
@@ -3712,22 +3723,10 @@ BuyResult_e CCSPlayer::BuyGunAmmo( CBaseCombatWeapon *pWeapon, bool bBlinkMoney 
 		return BUY_ALREADY_HAVE;
 	}
 
-	// Purchase the ammo if the player has enough money
-	if ( m_iAccount >= GetCSAmmoDef()->GetCost( nAmmo ) )
-	{
-		GiveAmmo( GetCSAmmoDef()->GetBuySize( nAmmo ), nAmmo, true );
-		AddAccount( -GetCSAmmoDef()->GetCost( nAmmo ), true, true, GetCSAmmoDef()->GetAmmoOfIndex( nAmmo )->pName  );
-		return BUY_BOUGHT;
-	}
-
-	if ( bBlinkMoney )
-	{
-		// Not enough money.. let the player know
-		if( !m_bIsInAutoBuy && !m_bIsInRebuy )
-					ClientPrint( this, HUD_PRINTCENTER, "#Not_Enough_Money" );
-	}
-
-	return BUY_CANT_AFFORD;
+    // Ammunition is included in the weapon price, and buying/refilling it
+    // must never deduct money as it did in CS:S.
+    GiveAmmo(GetAmmoDef()->MaxCarry(nAmmo), nAmmo, true);
+    return BUY_BOUGHT;
 }
 
 

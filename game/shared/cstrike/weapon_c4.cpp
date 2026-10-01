@@ -422,6 +422,7 @@ END_PREDICTION_DATA()
                 // [dwenger] Stats update for bomb defusing
                 //=============================================================================
                 CCS_GameStats.Event_BombDefused( m_pBombDefuser );
+                m_pBombDefuser->AddAccount(300);
                 //=============================================================================
                 // HPE_END
                 //=============================================================================
@@ -1083,6 +1084,7 @@ void CC4::PrimaryAttack()
             }
 
             CCS_GameStats.Event_BombPlanted( pPlayer );
+            pPlayer->AddAccount(300);
 
             //=============================================================================
             // HPE_END

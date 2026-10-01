@@ -23,6 +23,9 @@
 #include "mempool.h"
 #include <KeyValues.h>
 #include "filesystem.h"
+#ifdef CSTRIKE_DLL
+#include "cstrike/cs_hud_theme.h"
+#endif
 #include <vgui_controls/AnimationController.h>
 #include <vgui/ISurface.h>
 #include "hud_lcd.h"
@@ -417,7 +420,12 @@ void CHud::Init( void )
 	KeyValues *kv = new KeyValues( "layout" );
 	if ( kv )
 	{
-		if ( kv->LoadFromFile( filesystem, "scripts/HudLayout.res" ) )
+#ifdef CSTRIKE_DLL
+		const char *layoutFile = CSHudResource( "scripts/HudLayout.res", "scripts/sourceadvanced/hud_pink/HudLayout.res" );
+#else
+		const char *layoutFile = "scripts/HudLayout.res";
+#endif
+		if ( kv->LoadFromFile( filesystem, layoutFile ) )
 		{
 			int numelements = m_HudList.Size();
 
@@ -459,6 +467,19 @@ void CHud::Init( void )
 	// check to see if we have sprites for this res; if not, step down
 	LoadHudTextures( textureList, "scripts/hud_textures", NULL );
 	LoadHudTextures( textureList, "scripts/mod_textures", NULL );
+#ifdef CSTRIKE_DLL
+	if ( CSHudResource( NULL, "scripts/sourceadvanced/hud_pink/icons.txt" ) )
+	{
+		CUtlDict<CHudTexture *, int> themed;
+		LoadHudTextures(themed, "scripts/sourceadvanced/hud_pink/icons", NULL);
+		for (int i=0; i<themed.Count(); ++i)
+		{
+			int existing=textureList.Find(themed[i]->szShortName);
+			if (existing!=textureList.InvalidIndex()) { delete textureList[existing]; textureList[existing]=themed[i]; }
+			else textureList.Insert(themed[i]->szShortName,themed[i]);
+		}
+	}
+#endif
 
 	int c = textureList.Count();
 	for ( int index = 0; index < c; index++ )
@@ -810,6 +831,19 @@ void CHud::RefreshHudTextures()
 	// check to see if we have sprites for this res; if not, step down
 	LoadHudTextures( textureList, "scripts/hud_textures", NULL );
 	LoadHudTextures( textureList, "scripts/mod_textures", NULL );
+#ifdef CSTRIKE_DLL
+	if ( CSHudResource( NULL, "scripts/sourceadvanced/hud_pink/icons.txt" ) )
+	{
+		CUtlDict<CHudTexture *, int> themed;
+		LoadHudTextures(themed, "scripts/sourceadvanced/hud_pink/icons", NULL);
+		for (int i=0; i<themed.Count(); ++i)
+		{
+			int existing=textureList.Find(themed[i]->szShortName);
+			if (existing!=textureList.InvalidIndex()) { delete textureList[existing]; textureList[existing]=themed[i]; }
+			else textureList.Insert(themed[i]->szShortName,themed[i]);
+		}
+	}
+#endif
 
 	// fix up all the texture icons first
 	int c = textureList.Count();
@@ -824,9 +858,12 @@ void CHud::RefreshHudTextures()
 
 		// Update file
 		Q_strncpy( icon->szTextureFile, tex->szTextureFile, sizeof( icon->szTextureFile ) );
+		icon->bRenderUsingFont=tex->bRenderUsingFont;
+		icon->cCharacterInFont=tex->cCharacterInFont;
 
 		if ( !icon->bRenderUsingFont )
 		{
+			if (icon->textureId < 0) icon->textureId=vgui::surface()->CreateNewTextureID();
 			// Update subrect
 			icon->rc = tex->rc;
 

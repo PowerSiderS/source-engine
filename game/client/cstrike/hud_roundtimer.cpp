@@ -13,6 +13,8 @@
 #include "hud_basetimer.h"
 #include "hud_bitmapnumericdisplay.h"
 #include "c_plantedc4.h"
+#include "c_playerresource.h"
+#include "cs_hud_theme.h"
 
 #include <vgui_controls/AnimationController.h>
 
@@ -57,6 +59,40 @@ private:
 
 
 DECLARE_HUDELEMENT( CHudRoundTimer );
+
+// Classic CS:GO count mode: alive teams flank the clock, scores below it.
+class CHudMatchStatus : public CHudElement, public vgui::Panel
+{
+public:
+    DECLARE_CLASS_SIMPLE(CHudMatchStatus,vgui::Panel);
+    CHudMatchStatus(const char *name) : CHudElement(name), BaseClass(NULL,"HudMatchStatus")
+    { SetParent(g_pClientMode->GetViewport()); SetHiddenBits(HIDEHUD_ALL); }
+    virtual bool ShouldDraw() { return cl_hud_pink.GetBool() && CHudElement::ShouldDraw(); }
+    virtual void Paint()
+    {
+        if (!g_PR) return;
+        int aliveCT=0,aliveT=0;
+        for (int i=1;i<=MAX_PLAYERS;++i)
+            if (g_PR->IsConnected(i) && g_PR->IsAlive(i))
+            { if (g_PR->GetTeam(i)==TEAM_CT) ++aliveCT; else if (g_PR->GetTeam(i)==TEAM_TERRORIST) ++aliveT; }
+        DrawLabel(0,0,aliveCT,Color(135,190,235,255),L"CT");
+        DrawLabel(GetWide()-YRES(52),0,aliveT,Color(225,190,120,255),L"T");
+        wchar_t score[32];V_snwprintf(score,ARRAYSIZE(score),L"%d   :   %d",g_PR->GetTeamScore(TEAM_CT),g_PR->GetTeamScore(TEAM_TERRORIST));
+        int wide,tall;vgui::surface()->GetTextSize(m_Font,score,wide,tall);
+        vgui::surface()->DrawSetTextFont(m_Font);vgui::surface()->DrawSetTextColor(Color(244,128,201,255));
+        vgui::surface()->DrawSetTextPos((GetWide()-wide)/2,YRES(28));vgui::surface()->DrawPrintText(score,wcslen(score));
+    }
+private:
+    void DrawLabel(int x,int y,int alive,const Color &color,const wchar_t *team)
+    {
+        vgui::surface()->DrawSetColor(12,10,17,150);vgui::surface()->DrawFilledRect(x,y,x+YRES(52),y+YRES(27));
+        wchar_t text[32];V_snwprintf(text,ARRAYSIZE(text),L"%ls %d",team,alive);
+        vgui::surface()->DrawSetTextFont(m_Font);vgui::surface()->DrawSetTextColor(color);
+        vgui::surface()->DrawSetTextPos(x+YRES(6),y+YRES(4));vgui::surface()->DrawPrintText(text,wcslen(text));
+    }
+    CPanelAnimationVar(vgui::HFont,m_Font,"NumberFont","SANumbersSmall");
+};
+DECLARE_HUDELEMENT(CHudMatchStatus);
 
 
 CHudRoundTimer::CHudRoundTimer( const char *pName ) :

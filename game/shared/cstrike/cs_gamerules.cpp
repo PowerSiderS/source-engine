@@ -8,6 +8,7 @@
 #include "cbase.h"
 #include "cs_gamerules.h"
 #include "cs_ammodef.h"
+#include "cs_economy.h"
 #include "weapon_csbase.h"
 #include "cs_shareddefs.h"
 #include "KeyValues.h"
@@ -186,7 +187,7 @@ extern ConVar sv_stopspeed;
 
 ConVar mp_buytime( 
 	"mp_buytime", 
-	"1.5",
+	"0.333333333",
 	FCVAR_REPLICATED,
 	"How many minutes after round start players can buy items for.",
 	true, 0.25,
@@ -232,7 +233,10 @@ ConVar mp_halftime_duration(
 	true, 0.0f,
 	true, 300.0f );
 
-ConVar mp_halftime( "mp_halftime", "0", FCVAR_REPLICATED, "Determines whether the match switches sides in a halftime event." );
+ConVar mp_starting_losses( "mp_starting_losses", "1", FCVAR_REPLICATED, "Initial economic loss-bonus level (0..4).", true, 0, true, 4 );
+ConVar mp_match_can_clinch( "mp_match_can_clinch", "1", FCVAR_REPLICATED, "End the match once a team wins a majority of the rounds." );
+
+ConVar mp_halftime( "mp_halftime", "1", FCVAR_REPLICATED, "Determines whether the match switches sides in a halftime event." );
 
 ConVar sv_allowminmodels(
 	"sv_allowminmodels",
@@ -361,7 +365,7 @@ ConVar cl_autohelp(
 
 	ConVar mp_roundtime( 
 		"mp_roundtime",
-		"2.5",
+		"1.92",
 		FCVAR_REPLICATED | FCVAR_NOTIFY,
 		"How many minutes each round takes.",
 		true, 1,	// min value
@@ -370,7 +374,7 @@ ConVar cl_autohelp(
 
 	ConVar mp_freezetime( 
 		"mp_freezetime",
-		"6",
+		"15",
 		FCVAR_REPLICATED | FCVAR_NOTIFY,
 		"how many seconds to keep players frozen when the round starts",
 		true, 0,	// min value
@@ -379,7 +383,7 @@ ConVar cl_autohelp(
 
 	ConVar mp_c4timer( 
 		"mp_c4timer", 
-		"45", 
+		"40", 
 		FCVAR_REPLICATED | FCVAR_NOTIFY,
 		"how long from when the C4 is armed until it blows",
 		true, 10,	// min value
@@ -609,8 +613,8 @@ ConVar cl_autohelp(
 		m_iAccountTerrorist = m_iAccountCT = 0;
 		m_iNumCTWins = 0;
 		m_iNumTerroristWins = 0;
-		m_iNumConsecutiveCTLoses = 0;
-		m_iNumConsecutiveTerroristLoses = 0;
+		m_iCTLossLevel = mp_starting_losses.GetInt();
+		m_iTLossLevel = mp_starting_losses.GetInt();
 		m_bTargetBombed = false;
 		m_bBombDefused = false;
 		m_iTotalRoundsPlayed = -1;
@@ -630,8 +634,6 @@ ConVar cl_autohelp(
 		m_bTCantBuy = false;
 		m_bCTCantBuy = false;
 		m_bMapHasBuyZone = false;
-
-		m_iLoserBonus = 0;
 
 		m_iHostagesRescued = 0;
 		m_iHostagesTouched = 0;
@@ -1524,7 +1526,7 @@ ConVar cl_autohelp(
 		if ( IPointsForKill( pScorer, pVictim ) < 0 )
 		{
 			// team-killer!
-			pCSScorer->AddAccount( -3300 );
+			pCSScorer->AddAccount( -300 );
 			++pCSScorer->m_iTeamKills;
 			pCSScorer->m_bJustKilledTeammate = true;
 
@@ -1571,7 +1573,17 @@ ConVar cl_autohelp(
 				}
 				else			
 				{
-					pCSScorer->AddAccount( 300 );
+					CSWeaponID rewardID = WEAPON_NONE;
+                    CBaseEntity *inflictor = info.GetInflictor();
+                    if (inflictor == pCSScorer && pCSScorer->GetActiveCSWeapon())
+                        rewardID = pCSScorer->GetActiveCSWeapon()->GetWeaponID();
+                    else if (inflictor) rewardID = WeaponIdFromString(inflictor->GetClassname());
+                    const CSEconomyWeapon *economy = CSEconomyWeaponForID(rewardID);
+                    pCSScorer->AddAccount(economy ? economy->killAward : 300);
+                    // Valve competitive economy: $50 per CT elimination of a T,
+                    // paid to every CT at the end of the round, including dead CTs.
+                    if (pCSScorer->GetTeamNumber() == TEAM_CT && pCSVictim->GetTeamNumber() == TEAM_TERRORIST)
+                        m_iAccountCT += 50;
 				}
 			}
 
@@ -1963,7 +1975,7 @@ ConVar cl_autohelp(
 		{
 			if ( m_iHostagesRescued >= (iNumHostages * 0.5)	)
 			{
-				m_iAccountCT += 2500;
+				m_iAccountCT += 2900;
 
 				if ( !bNeededPlayers )
 				{
@@ -2153,9 +2165,7 @@ ConVar cl_autohelp(
 		else
 		if ( ( m_bBombDefused == true ) && ( m_bMapHasBombTarget == true ) )
 		{
-			m_iAccountCT += 3250;
-
-			m_iAccountTerrorist += 800; // give the T's a little bonus for planting the bomb even though it was defused.
+			m_iAccountCT += 3500; // Defuse win; planted-bomb loss bonus is paid at restart.
 
 			if ( !bNeededPlayers )
 			{
@@ -2344,6 +2354,7 @@ ConVar cl_autohelp(
 
 	void CCSGameRules::RestartRound()
 	{
+        const bool previousRoundBombPlanted = m_bBombPlanted;
 #if defined( REPLAY_ENABLED )
 		if ( g_pReplay )
 		{
@@ -2493,8 +2504,8 @@ ConVar cl_autohelp(
 			// Reset score info
 			m_iNumTerroristWins				= 0;
 			m_iNumCTWins					= 0;
-				m_iNumConsecutiveTerroristLoses	= 0;
-			m_iNumConsecutiveCTLoses	= 0;
+				m_iTLossLevel	= mp_starting_losses.GetInt();
+			m_iCTLossLevel	= mp_starting_losses.GetInt();
 
 			if ( HasHalfTime() )
 			{
@@ -2628,65 +2639,22 @@ ConVar cl_autohelp(
 		else
 			m_iMapHasVIPSafetyZone = 2;
 
-		// Update accounts based on number of hostages remaining.. 
-		int iRescuedHostageBonus = 0;
-
-		for ( int iHostage=0; iHostage < g_Hostages.Count(); iHostage++ )
-		{
-			CHostage *pHostage = g_Hostages[iHostage];
-
-			if( pHostage->IsRescuable() )	//Alive and not rescued
-			{
-				iRescuedHostageBonus += 150;
-			}
-			
-			if ( iRescuedHostageBonus >= 2000 )
-				break;
-		}
-
-		//*******Catch up code by SupraFiend. Scale up the loser bonus when teams fall into losing streaks
-		if (m_iRoundWinStatus == WINNER_TER) // terrorists won
-		{
-			//check to see if they just broke a losing streak
-			if(m_iNumConsecutiveTerroristLoses > 1)
-				m_iLoserBonus = 1500;//this is the default losing bonus
-
-			m_iNumConsecutiveTerroristLoses = 0;//starting fresh
-			m_iNumConsecutiveCTLoses++;//increment the number of wins the CTs have had
-		}
-		else if (m_iRoundWinStatus == WINNER_CT) // CT Won
-		{
-			//check to see if they just broke a losing streak
-			if(m_iNumConsecutiveCTLoses > 1)
-				m_iLoserBonus = 1500;//this is the default losing bonus
-
-			m_iNumConsecutiveCTLoses = 0;//starting fresh
-			m_iNumConsecutiveTerroristLoses++;//increment the number of wins the Terrorists have had
-		}
-
-		//check if the losing team is in a losing streak & that the loser bonus hasen't maxed out.
-		if((m_iNumConsecutiveTerroristLoses > 1) && (m_iLoserBonus < 3000))
-			m_iLoserBonus += 500;//help out the team in the losing streak
-		else
-		if((m_iNumConsecutiveCTLoses > 1) && (m_iLoserBonus < 3000))
-			m_iLoserBonus += 500;//help out the team in the losing streak
-
-		// assign the wining and losing bonuses
-		if (m_iRoundWinStatus == WINNER_TER) // terrorists won
-		{
-			m_iAccountTerrorist += iRescuedHostageBonus;
-			m_iAccountCT += m_iLoserBonus;
-		}
-		else if (m_iRoundWinStatus == WINNER_CT) // CT Won
-		{
-			m_iAccountCT += iRescuedHostageBonus;
-			if (m_bMapHasEscapeZone == false)	// only give them the bonus if this isn't an escape map
-				m_iAccountTerrorist += m_iLoserBonus;
-		}
-		
-
-		//Update CT account based on number of hostages rescued
-		m_iAccountCT += m_iHostagesRescued * 750;
+        // Pay the current level before advancing it. A win removes one level;
+        // it never resets a multi-round loss bonus to the minimum.
+        if (m_iRoundWinStatus == WINNER_TER)
+        {
+            m_iAccountCT += CSEconomyLossAward(m_iCTLossLevel);
+            m_iCTLossLevel = CSEconomyNextLossLevel(m_iCTLossLevel, false);
+            m_iTLossLevel = CSEconomyNextLossLevel(m_iTLossLevel, true);
+        }
+        else if (m_iRoundWinStatus == WINNER_CT)
+        {
+            if (!m_bMapHasEscapeZone)
+                m_iAccountTerrorist += CSEconomyLossAward(m_iTLossLevel) + (previousRoundBombPlanted ? 600 : 0);
+            m_iTLossLevel = CSEconomyNextLossLevel(m_iTLossLevel, false);
+            m_iCTLossLevel = CSEconomyNextLossLevel(m_iCTLossLevel, true);
+        }
+        m_iAccountCT += m_iHostagesRescued * 600;
 
 
 		// Update individual players accounts and respawn players
@@ -2710,9 +2678,8 @@ ConVar cl_autohelp(
 			//We are starting fresh. So it's like no one has ever won or lost.
 			m_iNumTerroristWins				= 0; 
 			m_iNumCTWins					= 0;
-			m_iNumConsecutiveTerroristLoses	= 0;
-			m_iNumConsecutiveCTLoses		= 0;
-			m_iLoserBonus					= 1400;
+			m_iTLossLevel	= mp_starting_losses.GetInt();
+			m_iCTLossLevel		= mp_starting_losses.GetInt();
 		}
 
 		for ( i = 1; i <= gpGlobals->maxClients; i++ )
@@ -2995,9 +2962,8 @@ ConVar cl_autohelp(
 		}
 		}
 
-		m_iNumConsecutiveTerroristLoses = 0;
-		m_iNumConsecutiveCTLoses = 0;
-		m_iLoserBonus = 1500;
+		m_iTLossLevel = mp_starting_losses.GetInt();
+		m_iCTLossLevel = mp_starting_losses.GetInt();
 		}
 
 		m_bSwitchingTeamsAtRoundReset = false;
@@ -3342,7 +3308,8 @@ ConVar cl_autohelp(
 	{
 		if ( mp_maxrounds.GetInt() != 0 )
 		{
-			if ( m_iTotalRoundsPlayed >= mp_maxrounds.GetInt() )
+			if ( m_iTotalRoundsPlayed >= mp_maxrounds.GetInt() ||
+                 (mp_match_can_clinch.GetBool() && (m_iNumCTWins > mp_maxrounds.GetInt()/2 || m_iNumTerroristWins > mp_maxrounds.GetInt()/2)) )
 			{
 				UTIL_LogPrintf("World triggered \"Intermission_Round_Limit\"\n");
 				GoToIntermission();
@@ -6179,4 +6146,19 @@ bool IsTakingAFreezecamScreenshot()
 	return false;
 }
 
+#endif
+
+#ifndef CLIENT_DLL
+CON_COMMAND( cs_economy_status, "Show effective competitive economy and player balances." )
+{
+    CCSGameRules *rules=CSGameRules(); if (!rules) return;
+    Msg("[economy-status] ct_level=%d t_level=%d ct_next_loss=%d t_next_loss=%d ct_round_cash=%d t_round_cash=%d rounds=%d ct_wins=%d t_wins=%d buy_seconds=%.3f\n",
+        rules->m_iCTLossLevel,rules->m_iTLossLevel,CSEconomyLossAward(rules->m_iCTLossLevel),CSEconomyLossAward(rules->m_iTLossLevel),rules->m_iAccountCT,rules->m_iAccountTerrorist,
+        rules->m_iTotalRoundsPlayed,rules->m_iNumCTWins,rules->m_iNumTerroristWins,rules->GetBuyTimeLength());
+    for (int i=1;i<=gpGlobals->maxClients;++i)
+    {
+        CCSPlayer *player=CCSPlayer::Instance(i); if (!player) continue;
+        Msg("[economy-player] index=%d team=%d alive=%d cash=%d\n",i,player->GetTeamNumber(),player->IsAlive(),int(player->m_iAccount));
+    }
+}
 #endif

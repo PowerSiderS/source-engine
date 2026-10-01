@@ -864,7 +864,7 @@ void CCSBuySubMenu::HandleBlackMarket( void )
                 // [dwenger] Removed to avoid clearing of default price when not in black market mode
                 //=============================================================================
 
-                // pButton->SetCurrentPrice( info->GetDefaultPrice() );
+                pButton->SetCurrentPrice( info->GetWeaponPrice() );
 
                 //=============================================================================
                 // HPE_END

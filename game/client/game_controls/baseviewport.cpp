@@ -45,6 +45,9 @@
 // our definition
 #include "baseviewport.h"
 #include <filesystem.h>
+#ifdef CSTRIKE_DLL
+#include "cstrike/cs_hud_theme.h"
+#endif
 #include <convar.h>
 #include "ienginevgui.h"
 #include "iclientmode.h"
@@ -126,6 +129,11 @@ bool Helper_LoadFile( IBaseFileSystem *pFileSystem, const char *pFilename, CUtlV
 //-----------------------------------------------------------------------------
 bool CBaseViewport::LoadHudAnimations( void )
 {
+#ifdef CSTRIKE_DLL
+	const char *themed = CSHudResource( NULL, "scripts/sourceadvanced/hud_pink/HudAnimations.txt" );
+	if ( themed )
+		return m_pAnimController->SetScriptFile( GetVPanel(), themed, true );
+#endif
 	const char *HUDANIMATION_MANIFEST_FILE = "scripts/hudanimations_manifest.txt";
 	KeyValues *manifest = new KeyValues( HUDANIMATION_MANIFEST_FILE );
 	if ( manifest->LoadFromFile( g_pFullFileSystem, HUDANIMATION_MANIFEST_FILE, "GAME" ) == false )
@@ -176,7 +184,12 @@ CBaseViewport::CBaseViewport() : vgui::EditablePanel( NULL, "CBaseViewport")
 	m_pLastActivePanel = NULL;
 	g_lastPanel = NULL;
 
-	vgui::HScheme scheme = vgui::scheme()->LoadSchemeFromFileEx( enginevgui->GetPanel( PANEL_CLIENTDLL ), "resource/ClientScheme.res", "ClientScheme");
+#ifdef CSTRIKE_DLL
+	const char *schemeFile = CSHudResource( "resource/ClientScheme.res", "resource/sourceadvanced/hud_pink/ClientScheme.res" );
+#else
+	const char *schemeFile = "resource/ClientScheme.res";
+#endif
+	vgui::HScheme scheme = vgui::scheme()->LoadSchemeFromFileEx( enginevgui->GetPanel( PANEL_CLIENTDLL ), schemeFile, "ClientScheme");
 	SetScheme(scheme);
 	SetProportional( true );
 
@@ -740,7 +753,11 @@ void CBaseViewport::ReloadScheme(const char *fromFile)
 	g_pClientMode->ComputeVguiResConditions( pConditions );
 
 	// reload the .res file from disk
+#ifdef CSTRIKE_DLL
+	LoadControlSettings( CSHudResource( "scripts/HudLayout.res", "scripts/sourceadvanced/hud_pink/HudLayout.res" ), NULL, NULL, pConditions );
+#else
 	LoadControlSettings( "scripts/HudLayout.res", NULL, NULL, pConditions );
+#endif
 
 	gHUD.RefreshHudTextures();
 

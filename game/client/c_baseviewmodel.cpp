@@ -18,6 +18,9 @@
 #include "tools/bonelist.h"
 #include <KeyValues.h>
 #include "hltvcamera.h"
+#ifdef CSTRIKE_DLL
+#include "cs_inventory.h"
+#endif
 
 #if defined( REPLAY_ENABLED )
 #include "replay/replaycamera.h"
@@ -63,21 +66,41 @@
 	void C_BaseViewModel::UpdateUnifiedArms()
 	{
 		const char *modelName = GetModel() ? modelinfo->GetModelName( GetModel() ) : "";
-		if ( Q_strnicmp( modelName, "models/sourceadvanced/c_weapon_", 31 ) ) { ReleaseUnifiedArms(); return; }
-		const char *arms = Q_stristr(modelName,"c_weapon_knife_") ?
-			"models/sourceadvanced/c_arms_native.mdl" : "models/sourceadvanced/c_arms_default.mdl";
+		const bool cs2 = !Q_strnicmp(modelName,"models/sourceadvanced/cs2/",26);
+		if ( !cs2 && Q_strnicmp( modelName, "models/sourceadvanced/c_weapon_", 31 ) ) { ReleaseUnifiedArms(); return; }
+		const CGloveItem *glove=CSSelectedGlove();
+		CSGloveRig rig=GLOVE_RIG_LEGACY;
+		if (cs2 && LookupBone("arm_lower_L")>=0) rig=GLOVE_RIG_CS2;
+		else if (Q_stristr(modelName,"c_weapon_knife_") || (cs2 && LookupBone("ValveBiped.Bip01_L_ForeTwist")>=0)) rig=GLOVE_RIG_NATIVE;
+		const char *arms = glove ? glove->models[rig] : (cs2 ? NULL :
+			(rig==GLOVE_RIG_NATIVE ? "models/sourceadvanced/c_arms_native.mdl" : "models/sourceadvanced/c_arms_default.mdl"));
+		bool ready=false;
 		if ( m_hUnifiedArms )
 		{
 			const model_t *current = m_hUnifiedArms->GetModel();
-			if ( current && !Q_stricmp(modelinfo->GetModelName(current),arms) ) return;
-			ReleaseUnifiedArms();
+			ready=arms && current && !Q_stricmp(modelinfo->GetModelName(current),arms);
+			if (!ready) ReleaseUnifiedArms();
 		}
-		if ( modelinfo->GetModelIndex( arms ) <= 0 ) return;
-		CUnifiedViewArms *child = new CUnifiedViewArms;
-		if ( !child->InitializeAsClientEntity( arms, RENDER_GROUP_VIEW_MODEL_OPAQUE ) ) { child->Release(); return; }
-		child->SetParent( this ); child->SetLocalOrigin( vec3_origin ); child->SetLocalAngles( vec3_angle );
-		child->AddEffects( EF_BONEMERGE | EF_BONEMERGE_FASTCULL | EF_PARENT_ANIMATES );
-		m_hUnifiedArms = child;
+		if (!ready && arms && modelinfo->GetModelIndex(arms)>0)
+		{
+			CUnifiedViewArms *child = new CUnifiedViewArms;
+			if (child->InitializeAsClientEntity(arms,RENDER_GROUP_VIEW_MODEL_OPAQUE))
+			{
+				child->SetParent(this); child->SetLocalOrigin(vec3_origin); child->SetLocalAngles(vec3_angle);
+				child->AddEffects(EF_BONEMERGE | EF_BONEMERGE_FASTCULL | EF_PARENT_ANIMATES);
+				m_hUnifiedArms=child; ready=true;
+			}
+			else child->Release();
+		}
+		if (ready) m_hUnifiedArms->m_nSkin=glove ? glove->skin : 0;
+		// Keep the pack's original hands if no compatible replacement loaded.
+		// Hide both glove and sleeve groups only after creating the new mesh.
+		if (cs2) for (int i=0;i<3;++i)
+		{
+			char group[32]; Q_snprintf(group,sizeof(group),"sa_embedded_arms_%d",i);
+			const int index=FindBodygroupByName(group);
+			if (index>=0) SetBodygroup(index,ready ? 1 : 0);
+		}
 	}
 #endif
 
@@ -328,6 +351,11 @@ bool C_BaseViewModel::ShouldDraw()
 //-----------------------------------------------------------------------------
 int C_BaseViewModel::DrawModel( int flags )
 {
+#ifdef CSTRIKE_DLL
+	// Animation events and replicated body values may run after interpolation.
+	// Apply the replacement-arm mask to the body actually submitted for drawing.
+	UpdateUnifiedArms();
+#endif
 	if ( !m_bReadyToDraw )
 		return 0;
 

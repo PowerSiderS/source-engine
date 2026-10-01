@@ -189,7 +189,15 @@ void FX_FireBullets(
 		return;
 	}
 
-	CCSWeaponInfo *pWeaponInfo = static_cast< CCSWeaponInfo* >( GetFileWeaponInfoFromHandle( hWpnInfo ) );
+	FileWeaponInfo_t *baseInfo=GetFileWeaponInfoFromHandle(hWpnInfo);
+	if (!baseInfo || !baseInfo->bParsedScript) return;
+	CCSWeaponInfo *pWeaponInfo = static_cast< CCSWeaponInfo* >(baseInfo);
+	const int kMaxBullets=16;
+	if (pWeaponInfo->m_iBullets < 1 || pWeaponInfo->m_iBullets > kMaxBullets)
+	{
+		Warning("FX_FireBullets: invalid pellet count %d for %s\n",pWeaponInfo->m_iBullets,wpnName);
+		return; // Validate before effects/lag compensation and stack-array indexing.
+	}
 
 	// Do the firing animation event.
 	if ( pPlayer && !pPlayer->IsDormant() )
@@ -232,32 +240,10 @@ void FX_FireBullets(
 
 	WeaponSound_t sound_type = SINGLE;
 
-	// CS HACK, tweak some weapon values based on primary/secondary mode
-
-	if ( iWeaponID == WEAPON_GLOCK )
-	{
-		if ( iMode == Secondary_Mode )
-		{
-			iDamage = 18;	// reduced power for burst shots
-			flRangeModifier = 0.9f;
-		}
-	}
-	else if ( iWeaponID == WEAPON_M4A1 )
-	{
-		if ( iMode == Secondary_Mode )
-		{
-			flRangeModifier = 0.95f; // slower bullets in silenced mode
-			sound_type = SPECIAL1;
-		}
-	}
-	else if ( iWeaponID == WEAPON_USP )
-	{
-		if ( iMode == Secondary_Mode )
-		{
-			iDamage = 30; // reduced damage in silenced mode
-			sound_type = SPECIAL1;
-		}
-	}
+	// The compiled CS2 profiles own damage/range. Silencer/burst mode must
+	// not silently reinstate the old CS:S damage and range overrides.
+	if (iMode==Secondary_Mode && (iWeaponID==WEAPON_M4A1 || iWeaponID==WEAPON_USP))
+		sound_type=SPECIAL1;
 
 	if ( bDoEffects)
 	{
@@ -289,7 +275,6 @@ void FX_FireBullets(
 	float x0 = fRadius0 * cosf(fTheta0);
 	float y0 = fRadius0 * sinf(fTheta0);
 
-	const int kMaxBullets = 16;
 	float x1[kMaxBullets], y1[kMaxBullets];
 	Assert(pWeaponInfo->m_iBullets <= kMaxBullets);
 

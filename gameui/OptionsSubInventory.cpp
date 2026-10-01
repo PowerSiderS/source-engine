@@ -13,8 +13,9 @@ using namespace vgui;
 
 COptionsSubInventory::COptionsSubInventory( Panel *parent ) : PropertyPage( parent, "OptionsSubInventory" ), m_Selected( 0 )
 {
-	SetBgColor( Color( 24, 28, 32, 255 ) );
-	m_Grid = new Panel( this, "InventoryGrid" ); m_Grid->SetBgColor( Color( 30, 35, 40, 255 ) );
+	SetBgColor( Color( 18, 21, 25, 245 ) );
+	SetPaintBackgroundEnabled(true);
+	m_Grid = new Panel( this, "InventoryGrid" ); m_Grid->SetBgColor( Color( 25, 29, 34, 235 ) );
 	m_Category = new ComboBox( this, "Category", 8, false ); m_Category->AddActionSignalTarget( this );
 	m_Category->AddItem( "Todos", new KeyValues( "Category", "filter", "" ) );
 	m_Scroll = new ScrollBar( this, "InventoryScroll", true ); m_Scroll->AddActionSignalTarget( this );
@@ -22,7 +23,7 @@ COptionsSubInventory::COptionsSubInventory( Panel *parent ) : PropertyPage( pare
 	m_Name = new Label( this, "SelectedName", "Selecione um item" );
 	m_Name->SetFgColor( Color( 225, 232, 240, 255 ) );
 	m_Status = new Label( this, "Status", "Equipar altera o visual durante a partida." );
-	m_Status->SetFgColor( Color( 155, 180, 195, 255 ) );
+	m_Status->SetFgColor( Color( 244, 128, 201, 255 ) );
 	m_Equip = new Button( this, "Equip", "Equipar", this, "equip" ); m_Equip->SetEnabled( false );
 	new Button( this, "Unequip", "Restaurar arma ativa", this, "unequip" );
 	KeyValues *root = new KeyValues( "SkinsManifest" );
@@ -41,7 +42,7 @@ COptionsSubInventory::COptionsSubInventory( Panel *parent ) : PropertyPage( pare
 			char command[32]; Q_snprintf( command, sizeof( command ), "select_%d", card.id );
 			card.button = new Button( m_Grid, command, card.name, this, command );
 			card.button->SetContentAlignment( Label::a_south ); card.button->SetDefaultColor( Color( 235, 240, 245, 255 ), Color( 46, 53, 61, 255 ) );
-			card.button->SetArmedColor( Color( 255, 255, 255, 255 ), Color( 39, 102, 158, 255 ) );
+			card.button->SetArmedColor( Color( 255, 255, 255, 255 ), Color( 105, 49, 84, 255 ) );
 			card.image = new ImagePanel( card.button, "Icon" ); card.image->SetMouseInputEnabled( false );
 			card.image->SetShouldScaleImage( true ); if ( card.icon[0] ) card.image->SetImage( card.icon );
 			m_Cards.AddToTail( card );
@@ -64,7 +65,7 @@ void COptionsSubInventory::OnScroll( int position ) { InvalidateLayout(); }
 void COptionsSubInventory::PerformLayout()
 {
 	BaseClass::PerformLayout(); int wide, tall; GetSize( wide, tall );
-	const int sidebar = 230, top = 48, gap = 8, cardHeight = 112;
+	const int sidebar = MIN( 280, MAX( 170, wide / 3 ) ), top = 48, gap = 8, cardHeight = 112;
 	int gridWidth = MAX( 100, wide-sidebar-32 ), gridHeight = MAX( 112, tall-top-8 );
 	m_Category->SetBounds( 8, 10, gridWidth, 28 ); m_Grid->SetBounds( 8, top, gridWidth, gridHeight );
 	m_Scroll->SetBounds( 8+gridWidth, top, 16, gridHeight );
@@ -78,6 +79,7 @@ void COptionsSubInventory::PerformLayout()
 	for ( int i = 0; i < m_Cards.Count(); ++i )
 	{
 		Card &card = m_Cards[i]; bool matches = !filter[0] || !Q_stricmp( filter, card.category );
+		card.button->SetDefaultColor( Color( 235, 240, 245, 255 ), card.id == m_Selected ? Color( 89, 46, 74, 255 ) : Color( 36, 42, 48, 255 ) );
 		if ( !matches ) { card.button->SetVisible( false ); continue; }
 		int row = visibleIndex/columns-first, column = visibleIndex%columns; ++visibleIndex;
 		card.button->SetVisible( row >= 0 && row < visibleRows );
@@ -97,15 +99,27 @@ void COptionsSubInventory::OnCommand( const char *command )
 	{
 		int id = Q_atoi( command+7 );
 		for ( int i = 0; i < m_Cards.Count(); ++i ) if ( m_Cards[i].id == id )
-		{ m_Selected = id; m_Name->SetText( m_Cards[i].name ); m_Preview->SetImage( m_Cards[i].icon ); m_Equip->SetEnabled( true ); break; }
+		{
+			m_Selected = id; m_Name->SetText( m_Cards[i].name ); m_Preview->SetImage( m_Cards[i].icon ); m_Equip->SetEnabled( true );
+			Button *restore=static_cast<Button *>(FindChildByName("Unequip"));
+			if (restore) restore->SetText(!Q_stricmp(m_Cards[i].category,"Gloves") ? "Restaurar luvas" : "Restaurar arma ativa");
+			InvalidateLayout();
+			break;
+		}
 		return;
 	}
 	if ( !Q_stricmp( command, "equip" ) && m_Selected )
 	{
-		if ( engine && engine->IsInGame() ) { char cmd[64]; Q_snprintf( cmd, sizeof( cmd ), "inventory_equip %d", m_Selected ); engine->ExecuteClientCmd( cmd ); m_Status->SetText( "Escolha enviada ao servidor." ); }
+		if ( engine && engine->IsInGame() ) { char cmd[64]; Q_snprintf( cmd, sizeof( cmd ), "inventory_equip %d", m_Selected ); engine->ExecuteClientCmd( cmd ); m_Status->SetText( "Visual aplicado durante a partida." ); }
 		else m_Status->SetText( "Entre em uma partida para equipar." );
 		return;
 	}
-	if ( !Q_stricmp( command, "unequip" ) ) { if ( engine ) engine->ExecuteClientCmd( "inventory_unequip" ); return; }
+	if ( !Q_stricmp( command, "unequip" ) )
+	{
+		bool gloves=false;
+		for (int i=0;i<m_Cards.Count();++i) if (m_Cards[i].id==m_Selected) gloves=!Q_stricmp(m_Cards[i].category,"Gloves");
+		if (engine) engine->ExecuteClientCmd(gloves ? "inventory_gloves 0" : "inventory_unequip");
+		return;
+	}
 	BaseClass::OnCommand( command );
 }

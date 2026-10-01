@@ -160,6 +160,7 @@ public:
 	int m_iTeam;				// Which team can have this weapon. TEAM_UNASSIGNED if both can have it.
 	float m_flBotAudibleRange;	// How far away a bot can hear this weapon.
 	float m_flArmorRatio;
+	float m_flHeadshotMultiplier;
 
 	int	  m_iCrosshairMinDistance;
 	int	  m_iCrosshairDeltaDistance;

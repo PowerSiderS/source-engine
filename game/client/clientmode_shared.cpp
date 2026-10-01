@@ -66,6 +66,10 @@ extern ConVar replay_rendersetting_renderglow;
 #include "econ_item_description.h"
 #endif
 
+#ifdef CSTRIKE_DLL
+#include "cstrike/cs_hud_theme.h"
+#endif
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -307,7 +311,11 @@ ClientModeShared::~ClientModeShared()
 
 void ClientModeShared::ReloadScheme( void )
 {
+#ifdef CSTRIKE_DLL
+	m_pViewport->ReloadScheme( CSHudResource( "resource/ClientScheme.res", "resource/sourceadvanced/hud_pink/ClientScheme.res" ) );
+#else
 	m_pViewport->ReloadScheme( "resource/ClientScheme.res" );
+#endif
 	ClearKeyValuesCache();
 }
 
@@ -341,7 +349,11 @@ void ClientModeShared::Init()
 
 	// Derived ClientMode class must make sure m_Viewport is instantiated
 	Assert( m_pViewport );
+#ifdef CSTRIKE_DLL
+	m_pViewport->LoadControlSettings( CSHudResource( "scripts/HudLayout.res", "scripts/sourceadvanced/hud_pink/HudLayout.res" ), NULL, NULL, pConditions );
+#else
 	m_pViewport->LoadControlSettings( "scripts/HudLayout.res", NULL, NULL, pConditions );
+#endif
 
 #if defined( REPLAY_ENABLED )
  	m_pReplayReminderPanel = GET_HUDELEMENT( CReplayReminderPanel );
