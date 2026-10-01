@@ -111,9 +111,24 @@ class CInventoryFrame : public vgui::Frame
 public:
     CInventoryFrame(vgui::Panel *parent) : BaseClass(parent,"SourceAdvancedInventory")
     {
-        SetTitle("INVENTARIO",true); SetSizeable(false); SetDeleteSelfOnClose(true);
-        SetBgColor(Color(18,21,25,255)); SetPaintBackgroundEnabled(true);
+        SetTitle("INVENT\xC3\x81RIO",true); SetSizeable(false); SetDeleteSelfOnClose(true);
+        SetBgColor(Color(26,32,38,155)); SetPaintBackgroundEnabled(true);
         m_Page=new COptionsSubInventory(this);
+    }
+    virtual void PaintBackground()
+    {
+        SetPaintBackgroundType(0); SetBgColor(Color(26,32,38,155));
+        BaseClass::PaintBackground();
+    }
+    virtual void PaintBorder()
+    {
+        vgui::surface()->DrawSetColor(126,84,114,220);
+        vgui::surface()->DrawOutlinedRect(0,0,GetWide(),GetTall());
+    }
+    virtual void OnClose()
+    {
+        BaseClass::OnClose();
+        if (GetParent()) GetParent()->OnCommand("InventoryClosed");
     }
     virtual void PerformLayout()
     {
@@ -1543,10 +1558,16 @@ void CBasePanel::CreateGameMenu()
 	datafile->UsesEscapeSequences( true );	// VGUI uses escape sequences
 	if (datafile->LoadFromFile( g_pFullFileSystem, "Resource/GameMenu.res" ) )
 	{
+		for(KeyValues *entry=datafile->GetFirstSubKey();entry;)
+		{ KeyValues *next=entry->GetNextKey();
+		  if(!Q_stricmp(entry->GetString("command"),"engine knife_menu") || !Q_stricmp(entry->GetString("label"),"Trocar de Faca"))
+		  { datafile->RemoveSubKey(entry); entry->deleteThis(); }
+		  entry=next;
+		}
 		if (g_pFullFileSystem->FileExists("scripts/skins_manifest.txt","MOD"))
 		{
 			KeyValues *inventory=datafile->FindKey("SourceAdvancedInventory",true);
-			inventory->SetString("label","Inventario");
+			inventory->SetString("label","INVENT\xC3\x81RIO");
 			inventory->SetString("command","OpenInventoryDialog");
 			inventory->SetInt("InGameOrder",25);
 		}
@@ -1629,7 +1650,10 @@ void CBasePanel::UpdateGameMenus()
 
 	// position the menu
 	InvalidateLayout();
-	m_pGameMenu->SetVisible( true );
+	if (g_hInventoryFrame.Get() && g_hInventoryFrame->IsVisible())
+		m_pGameMenu->CGameMenu::BaseClass::SetVisible(false);
+	else
+		m_pGameMenu->SetVisible(true);
 }
 
 //-----------------------------------------------------------------------------
@@ -2123,6 +2147,11 @@ void CBasePanel::RunMenuCommand(const char *command)
 		if (!g_hInventoryFrame.Get()) g_hInventoryFrame=new CInventoryFrame(this);
 		g_hInventoryFrame->Activate();
 		g_hInventoryFrame->InvalidateLayout();
+		m_pGameMenu->CGameMenu::BaseClass::SetVisible(false);
+	}
+	else if ( !Q_stricmp( command, "InventoryClosed" ) )
+	{
+		UpdateGameMenus();
 	}
 	else if ( !Q_stricmp( command, "OpenOptionsDialog" ) )
 	{

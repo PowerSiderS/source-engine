@@ -9,7 +9,7 @@ from build_gameplay_vpk import verify_vpk
 from flatten_vpk import flatten
 stage=root/'000_sourceadvanced_catalog';assets=root/'assets/cstrike'
 shutil.copytree(base/'000_sourceadvanced_catalog',stage,dirs_exist_ok=True)
-for category in ('models','materials','sound','scripts'):
+for category in ('models','materials','sound','scripts','resource'):
  for path in (assets/category).rglob('*'):
   if not path.is_file() or path.name=='skins_manifest.txt':continue
   dest=stage/path.relative_to(assets);dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,dest)

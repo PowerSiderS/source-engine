@@ -53,6 +53,7 @@
 #include "custom_steamid.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
+#include "client_load_profile.h"
 #include "tier0/memdbgon.h"
 
 static ConVar cl_timeout( "cl_timeout", "30", FCVAR_ARCHIVE, "After this many seconds without receiving a packet from the server, the client will disconnect itself" );
@@ -63,24 +64,6 @@ static ConVar cl_allowdownload ( "cl_allowdownload", "1", FCVAR_ARCHIVE, "Client
 static ConVar cl_downloadfilter( "cl_downloadfilter", "all", FCVAR_ARCHIVE, "Determines which files can be downloaded from the server (all, none, nosounds, mapsonly)" );
 static ConVar cl_profile_map_load( "cl_profile_map_load", "0", 0, "Log client signon phases and actual loading-screen completion." );
 
-class CClientLoadTimer
-{
-public:
-	CClientLoadTimer( const char *phase, const char *map ) : m_Phase(phase), m_Map(map),
-		m_Enabled(cl_profile_map_load.GetBool()), m_Start(m_Enabled ? Plat_FloatTime() : 0)
-	{
-		if ( m_Enabled ) ConMsg("[load-profile] event=begin phase=%s map=%s t=%.6f\n", m_Phase, m_Map, m_Start);
-	}
-	~CClientLoadTimer()
-	{
-		if ( m_Enabled ) ConMsg("[load-profile] event=end phase=%s map=%s ms=%.2f t=%.6f\n",
-			m_Phase, m_Map, (Plat_FloatTime()-m_Start)*1000, Plat_FloatTime());
-	}
-private:
-	const char *m_Phase, *m_Map;
-	bool m_Enabled;
-	double m_Start;
-};
 
 #ifdef OSX
 	// OS X is barely making it due to virtual memory pressure on 32bit, our behavior of load new models -> unload
@@ -1822,7 +1805,8 @@ void CClientState::FinishSignonState_New()
 
 	{ CClientLoadTimer timer("string_tables", m_szLevelBaseName); CL_InstallAndInvokeClientStringTableCallbacks(); }
 
-	{ CClientLoadTimer timer("materials", m_szLevelBaseName); materials->CacheUsedMaterials(); }
+	// R_LevelInit caches materials after static props establish their references.
+	// Doing it here too uploads the same textures twice during signon.
 
 	// force a consistency check
 	{ CClientLoadTimer timer("consistency", m_szLevelBaseName); ConsistencyCheck(true); }

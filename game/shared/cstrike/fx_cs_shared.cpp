@@ -5,6 +5,8 @@
 //=============================================================================//
 
 #include "cbase.h"
+#include "cs_weapon_penetration.h"
+#include "cs_gameplay_audit.h"
 #include "fx_cs_shared.h"
 #include "weapon_csbase.h"
 #include "cs_inventory.h"
@@ -344,6 +346,16 @@ void FX_FireBullets(
 		}
 #endif // CLIENT_DLL
 
+		if (sv_gameplay_audit.GetInt() & CS_AUDIT_SHOTS)
+		{
+#ifdef CLIENT_DLL
+			const char *side="client";
+#else
+			const char *side="server";
+#endif
+			CSGameplayAuditPrint("[shot-audit] side=%s tick=%d player=%d weapon=%d seed=%d pellet=%d ox=%.6f oy=%.6f oz=%.6f pitch=%.6f yaw=%.6f sx=%.9f sy=%.9f inaccuracy=%.9f spread=%.9f\n",
+				side,gpGlobals->tickcount,iPlayerIndex,iWeaponID,iSeed,iBullet,vOrigin.x,vOrigin.y,vOrigin.z,vAngles.x,vAngles.y,x0+x1[iBullet],y0+y1[iBullet],fInaccuracy,fSpread);
+		}
 		pPlayer->FireBullet(
 			vOrigin,
 			vAngles,
@@ -354,7 +366,7 @@ void FX_FireBullets(
 			flRangeModifier,
 			pPlayer,
 			bDoEffects,
-			x0 + x1[iBullet], y0 + y1[iBullet] );
+			x0 + x1[iBullet], y0 + y1[iBullet], CSWeaponPenetrationPower((CSWeaponID)iWeaponID) );
 	}
 
 #if !defined (CLIENT_DLL)

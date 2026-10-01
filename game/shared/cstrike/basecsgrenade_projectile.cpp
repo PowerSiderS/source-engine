@@ -5,6 +5,7 @@
 //=============================================================================//
 
 #include "cbase.h"
+#include "cs_gameplay_audit.h"
 #include "basecsgrenade_projectile.h"
 
 float GetCurrentGravity( void );
@@ -132,7 +133,9 @@ END_NETWORK_TABLE()
 			return;
 		}
 
-		if( gpGlobals->curtime > m_flDetonateTime )
+		if (sv_gameplay_audit.GetInt() & CS_AUDIT_GRENADES)
+			CSGameplayAuditPrint("[grenade-audit] event=flight entity=%d type=%s time=%.6f deadline=%.6f x=%.6f y=%.6f z=%.6f vx=%.6f vy=%.6f vz=%.6f\n",entindex(),GetClassname(),gpGlobals->curtime,m_flDetonateTime,GetAbsOrigin().x,GetAbsOrigin().y,GetAbsOrigin().z,GetAbsVelocity().x,GetAbsVelocity().y,GetAbsVelocity().z);
+		if( gpGlobals->curtime >= m_flDetonateTime )
 		{
 			Detonate();
 			return;
@@ -140,7 +143,7 @@ END_NETWORK_TABLE()
 
 		CSoundEnt::InsertSound ( SOUND_DANGER, GetAbsOrigin() + GetAbsVelocity() * 0.5, GetAbsVelocity().Length( ), 0.2 );
 
-		SetNextThink( gpGlobals->curtime + 0.2 );
+		SetNextThink( MIN( gpGlobals->curtime + 0.2f, m_flDetonateTime ) );
 
 		if (GetWaterLevel() != 0)
 		{
@@ -151,11 +154,14 @@ END_NETWORK_TABLE()
 	//Sets the time at which the grenade will explode
 	void CBaseCSGrenadeProjectile::SetDetonateTimerLength( float timer )
 	{
-		m_flDetonateTime = gpGlobals->curtime + timer;
+		m_flDetonateTime = gpGlobals->curtime + ( isfinite(timer) ? MAX(0.0f, timer) : 1.5f );
+		if (sv_gameplay_audit.GetInt() & CS_AUDIT_GRENADES)
+			CSGameplayAuditPrint("[grenade-audit] event=fuse entity=%d type=%s time=%.6f deadline=%.6f\n",entindex(),GetClassname(),gpGlobals->curtime,m_flDetonateTime);
 	}
 
 	void CBaseCSGrenadeProjectile::ResolveFlyCollisionCustom( trace_t &trace, Vector &vecVelocity )
 	{
+		const Vector incomingVelocity=GetAbsVelocity();
 		//Assume all surfaces have the same elasticity
 		float flSurfaceElasticity = 1.0;
 
@@ -244,13 +250,8 @@ END_NETWORK_TABLE()
 			}
 			else
 			{
-				Vector vecDelta = GetBaseVelocity() - vecAbsVelocity;	
-				Vector vecBaseDir = GetBaseVelocity();
-				VectorNormalize( vecBaseDir );
-				float flScale = vecDelta.Dot( vecBaseDir );
-
-				VectorScale( vecAbsVelocity, ( 1.0f - trace.fraction ) * gpGlobals->frametime, vecVelocity ); 
-				VectorMA( vecVelocity, ( 1.0f - trace.fraction ) * gpGlobals->frametime, GetBaseVelocity() * flScale, vecVelocity );
+				const float remainingTime=(1.0f-trace.fraction)*gpGlobals->frametime;
+				vecVelocity=(vecAbsVelocity+GetBaseVelocity())*remainingTime;
 				PhysicsPushEntity( vecVelocity, &trace );
 			}
 		}
@@ -270,6 +271,8 @@ END_NETWORK_TABLE()
 			}
 		}
 		
+		if (sv_gameplay_audit.GetInt() & CS_AUDIT_GRENADES)
+			CSGameplayAuditPrint("[grenade-audit] event=bounce entity=%d type=%s time=%.6f speed_before=%.6f speed_after=%.6f nx=%.6f ny=%.6f nz=%.6f\n",entindex(),GetClassname(),gpGlobals->curtime,incomingVelocity.Length(),GetAbsVelocity().Length(),trace.plane.normal.x,trace.plane.normal.y,trace.plane.normal.z);
 		BounceSound();
 
 		// tell the bots a grenade has bounced
@@ -291,6 +294,8 @@ END_NETWORK_TABLE()
 	void CBaseCSGrenadeProjectile::SetupInitialTransmittedGrenadeVelocity( const Vector &velocity )
 	{
 		m_vInitialVelocity = velocity;
+		if (sv_gameplay_audit.GetInt() & CS_AUDIT_GRENADES)
+			CSGameplayAuditPrint("[grenade-audit] event=launch entity=%d type=%s time=%.6f x=%.6f y=%.6f z=%.6f vx=%.6f vy=%.6f vz=%.6f gravity=%.6f elasticity=%.6f\n",entindex(),GetClassname(),gpGlobals->curtime,GetAbsOrigin().x,GetAbsOrigin().y,GetAbsOrigin().z,velocity.x,velocity.y,velocity.z,GetGravity(),GetElasticity());
 	}
 
 	#define	MAX_WATER_SURFACE_DISTANCE	512

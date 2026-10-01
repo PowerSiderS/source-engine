@@ -23,7 +23,7 @@
 #endif
 
 
-#define GRENADE_TIMER	3.0f //Seconds
+#define GRENADE_TIMER	1.5f //Seconds
 
 
 

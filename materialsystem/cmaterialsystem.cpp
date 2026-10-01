@@ -41,6 +41,8 @@
 ConVar mat_debugalttab( "mat_debugalttab", "0", FCVAR_CHEAT );
 
 ConVar mat_forcemanagedtextureintohardware( "mat_forcemanagedtextureintohardware", "1", FCVAR_HIDDEN | FCVAR_ALLOWED_IN_COMPETITIVE );
+static ConVar mat_evict_on_precache("mat_evict_on_precache", "0", FCVAR_HIDDEN,
+	"Compatibility option: evict managed GPU resources before material precaching.");
 
 ConVar mat_supportflashlight( "mat_supportflashlight", "-1", FCVAR_HIDDEN, "0 - do not support flashlight (don't load flashlight shader combos), 1 - flashlight is supported" );
 #ifdef OSX
@@ -3114,9 +3116,10 @@ void CMaterialSystem::ResetTempHWMemory( bool bExitingLevel )
 //-----------------------------------------------------------------------------
 void CMaterialSystem::CacheUsedMaterials( )
 {
-	printf("Cache materials\n");
-
-	g_pShaderAPI->EvictManagedResources();
+	// D3D manages residency while allocating. Unconditional eviction also sends
+	// an IPC release to other Source clients, forcing repeated uploads on every
+	// map load. Retain the explicit compatibility path for older drivers.
+	if(mat_evict_on_precache.GetBool()) g_pShaderAPI->EvictManagedResources();
 
 	for (MaterialHandle_t i = FirstMaterial(); i != InvalidMaterial(); i = NextMaterial(i) )
 	{

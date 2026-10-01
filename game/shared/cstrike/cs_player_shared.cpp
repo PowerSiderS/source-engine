@@ -15,6 +15,8 @@
 #include "cs_hitbox_geometry.h"
 #include "cs_capsule_geometry.h"
 #include "cs_capsule_model.h"
+#include "cs_ballistics.h"
+#include "cs_gameplay_audit.h"
 
 #ifdef CLIENT_DLL
 	#include "c_cs_player.h"
@@ -35,6 +37,8 @@
 #include "engine/ivdebugoverlay.h"
 #include "obstacle_pushaway.h"
 #include "props_shared.h"
+
+ConVar sv_gameplay_audit("sv_gameplay_audit","0",FCVAR_REPLICATED|FCVAR_CHEAT,"Opt-in diagnostic mask: 1=movement, 2=shots, 4=grenades. Disabled by default.",true,0,true,7);
 
 ConVar sv_showimpacts("sv_showimpacts", "0", FCVAR_REPLICATED | FCVAR_CHEAT, "Shows client (red) and server (blue) bullet impact point (1=both, 2=client-only, 3=server-only)" );
 ConVar sv_showplayerhitboxes( "sv_showplayerhitboxes", "0", FCVAR_REPLICATED, "Show lag compensated hitboxes for the specified player index whenever a player fires." );
@@ -143,6 +147,34 @@ CON_COMMAND_F(cs_export_player_hitboxes,"Export currently mounted player MDLs an
         }
     }
     Msg("[model-export] files=%d failures=%d destination=sourceadvanced_gameplay\n",exported,failed);
+}
+CON_COMMAND_F(cs_test_bot,"Private QA only: cs_test_bot index x y z yaw health armor helmet. Requires server administration and sv_cheats; only fake clients can be changed.",FCVAR_CHEAT)
+{
+    if(!UTIL_IsCommandIssuedByServerAdmin() || args.ArgC()!=9) {Msg("[test-bot] rejected\n");return;}
+    CCSPlayer *p=ToCSPlayer(UTIL_PlayerByIndex(V_atoi(args[1])));
+    if(!p || !p->IsBot() || !p->IsAlive()) {Msg("[test-bot] invalid fake client\n");return;}
+    float values[7];for(int i=0;i<7;++i) {values[i]=V_atof(args[i+2]);if(!isfinite(values[i]))return;}
+    Vector position(values[0],values[1],values[2]);
+    if(fabsf(position.x)>16384 || fabsf(position.y)>16384 || fabsf(position.z)>16384)return;
+    QAngle angles(0,AngleNormalize(values[3]),0);Vector velocity(0,0,0);
+    p->Teleport(&position,&angles,&velocity);p->SetHealth(clamp(int(values[4]),1,10000));
+    p->SetArmorValue(clamp(int(values[5]),0,100));p->m_bHasHelmet=values[6]>=.5f;
+    p->InvalidateBoneCache();
+    CStudioHdr *hdr=p->GetModelPtr();CBoneCache *cache=p->GetBoneCache();if(!hdr || !cache || hdr->numbones()>MAXSTUDIOBONES)return;
+    matrix3x4_t *bones[MAXSTUDIOBONES]={};cache->ReadCachedBonePointers(bones,hdr->numbones());
+    mstudiohitboxset_t *set=hdr->pHitboxSet(p->GetHitboxSet());
+    for(int i=0;i<set->numhitboxes;++i) {mstudiobbox_t *box=set->pHitbox(i);if(box->bone<0 || box->bone>=hdr->numbones() || !bones[box->bone])continue;CSCapsuleHitbox capsule;if(!CSReadModelCapsule(*box,capsule))continue;Vector center;VectorTransform((capsule.start+capsule.end)*.5f,*bones[box->bone],center);Msg("[test-bot] player=%d box=%d group=%d x=%.6f y=%.6f z=%.6f\n",p->entindex(),i,box->group,center.x,center.y,center.z);}
+}
+CON_COMMAND_F(cs_gameplay_status,"Report player health, armor, weapon accuracy and grenade entities.",FCVAR_CHEAT)
+{
+	for(int i=1;i<=gpGlobals->maxClients;++i)
+	{
+		CCSPlayer *p=ToCSPlayer(UTIL_PlayerByIndex(i));if(!p)continue;
+		CWeaponCSBase *w=dynamic_cast<CWeaponCSBase *>(p->GetActiveWeapon());
+		Msg("[gameplay-status] player=%d team=%d alive=%d hp=%d armor=%d helmet=%d ground=%d speed=%.6f stamina=%.6f weapon=%s clip=%d inaccuracy=%.9f recovery=%.9f\n",i,p->GetTeamNumber(),p->IsAlive(),p->GetHealth(),p->ArmorValue(),int(p->m_bHasHelmet),p->GetGroundEntity()!=NULL,p->GetAbsVelocity().Length2D(),float(p->m_flStamina),w?w->GetClassname():"none",w?w->Clip1():-1,w?w->GetInaccuracy():0,w?w->GetRecoveryTime():0);
+	}
+	const char *names[]={"hegrenade_projectile","flashbang_projectile","smokegrenade_projectile","env_particlesmokegrenade"};
+	for(int i=0;i<ARRAYSIZE(names);++i) {int count=0;CBaseEntity *p=NULL;while((p=gEntList.FindEntityByClassname(p,names[i]))!=NULL)++count;Msg("[grenade-status] type=%s count=%d\n",names[i],count);}
 }
 CON_COMMAND_F(cs_audit_player_scale,"Report model scale, hull, eye height and weapon speed.",FCVAR_CHEAT)
 {
@@ -464,9 +496,9 @@ static bool TraceToExit(Vector &start, Vector &dir, Vector &end, float flStepSiz
 	float flDistance = 0;
 	Vector last = start;
 
-	while ( flDistance <= flMaxDistance )
+	while ( flDistance < flMaxDistance )
 	{
-		flDistance += flStepSize;
+		flDistance = MIN(flDistance + flStepSize, flMaxDistance);
 
 		end = start + flDistance *dir;
 
@@ -503,7 +535,7 @@ void CCSPlayer::FireBullet(
 	float flRangeModifier, // damage range modifier
 	CBaseEntity *pevAttacker, // shooter
 	bool bDoEffects,
-	float xSpread, float ySpread
+	float xSpread, float ySpread, float penetrationPower
 	)
 {
 	float fCurrentDamage = iDamage;   // damage of the bullet at it's current trajectory
@@ -519,6 +551,8 @@ void CCSPlayer::FireBullet(
 	float flPenetrationModifier = 1.f;
 
 	GetBulletTypeParameters( iBulletType, flPenetrationPower, flPenetrationDistance );
+	const bool materialPenetration=isfinite(penetrationPower) && penetrationPower>0;
+	if(materialPenetration) { iPenetration=4; flPenetrationDistance=3000.0f; }
 
 
 	if ( !pevAttacker )
@@ -757,7 +791,12 @@ void CCSPlayer::FireBullet(
 
 		TraceAttackToTriggers( info, tr.startpos, tr.endpos, vecDir );
 
+		const int healthBefore=pEntity->GetHealth();
 		ApplyMultiDamage();
+		if (sv_gameplay_audit.GetInt() & CS_AUDIT_SHOTS)
+			CSGameplayAuditPrint("[impact-audit] tick=%d player=%d target=%d hitgroup=%d material=%d distance=%.6f damage=%.6f health_before=%d health_after=%d penetrated=%d x=%.6f y=%.6f z=%.6f\n",
+				gpGlobals->tickcount,entindex(),pEntity->entindex(),tr.hitgroup,int(pSurfaceData->game.material),flCurrentDistance,fCurrentDamage,
+				healthBefore,pEntity->GetHealth(),iPenetrationMax-iPenetrationBeforeHit,tr.endpos.x,tr.endpos.y,tr.endpos.z);
 
 		if (bWasAlive && !pEntity->IsAlive() && pEntity->IsPlayer() && pEntity->GetTeamNumber() != GetTeamNumber())
 		{
@@ -771,7 +810,7 @@ void CCSPlayer::FireBullet(
 #endif
 
 		// check if bullet can penetrate another entity
-		if ( iPenetration == 0 && !hitGrate )
+		if ( iPenetration == 0 && ( materialPenetration || !hitGrate ) )
 			break; // no, stop
 
 		// If we hit a grate with iPenetration == 0, stop on the next thing we hit
@@ -781,7 +820,7 @@ void CCSPlayer::FireBullet(
 		Vector penetrationEnd;
 
 		// try to penetrate object, maximum penetration is 128 inch
-		if ( !TraceToExit( tr.endpos, vecDir, penetrationEnd, 24, 128 ) )
+		if ( !TraceToExit( tr.endpos, vecDir, penetrationEnd, materialPenetration ? 4.0f : 24.0f, materialPenetration ? 90.0f : 128.0f ) )
 			break;
 
 		// find exact penetration exit
@@ -793,6 +832,9 @@ void CCSPlayer::FireBullet(
 			// something was blocking, trace again
 			UTIL_TraceLine( penetrationEnd, tr.endpos, CS_MASK_SHOOT|CONTENTS_HITBOX, exitTr.m_pEnt, COLLISION_GROUP_NONE, &exitTr );
 		}
+
+		// Never accept a start-solid or missing exit as a traversable wall.
+		if(exitTr.allsolid || exitTr.startsolid || exitTr.fraction==1.0f) break;
 
 		// get material at exit point
 		pSurfaceData = physprops->GetSurfaceData( exitTr.surface.surfaceProps );
@@ -814,8 +856,14 @@ void CCSPlayer::FireBullet(
 		float flTraceDistance = VectorLength( exitTr.endpos - tr.endpos );
 
 		// check if bullet has enough power to penetrate this distance for this material
-		if ( flTraceDistance > ( flPenetrationPower * flPenetrationModifier ) )
+		if ( !materialPenetration && flTraceDistance > ( flPenetrationPower * flPenetrationModifier ) )
 			break; // bullet hasn't enough power to penetrate this distance
+
+		if(materialPenetration)
+		{
+			fCurrentDamage-=CSPenetrationDamageLoss(fCurrentDamage,flTraceDistance,penetrationPower,iEnterMaterial,iExitMaterial,hitGrate);
+			if(fCurrentDamage<1.0f) break;
+		}
 
 		// penetration was successful
 
@@ -827,7 +875,7 @@ void CCSPlayer::FireBullet(
 
 		//setup new start end parameters for successive trace
 
-		flPenetrationPower -= flTraceDistance / flPenetrationModifier;
+		if(!materialPenetration) flPenetrationPower -= flTraceDistance / flPenetrationModifier;
 		flCurrentDistance += flTraceDistance;
 
 		// NDebugOverlay::Box( exitTr.endpos, Vector(-2,-2,-2), Vector(2,2,2), 0,255,0,127, 8 );
@@ -838,7 +886,7 @@ void CCSPlayer::FireBullet(
 			break;
 
 		// reduce damage power each time we hit something other than a grate
-		fCurrentDamage *= flDamageModifier;
+		if(!materialPenetration) fCurrentDamage *= flDamageModifier;
 
 		// reduce penetration counter
 		iPenetration--;

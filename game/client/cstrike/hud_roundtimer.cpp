@@ -85,7 +85,6 @@ public:
 private:
     void DrawLabel(int x,int y,int alive,const Color &color,const wchar_t *team)
     {
-        vgui::surface()->DrawSetColor(12,10,17,150);vgui::surface()->DrawFilledRect(x,y,x+YRES(52),y+YRES(27));
         wchar_t text[32];V_snwprintf(text,ARRAYSIZE(text),L"%ls %d",team,alive);
         vgui::surface()->DrawSetTextFont(m_Font);vgui::surface()->DrawSetTextColor(color);
         vgui::surface()->DrawSetTextPos(x+YRES(6),y+YRES(4));vgui::surface()->DrawPrintText(text,wcslen(text));

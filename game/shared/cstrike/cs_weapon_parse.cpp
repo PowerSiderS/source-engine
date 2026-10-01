@@ -5,6 +5,7 @@
 //=============================================================================//
 
 #include "cbase.h"
+#include "cs_weapon_presentation.h"
 #include <KeyValues.h>
 #include "cs_weapon_parse.h"
 #include "cs_legacy_weapon_tuning.h"
@@ -481,6 +482,9 @@ void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	CSApplyLegacyWeaponTuning(*this,balanceID);
 	CSApply2015WeaponProfile(*this,balanceID);
 	CSApplyCS2WeaponProfile(*this,balanceID);
+	// Default presentation is compiled, so empty/stale loadouts cannot restore CS:S viewmodels.
+	if(const CSWeaponPresentation *models=CSDefaultWeaponPresentation(balanceID))
+	{ Q_strncpy(szViewModel,models->view,sizeof(szViewModel)); Q_strncpy(szWorldModel,models->world,sizeof(szWorldModel)); }
 	if (const CSEconomyWeapon *economy = CSEconomyWeaponForID(balanceID))
 	{
 		SetWeaponPrice(economy->price); SetDefaultPrice(economy->price); SetPreviousPrice(economy->price);

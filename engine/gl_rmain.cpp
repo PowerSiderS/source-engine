@@ -48,6 +48,8 @@ ConVar r_aspectratio( "r_aspectratio", "0"
 #endif
 					 );
 ConVar r_dynamiclighting( "r_dynamiclighting", "1", FCVAR_CHEAT );
+static ConVar cl_render_aspect("cl_render_aspect", "0", FCVAR_ARCHIVE,
+	"World projection: 0=output resolution, 1=4:3 stretched, 2=16:10 stretched, 3=16:9.", true, 0, true, 3);
 extern ConVar building_cubemaps;
 extern float scr_demo_override_fov;	
 
@@ -124,6 +126,14 @@ void PerpendicularVector( Vector& dst, const Vector& src )
 //-----------------------------------------------------------------------------
 float GetScreenAspect( )
 {
+	// Change the world projection without recreating the display device.
+	// HUD coordinates continue to use the actual output resolution.
+	switch(cl_render_aspect.GetInt())
+	{
+	case 1: return 4.0f/3.0f;
+	case 2: return 16.0f/10.0f;
+	case 3: return 16.0f/9.0f;
+	}
 	// use the override if set
 	if ( r_aspectratio.GetFloat() > 0.0f )
 		return r_aspectratio.GetFloat();

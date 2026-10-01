@@ -1921,13 +1921,17 @@ void CWeaponCSBase::Recoil( CSWeaponMode weaponMode )
 		return;
 
 	int index;
-	// All actual bullets, including scheduled Glock/FAMAS burst rounds, pass
-	// here. Dry firing and mode changes must not postpone recoil recovery.
-	m_fLastShotTime = gpGlobals->curtime;
+	// Source 2 records a stable sequence for continuous fire but carries a
+	// command-derived component for individual trigger pulls. Preserve the
+	// prediction seed for non-full-auto guns until that second path has an
+	// independently verified implementation.
 	if ( IsFullAuto() )
-	index = m_flRecoilIndex;
+		index = m_flRecoilIndex;
 	else
-	index = GetPredictionRandomSeed();
+		index = GetPredictionRandomSeed();
+
+	// Dry firing and mode changes must not postpone recoil recovery.
+	m_fLastShotTime = gpGlobals->curtime;
 
 	float angle;
 	float magnitude;
@@ -2459,8 +2463,7 @@ void CWeaponCSBase::UpdateAccuracyPenalty()
 	}
 	else
 	{
-		float fDecayFactor = logf(10.0f) / GetRecoveryTime();
-		m_fAccuracyPenalty = Lerp(expf(TICK_INTERVAL * -fDecayFactor), fNewPenalty, (float)m_fAccuracyPenalty);
+		m_fAccuracyPenalty = CSAccuracyDecay(m_fAccuracyPenalty,fNewPenalty,GetRecoveryTime(),TICK_INTERVAL);
 	}
 
 	#define WEAPON_RECOIL_DECAY_THRESHOLD 1.10

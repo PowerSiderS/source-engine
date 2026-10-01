@@ -5,6 +5,8 @@
 //=============================================================================//
 
 #include "cbase.h"
+#include "iviewrender.h"
+#include "view_shared.h"
 #include "c_cs_player.h"
 #include "c_user_message_register.h"
 #include "view.h"
@@ -2606,3 +2608,10 @@ float C_CSPlayer::GetDeathCamInterpolationTime()
 // HPE_END
 //=============================================================================
 
+
+CON_COMMAND(cl_view_projection_status,"Report actual rendered projection and output dimensions.")
+{
+    const CViewSetup *setup=view->GetPlayerViewSetup();
+    ConVarRef mode("cl_render_aspect");
+    if(setup) Msg("[view-projection] setting=%d engine_aspect=%.9f render_aspect=%.9f fov=%.9f viewmodel_fov=%.9f width=%d height=%d\n",mode.GetInt(),engine->GetScreenAspectRatio(),setup->m_flAspectRatio,setup->fov,setup->fovViewmodel,setup->width,setup->height);
+}

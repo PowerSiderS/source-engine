@@ -39,3 +39,5 @@ waf3*/
 source-engine.sln
 output/
 output-dedicated/
+output-polish-tests/
+output-tests/

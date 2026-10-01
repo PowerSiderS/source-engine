@@ -31,12 +31,13 @@ inline void CSGenerateRecoilPattern( IUniformRandomStream &random, int seed, boo
 			previousMagnitude += smoothing * (nextMagnitude - previousMagnitude);
 		}
 		else { previousAngle = nextAngle; previousMagnitude = nextMagnitude; }
+		// CS2's recorded aim-punch velocities confirm that the suppressed
+		// magnitude feeds the next smoothing step. See the independent AK-47
+		// demo fixture in references/cs2/recoil_ak47_recorded.json.
+		if ( fullAuto && shot < suppressionShots )
+			previousMagnitude *= suppressionFactor + (1.0f-suppressionFactor)*float(shot)/suppressionShots;
 		offsets[shot].fAngle = previousAngle;
 		offsets[shot].fMagnitude = previousMagnitude;
-		// Apply suppression to this output impulse, not to the smoothing state.
-		// Feeding it back made even a constant profile weaken on shot two.
-		if ( fullAuto && shot < suppressionShots )
-			offsets[shot].fMagnitude *= suppressionFactor + (1.0f-suppressionFactor)*float(shot)/suppressionShots;
 	}
 }
 #endif

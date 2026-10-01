@@ -16,6 +16,9 @@ resources=Resources([source,game/'cstrike',game/'hl2'])
 vpk={'__file__':str(work/'extract_native_knives.py')}
 exec((work/'extract_native_knives.py').read_text().split('selected=')[0],vpk)
 copied={};missing=[];definitions={};sound_output={};sound_files=set();sound_fallbacks=[]
+# Set SA_CS2_PACK_MODELS to a comma-separated list for an isolated compile.
+# This lets a new viewmodel be inspected before the normal catalogue build.
+selected_models={name.strip() for name in os.environ.get('SA_CS2_PACK_MODELS','').split(',') if name.strip()}
 fields={'$basetexture','$bumpmap','$normalmap','$phongexponenttexture','$envmapmask','$detail','$lightwarptexture','$blendmodulatetexture','$mraotexture','$selfillummask'}
 def collect(name):
  name=name.replace('\\','/').lower();target='materials/sourceadvanced/cs2_pack/'+name.removeprefix('materials/')
@@ -82,8 +85,11 @@ def sound_event(name):
  sound_output[alias]='"'+alias+'"\n{\n'+'\n'.join(props)+'\n}\n';return alias
 audit=[];qcs=[]
 for original in sorted((root/'decompiled').glob('*/')):
- # Utilities and knife retain the already validated gameplay animation set.
- if not original.name.startswith(('v_pist_','v_rif_','v_snip_','v_shot_','v_smg_','v_mach_')):continue
+ # The supplied Source 1 port includes firearms and the CS2 Butterfly. Do not
+ # use the Butterfly clips on another knife: blade pivots and both arm chains
+ # are part of this rig.
+ if not original.name.startswith(('v_pist_','v_rif_','v_snip_','v_shot_','v_smg_','v_mach_','v_knife_t')):continue
+ if selected_models and original.name not in selected_models:continue
  dst=root/'authored'/original.name;shutil.copytree(original,dst,dirs_exist_ok=True)
  qc=next(dst.glob('*.qc'));before=qc.read_text(encoding='utf-8-sig');text=rename_bones(before)
  text=re.sub(r'\$modelname\s+"[^"]+"',lambda m:'$modelname "sourceadvanced/cs2/'+original.name+'.mdl"',text,count=1)
@@ -102,7 +108,7 @@ for original in sorted((root/'decompiled').glob('*/')):
  arms=[]
  for index,(name,block) in enumerate(list(blocks(text,'bodygroup'))):
   mesh=re.search(r'studio\s+"([^"]+)"',block)
-  if mesh and any(word in mesh[1].lower() for word in ('glove','arm','hands')):
+  if mesh and (any(word in (name+' '+mesh[1]).lower() for word in ('glove','arm','hands')) or Path(mesh[1]).stem.lower()=='sport'):
    group='sa_embedded_arms_'+str(len(arms));arms.append(group)
    replacement=block.replace('"'+name+'"','"'+group+'"',1)
    if 'blank' not in replacement:replacement=replacement.rsplit('}',1)[0]+'\n blank\n}'
@@ -139,4 +145,4 @@ def compile(qc):
  print(qc.parent.name,'PASS' if ok else 'FAIL',flush=True);return ok
 with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(compile,qcs))
 if not all(results):raise SystemExit(1)
-print('Compiled',len(qcs),'supplied firearm models with original motion.',flush=True)
+print('Compiled',len(qcs),'supplied CS2 viewmodels with original motion.',flush=True)

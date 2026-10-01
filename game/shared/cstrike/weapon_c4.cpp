@@ -392,7 +392,8 @@ END_PREDICTION_DATA()
 					m_pBombDefuser->m_bIsDefusing = false;
 
 #ifndef CLIENT_DLL
-					// tell the bots someone has aborted defusing
+					StopSound("c4.disarmstart");
+			// tell the bots someone has aborted defusing
 					IGameEvent * event = gameeventmanager->CreateEvent( "bomb_abortdefuse" );
 					if( event )
 					{
@@ -514,6 +515,7 @@ END_PREDICTION_DATA()
 			//if it gets here then the previouse defuser has taken off or been killed
 
 #ifndef CLIENT_DLL
+			StopSound("c4.disarmstart");
 			// tell the bots someone has aborted defusing
 			IGameEvent * event = gameeventmanager->CreateEvent( "bomb_abortdefuse" );
 			if ( event )

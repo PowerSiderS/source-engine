@@ -2352,7 +2352,13 @@ int NET_SendPacket ( INetChannel *chan, int sock,  const netadr_t &to, const uns
 		Msg("UDP -> %s: sz=%i OOB '%c'\n", to.ToString(), length, data[4] );
 	}
 
-	if ( (!NET_IsMultiplayer() && sock != NS_CLIENT) || to.type == NA_LOOPBACK || ( to.IsLocalhost() && !net_usesocketsforloopback.GetBool() ) )
+	// An IP loopback address may belong to a different process (dedicated or
+	// another client). Use the in-process queue only for our actual peer port.
+	const int peer = sock == NS_CLIENT ? NS_SERVER : sock == NS_SERVER ? NS_CLIENT : -1;
+	const bool localPeer = peer >= 0 && peer < net_sockets.Count() &&
+		net_sockets[peer].hUDP && to.GetPort() == net_sockets[peer].nPort;
+	if ( (!NET_IsMultiplayer() && sock != NS_CLIENT) || to.type == NA_LOOPBACK ||
+		( to.IsLocalhost() && localPeer && !net_usesocketsforloopback.GetBool() ) )
 	{
 		Assert( !pVoicePayload );
 

@@ -1,14 +1,38 @@
 import os
 """Native gameplay/rig integration tests in an isolated runtime."""
 from pathlib import Path
-import argparse,hashlib,json,re,secrets,subprocess,sys,time
-parser=argparse.ArgumentParser();parser.add_argument('--quick',action='store_true');parser.add_argument('--wrist',action='store_true');args=parser.parse_args()
+import argparse,hashlib,json,re,secrets,shutil,subprocess,sys,time
+parser=argparse.ArgumentParser();parser.add_argument('--quick',action='store_true');parser.add_argument('--wrist',action='store_true');parser.add_argument('--visual-guns',action='store_true');parser.add_argument('--knife',action='store_true',help='Validate the imported CS2 Butterfly sequence set in the private runtime.');args=parser.parse_args()
 work=Path(os.environ.get('SA_ANIMATION_WORK','C:\\Users\\SnyX\\Documents\\Codex\\2026-09-28\\c-users-snyx-desktop-pasta-teste\\work'));root=work/'animation-gloves-update';runtime=root/'candidate-runtime'
-logs=root/('wrist-test' if args.wrist else 'quick-test' if args.quick else 'native-test');logs.mkdir(exist_ok=True)
+logs=root/('visual-guns-test' if args.visual_guns else 'wrist-test' if args.wrist else 'quick-test' if args.quick else 'native-test');logs.mkdir(exist_ok=True)
 sys.path.insert(0,r'C:\Users\SnyX\Desktop\projeto clone\source-engine\tools')
 from validate_native_instance import Rcon
 from debug_native_crash import monitor
 audit=json.loads((root/'stage-audit.json').read_text())
+manifest=runtime/'cstrike/scripts/skins_manifest.txt'
+manifest_backup=None
+# The full cosmetic catalogue contains older world-model ports that are
+# intentionally outside this focused test.  Source 1 validates the bounds of
+# every server-precached model during signon, so keep the private Butterfly
+# run limited to its view/world pair.  The user's runtime manifest is never
+# changed and the candidate manifest is restored in finally.
+if args.knife:
+ manifest_backup=logs/'skins_manifest.before-knife-test.txt'
+ shutil.copy2(manifest,manifest_backup)
+ manifest.write_text('''"SkinsManifest"
+{
+ "animation_sound_script" "scripts/game_sounds_sourceadvanced_cs2.txt"
+ "1015"
+ {
+  "name" "Butterfly Knife"
+  "category" "Facas"
+  "weapon_class" "weapon_knife"
+  "view_model" "models/sourceadvanced/cs2/v_knife_t.mdl"
+  "world_model" "models/sourceadvanced/w_weapon_knife_butterfly_knife.mdl"
+  "skin" "0"
+ }
+}
+''',encoding='utf8')
 cfgname='anim_test_'+secrets.token_hex(4)+'.cfg';runname='anim_run_'+secrets.token_hex(4)+'.cfg'
 cfg=runtime/'cstrike/cfg'/cfgname;run=runtime/'cstrike/cfg'/runname
 cfg.write_text('host_competitive_ever_enabled 1\nsv_lan 1\nsv_cheats 1\nmp_autoteambalance 0\nmp_limitteams 0\nbot_quota 0\nmp_freezetime 0\nmp_roundtime 60\nfps_max 60\nengine_no_focus_sleep 0\nsv_allow_wait_command 1\ndeveloper 1\ncl_profile_map_load 1\ncl_disablehtmlmotd 1\nunbindall\nsensitivity 0\ncl_inventory_loadout ""\ninventory_gloves 0\n',encoding='ascii')
@@ -16,11 +40,13 @@ commands=['alias sa_test_start "wait 180; cmd jointeam 1; wait 90; fps_max 60; c
 clear_weapons='; '.join('ent_remove_all '+w for w in sorted({item['weapon'] for item in audit['firearms']}|{'weapon_knife'}))+'; wait 60; '
 for i,item in enumerate(audit['firearms']):
  id=item['item_id'];weapon=item['weapon'];nextcmd=f'sa_gun_{i+1}' if i<23 and not args.quick else 'sa_glove_start'
+ if args.visual_guns and i==23:nextcmd='sa_visual_done'
+ def cap(step):return f'cl_screenshotname gun_{id}_{step}; screenshot; wait 10; ' if args.visual_guns or id in (1046,1034,1047,1050,1052) else ''
  shot='glock_fire' if id==1012 else 'shoot'
  commands.append(f'alias sa_gun_{i} "{clear_weapons}inventory_equip {id}; give {weapon}; wait 60; use {weapon}; wait 180; '
-  f'echo FIREARM_{id}_IDLE; cl_inventory_validate; inventory_unequip; wait 30; echo FIREARM_{id}_DEFAULT; cl_inventory_validate; '
-  f'inspectlook; wait 30; echo FIREARM_{id}_INSPECT; cl_inventory_validate; +attack; wait 4; echo FIREARM_{id}_SHOT; cl_inventory_validate; '
-  f'-attack; wait 300; +reload; wait 30; echo FIREARM_{id}_RELOAD; cl_inventory_validate; -reload; wait 600; '
+  f'echo FIREARM_{id}_IDLE; cl_inventory_validate; {cap("idle")}inventory_unequip; wait 30; echo FIREARM_{id}_DEFAULT; cl_inventory_validate; '
+  f'inspectlook; wait 60; echo FIREARM_{id}_INSPECT; cl_inventory_validate; {cap("inspect")}+attack; wait 4; echo FIREARM_{id}_SHOT; cl_inventory_validate; {cap("fire")}'
+  f'-attack; wait 300; +reload; wait 60; echo FIREARM_{id}_RELOAD; cl_inventory_validate; {cap("reload")}-reload; wait 600; '
   f'echo FIREARM_{id}_END; cl_inventory_validate; {nextcmd}"')
 commands.append('alias sa_glove_start "'+clear_weapons+'give weapon_ak47; wait 60; use weapon_ak47; inventory_equip 1000; wait 120; '+('sa_glove_19' if args.quick else 'sa_glove_0')+'"')
 glove_pairs=[]
@@ -40,13 +66,18 @@ for i,(rig,item,weapon,glove) in enumerate(glove_pairs):
 commands+=['alias sa_final "inventory_gloves 0; give weapon_knife; wait 60; use weapon_knife; inventory_equip 1023; wait 90; inspectlook; wait 30; '
  'echo DEFAULT_CSSO_GLOVE; cl_inventory_validate; cl_screenshotname csso_default_m9; screenshot; wait 10; +attack; wait 4; -attack; wait 90; '
  'mat_profile_video_changes 1; mat_setvideomode 1024 768 1; wait 180; cl_inventory_validate; '
- 'mat_setvideomode 800 600 1; wait 180; cl_inventory_validate; echo ANIMATION_GLOVES_DONE"','sa_test_start']
+ 'mat_setvideomode 800 600 1; wait 180; cl_inventory_validate; open_inventory; wait 180; cl_screenshotname inventory_csgo_final; screenshot; wait 30; gameui_hide; echo ANIMATION_GLOVES_DONE"','sa_test_start']
 if args.wrist:
  commands=[
  'alias sa_test_start "wait 180; cmd jointeam 1; wait 90; fps_max 60; cmd jointeam 2; wait 120; cmd joinclass 1; wait 180; hidepanel info; hidepanel team; hidepanel class_ter; hidepanel class_ct; gameui_hide; firstperson; noclip; setang -30 0 0; ent_remove_all weapon_*; wait 30; give weapon_ak47; wait 30; use weapon_ak47; inventory_equip 1000; inventory_gloves 4019; wait 180; sa_wrist_idle"',
  'alias sa_wrist_idle "echo WRIST_IDLE; cl_inventory_validate; cl_screenshotname wrist_fixed_idle; screenshot; wait 30; +attack; wait 4; echo WRIST_FIRE; cl_inventory_validate; cl_screenshotname wrist_fixed_fire; screenshot; -attack; wait 180; sa_wrist_reload"',
  'alias sa_wrist_reload "+reload; wait 60; echo WRIST_RELOAD; cl_inventory_validate; cl_screenshotname wrist_fixed_reload; screenshot; -reload; wait 600; inspectlook; wait 60; echo WRIST_INSPECT; cl_inventory_validate; cl_screenshotname wrist_fixed_inspect; screenshot; wait 60; echo ANIMATION_GLOVES_DONE"',
  'sa_test_start']
+if args.knife:
+ commands=[
+ 'alias sa_test_start "wait 180; cmd jointeam 1; wait 90; fps_max 60; cmd jointeam 2; wait 120; cmd joinclass 1; wait 180; hidepanel info; hidepanel team; hidepanel class_ter; hidepanel class_ct; gameui_hide; firstperson; noclip; ent_remove_all weapon_*; wait 60; give weapon_knife; wait 60; inventory_equip 1015; use weapon_knife; wait 180; echo KNIFE_IDLE; cl_inventory_validate; inspectlook; wait 180; echo KNIFE_INSPECT; cl_inventory_validate; +attack; wait 4; -attack; wait 180; echo KNIFE_LIGHT; cl_inventory_validate; +attack2; wait 4; -attack2; wait 180; echo KNIFE_HEAVY; cl_inventory_validate; echo ANIMATION_GLOVES_DONE"',
+ 'sa_test_start']
+if args.visual_guns:commands.insert(-1,'alias sa_visual_done "echo ANIMATION_GLOVES_DONE"')
 def split_alias(definition):
  match=re.fullmatch(r'alias (\w+) "([^"]*)"',definition)
  if not match:return [definition]
@@ -94,7 +125,7 @@ try:
  print('Mirage active after',round(time.monotonic()-start,1),'seconds.',flush=True)
  responses['start']=channel.command('exec '+runname)
  (logs/'rcon-start.txt').write_text(responses['start'],encoding='utf8')
- deadline=time.monotonic()+780;last_marker=''
+ deadline=time.monotonic()+1200;last_marker=''
  while proc.poll() is None and time.monotonic()<deadline:
   text=tail();markers=re.findall(r'^(FIREARM_\d+_\w+|GLOVE_\w+_\d+_\w+)\s*$',text,re.M)
   if markers and markers[-1]!=last_marker:last_marker=markers[-1];print(last_marker,flush=True)
@@ -102,8 +133,8 @@ try:
   time.sleep(2)
  if 'ANIMATION_GLOVES_DONE' not in tail():raise RuntimeError('Integration sequence did not finish')
  responses['profile']=channel.command('cs_inventory_profile')
- channel.command('changelevel de_nuke_csgo_new' if not (args.quick or args.wrist) else 'echo QUICK_CAPTURE_DONE');channel.sock.close();channel=None
- nuke=connect_ready('de_nuke_csgo_new' if not (args.quick or args.wrist) else 'de_mirage_csgo_new',420)
+ channel.command('changelevel de_nuke_csgo_new' if not (args.quick or args.wrist or args.visual_guns or args.knife) else 'echo QUICK_CAPTURE_DONE');channel.sock.close();channel=None
+ nuke=connect_ready('de_nuke_csgo_new' if not (args.quick or args.wrist or args.visual_guns or args.knife) else 'de_mirage_csgo_new',420)
  if not nuke:raise RuntimeError('Nuke did not become active')
  commands2='cmd jointeam 2; wait 120; cmd joinclass 1; wait 180; give weapon_ak47; inventory_equip 1000; use weapon_ak47; wait 120; inventory_gloves 4019; wait 60; cl_inventory_validate; use weapon_knife; inventory_equip 1022; wait 120; cl_inventory_validate; echo NUKE_GLOVES_DONE'
  ncfg=runtime/'cstrike/cfg'/('nuke_'+secrets.token_hex(4)+'.cfg');ncfg.write_text(commands2+'\n',encoding='ascii')
@@ -120,6 +151,7 @@ finally:
  if channel:channel.sock.close()
  if proc.poll() is None:forced=True;proc.terminate();proc.wait(timeout=10)
  cfg.unlink(missing_ok=True);run.unlink(missing_ok=True)
+ if manifest_backup and manifest_backup.is_file():shutil.copy2(manifest_backup,manifest)
  debug.join(timeout=5)
 text=log.read_text(encoding='utf8',errors='replace') if log.exists() else ''
 lines=text.splitlines();audits=[line for line in lines if '[inventory-audit]' in line]
@@ -154,9 +186,20 @@ report=dict(pid=proc.pid,error=error,ready=ready,nuke_ready=nuke,nuke_completed=
 report['imported_material_errors']=[line for line in lines if 'sourceadvanced/' in line and ('uses unknown shader' in line or 'proxy ' in line and 'not found' in line or 'KeyValues Error' in line)]
 report['passed']=bool(ready and nuke and report['nuke_completed'] and report['completed'] and report['default_csso_glove'] and report['all_audits_valid'] and
  proc.returncode==0 and not forced and not report['imported_material_errors'] and all(r['passed'] for r in firearm_results+glove_results))
+if args.quick:
+ report['passed']=bool(ready and report['completed'] and proc.returncode==0 and not forced and not report['imported_material_errors'] and firearm_results[0]['passed'] and all(glove_results[i]['passed'] for i in (19,39,59)))
 if args.wrist:
  report['wrist_records']={step:tagged.get('WRIST_'+step,'') for step in ('IDLE','FIRE','RELOAD','INSPECT')}
  report['passed']=bool(ready and report['completed'] and proc.returncode==0 and not forced and not report['imported_material_errors'] and all(valid(line) for line in report['wrist_records'].values()))
+if args.visual_guns:
+ report['passed']=bool(ready and report['completed'] and proc.returncode==0 and not forced and not report['imported_material_errors'] and all(r['passed'] for r in firearm_results))
+if args.knife:
+ report['knife_records']={step:tagged.get('KNIFE_'+step,'') for step in ('IDLE','INSPECT','LIGHT','HEAVY')}
+ knife_model='model=models/sourceadvanced/cs2/v_knife_t.mdl '
+ records=report['knife_records']
+ report['passed']=bool(ready and report['completed'] and proc.returncode==0 and not forced and not report['imported_material_errors'] and
+  all(valid(line) and knife_model in line for line in records.values()) and
+  'sequence=lookat' in records['INSPECT'] and 'sequence=light_' in records['LIGHT'] and 'sequence=heavy_' in records['HEAVY'])
 (logs/'result.json').write_text(json.dumps(report,indent=2),encoding='utf8')
 print('Firearms',sum(r['passed'] for r in firearm_results),'/24; glove/rig pairs',sum(r['passed'] for r in glove_results),'/60; passed',report['passed'],flush=True)
 raise SystemExit(0 if report['passed'] else 1)

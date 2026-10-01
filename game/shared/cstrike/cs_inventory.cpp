@@ -1,4 +1,5 @@
 #include "cbase.h"
+#include "cs_feedback_sound_events.h"
 #include "cs_inventory.h"
 #include "weapon_csbase.h"
 #include "baseviewmodel_shared.h"
@@ -109,7 +110,15 @@ void CInventoryManager::Load()
 	{
 		const char *animationSounds = root->GetString("animation_sound_script");
 		if (animationSounds[0] && !Q_strnicmp(animationSounds,"scripts/game_sounds_sourceadvanced_",34) && !Q_strstr(animationSounds,"..") && !Q_strstr(animationSounds,"\\") && !Q_strstr(animationSounds,":") && filesystem->FileExists(animationSounds,"MOD"))
-			soundemitterbase->AddSoundOverrides(animationSounds,true);
+			{
+            soundemitterbase->AddSoundOverrides(animationSounds,true);
+#ifndef CLIENT_DLL
+            // Footsteps were initially precached by ClientPrecache before these
+            // overrides loaded. Register every replacement wave before signon.
+            for(int i=0;i<ARRAYSIZE(g_CSFeedbackSoundEvents);++i)
+                CBaseEntity::PrecacheScriptSound(g_CSFeedbackSoundEvents[i]);
+#endif
+        }
 		for ( KeyValues *key = root->GetFirstTrueSubKey(); key && m_Items.Count() < 512; key = key->GetNextTrueSubKey() )
 		{
 			if ( !Q_stricmp(key->GetString("type"),"gloves") )

@@ -15,7 +15,7 @@ COptionsSubInventory::COptionsSubInventory( Panel *parent ) : PropertyPage( pare
 {
 	SetBgColor( Color( 18, 21, 25, 245 ) );
 	SetPaintBackgroundEnabled(true);
-	m_Grid = new Panel( this, "InventoryGrid" ); m_Grid->SetBgColor( Color( 25, 29, 34, 235 ) );
+	m_Grid = new Panel( this, "InventoryGrid" ); m_Grid->SetBgColor( Color( 0, 0, 0, 0 ) ); m_Grid->SetPaintBackgroundEnabled(false);
 	m_Category = new ComboBox( this, "Category", 8, false ); m_Category->AddActionSignalTarget( this );
 	m_Category->AddItem( "Todos", new KeyValues( "Category", "filter", "" ) );
 	m_Scroll = new ScrollBar( this, "InventoryScroll", true ); m_Scroll->AddActionSignalTarget( this );
@@ -89,6 +89,11 @@ void COptionsSubInventory::PerformLayout()
 	int x = wide-sidebar+8;
 	m_Name->SetBounds( x, 18, sidebar-16, 44 ); m_Preview->SetBounds( x, 70, sidebar-16, 154 );
 	m_Status->SetBounds( x, 240, sidebar-16, 70 ); m_Status->SetWrap( true );
+	m_Equip->SetDefaultColor( Color(235,240,245,255), Color(65,65,65,170) );
+	m_Equip->SetArmedColor( Color(255,255,255,255), Color(105,49,84,210) );
+	Button *restore = static_cast<Button *>(FindChildByName("Unequip"));
+	restore->SetDefaultColor( Color(235,240,245,255), Color(65,65,65,170) );
+	restore->SetArmedColor( Color(255,255,255,255), Color(105,49,84,210) );
 	m_Equip->SetBounds( x, tall-94, sidebar-16, 32 );
 	FindChildByName( "Unequip" )->SetBounds( x, tall-52, sidebar-16, 32 );
 }

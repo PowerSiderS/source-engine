@@ -12,6 +12,7 @@
 #include "movevars_shared.h"
 #include "weapon_csbase.h"
 #include "cs_legacy_gameplay.h"
+#include "cs_gameplay_audit.h"
 
 #ifdef CLIENT_DLL
 	#include "c_cs_player.h"
@@ -44,6 +45,7 @@ public:
 
 	virtual void ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMove );
 	virtual bool CanAccelerate();
+	virtual void Accelerate(Vector &wishdir,float wishspeed,float accel);
 	virtual bool CheckJumpButton( void );
 	virtual void PreventBunnyJumping( void );
 	virtual void ReduceTimers( void );
@@ -334,6 +336,13 @@ void CCSGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 	Assert( m_pCSPlayer );
 
 	BaseClass::ProcessMovement( pBasePlayer, pMove );
+#ifndef CLIENT_DLL
+	if ((sv_gameplay_audit.GetInt() & CS_AUDIT_MOVEMENT) && !pBasePlayer->IsBot())
+		CSGameplayAuditPrint("[move-audit] tick=%d player=%d x=%.6f y=%.6f z=%.6f vx=%.6f vy=%.6f vz=%.6f ground=%d duck=%d stamina=%.6f maxspeed=%.6f buttons=%d\n",
+			gpGlobals->tickcount,pBasePlayer->entindex(),pMove->GetAbsOrigin().x,pMove->GetAbsOrigin().y,pMove->GetAbsOrigin().z,
+			pMove->m_vecVelocity.x,pMove->m_vecVelocity.y,pMove->m_vecVelocity.z,pBasePlayer->GetGroundEntity()!=NULL,
+			(pBasePlayer->GetFlags() & FL_DUCKING)!=0,float(m_pCSPlayer->m_flStamina),pMove->m_flMaxSpeed,pMove->m_nButtons);
+#endif
 }
 
 
@@ -450,6 +459,18 @@ void CCSGameMovement::PlayerMove()
 #endif
 }
 
+
+void CCSGameMovement::Accelerate(Vector &wishdir,float wishspeed,float accel)
+{
+    // Ground acceleration follows the equipped weapon's movement cap even
+    // when walk/duck input has already been cropped. Otherwise stop-speed
+    // friction makes crouch starts several times slower than normal starts.
+    if(player->GetMoveType()==MOVETYPE_WALK && player->GetGroundEntity()!=NULL && player->GetWaterLevel()<=WL_Feet &&
+       wishspeed>0 && wishspeed<mv->m_flMaxSpeed &&
+       ((mv->m_nButtons & (IN_DUCK|IN_SPEED)) || player->m_Local.m_bDucking || (player->GetFlags() & FL_DUCKING)))
+        accel*=mv->m_flMaxSpeed/wishspeed;
+    BaseClass::Accelerate(wishdir,wishspeed,accel);
+}
 
 void CCSGameMovement::WalkMove( void )
 {

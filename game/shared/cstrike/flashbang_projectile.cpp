@@ -30,8 +30,8 @@ float PercentageOfFlashForPlayer(CBaseEntity *player, Vector flashPos, CBaseEnti
 	trace_t tr;
 
 	Vector pos = player->EyePosition();
-	Vector vecRight, vecUp, vecForward;
-	AngleVectors( player->EyeAngles(), &vecForward );
+	Vector vecRight, vecUp, vecForward=flashPos-pos;
+	const float flashDistance=vecForward.NormalizeInPlace();
 
 	QAngle tempAngle;
 	VectorAngles(player->EyePosition() - flashPos, tempAngle);
@@ -76,7 +76,7 @@ float PercentageOfFlashForPlayer(CBaseEntity *player, Vector flashPos, CBaseEnti
 		debugoverlay->AddBoxOverlay( pSGren->GetAbsOrigin(), Vector( flOutterRadius, flOutterRadius, flOutterRadius ),
 			Vector( -flOutterRadius, -flOutterRadius, -flOutterRadius ), QAngle( 0, 0, 0 ), 255, 0, 0, 30, 10 ); */
 
-		if ( IntersectInfiniteRayWithSphere( pos, vecForward, vPos, flInnerRadius, &flHit1, &flHit2 ) )
+		if ( IntersectInfiniteRayWithSphere( pos, vecForward, vPos, flInnerRadius, &flHit1, &flHit2 ) && flHit2>=0 && flHit1<=flashDistance )
 		{
 			retval *= 0.8;
 		}

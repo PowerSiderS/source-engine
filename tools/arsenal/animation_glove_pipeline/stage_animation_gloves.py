@@ -9,15 +9,19 @@ firearms=work/'cs2-animation-import';gloves=work/'csso-glove-import'
 for audit in (firearms/'asset-audit.json',gloves/'asset-audit.json'):
  if json.loads(audit.read_text())['missing']:raise RuntimeError('Missing dependencies: '+str(audit))
 assets.mkdir(parents=True,exist_ok=True)
-for source in (base/'assets/cstrike',firearms/'assets/cstrike',gloves/'assets/cstrike'):
+for source in (base/'assets/cstrike',firearms/'assets/cstrike',gloves/'assets/cstrike',work/'hud-pink/assets/cstrike',work/'cs2-hitbox-import/assets/cstrike',work/'cs2-audio-import/assets/cstrike'):
  for path in source.rglob('*'):
   if not path.is_file() or path.name=='gameinfo.txt':continue
   relative=path.relative_to(source)
-  if relative.parts[0] not in ('models','materials','sound','scripts'):continue
+  if relative.parts[0] not in ('models','materials','sound','scripts','resource'):continue
   dest=assets/relative;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,dest)
 models={
  1000:'v_rif_ak47',1001:'v_rif_aug',1002:'v_snip_awp',1003:'v_pist_deagle',1005:'v_pist_elite',
  1006:'v_rif_famas',1008:'v_pist_fiveseven',1010:'v_snip_g3sg1',1011:'v_rif_galil',1012:'v_pist_glock18',
+  # The Butterfly entry is compiled from the supplied CS2 motion rig.  It is
+  # intentionally separate from the older native knife catalogue so the CS2
+  # arm chain and blade pivots stay together.
+  1015:'v_knife_t',
  1034:'v_mach_m249para',1036:'v_shot_m3super90',1038:'v_rif_m4a1',1040:'v_smg_mac10',1041:'v_smg_mp5',
  1043:'v_pist_p228',1044:'v_smg_p90',1046:'v_snip_scout',1047:'v_snip_sg550',1048:'v_rif_sg552',
  1049:'v_smg_tmp',1050:'v_smg_ump45',1052:'v_pist_usp',1054:'v_shot_xm1014'}
@@ -32,11 +36,15 @@ def update(match):
  body=re.sub(r'("view_model"\s+)"[^"]+"',lambda m:m[1]+'"'+path+'"',body)
  body+='  "use_as_default" "1"\n '
  weapon=re.search(r'"weapon_class"\s+"([^"]+)"',body)[1]
+ alias=weapon.removeprefix('weapon_')
+ if alias=='mp5navy':alias='mp5navy'
+ for field,event in [('shoot_sound','SACS2.Fire.'+alias+('_alt' if alias in ('m4a1','usp') else '')),('silenced_sound','SACS2.Fire.'+alias)]:
+  body=re.sub(r'("'+field+r'"\s+)"[^"]+"',lambda m:m[1]+'"'+event+'"',body)
  name=re.search(r'"name"\s+"([^"]+)"',body)[1]
  catalog.append(dict(item_id=item,weapon=weapon,name=name,model=path))
  return '"'+str(item)+'"\n {'+body+'}'
 manifest=re.sub(r'"(\d+)"\s*\{([^{}]+)\}',update,manifest)
-assert len(catalog)==24
+assert len(catalog)==25
 manifest=manifest.replace('{','{\n "animation_sound_script" "scripts/game_sounds_sourceadvanced_cs2.txt"',1)
 glove_catalog=json.loads((gloves/'asset-audit.json').read_text())['catalog']
 assert len(glove_catalog)==20 and next(g for g in glove_catalog if g['item_id']==4019)['name']=='Glove Sporty'
@@ -61,4 +69,4 @@ report=dict(firearms=catalog,gloves=glove_catalog,modules=modules,
  default_glove=4019,gameplay_scripts_imported=False,source_weapon_pack=str(firearms),source_gloves='CSSO',
  files={str(p.relative_to(assets)):hashlib.sha256(p.read_bytes()).hexdigest() for p in assets.rglob('*') if p.is_file()})
 (root/'stage-audit.json').write_text(json.dumps(report,indent=2),encoding='utf8')
-print('Staged 24 original firearm animation models + 20 CSSO glove types; inventory has 75 cards.',flush=True)
+print('Staged 24 firearm models, 1 CS2 Butterfly model, and 20 CSSO glove types; inventory has 75 cards.',flush=True)

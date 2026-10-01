@@ -3249,6 +3249,20 @@ ConVar cl_autohelp(
 
 	bool CCSGameRules::CheckGameOver()
 	{
+		if ( g_fGameOver && mp_restartgame.GetInt()>0 )
+			CheckRestartRound();
+		if ( g_fGameOver && m_bCompleteReset && m_flRestartRoundTime>0 )
+		{
+			// Keep the final scoreboard until the admin's restart deadline.
+			// Round-limit checks must not immediately start intermission again.
+			if(m_flRestartRoundTime<=gpGlobals->curtime)
+			{
+				g_fGameOver=false;
+				m_flIntermissionEndTime=0;
+				RestartRound();
+			}
+			return true;
+		}
 		if ( g_fGameOver )   // someone else quit the game already
 		{
 			//=============================================================================

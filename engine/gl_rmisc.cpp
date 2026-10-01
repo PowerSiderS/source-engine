@@ -9,6 +9,7 @@
 
 // HDRFIXME: reduce the number of include files here.
 #include "render_pch.h"
+#include "client.h"
 #include "cdll_int.h"
 #include "client_class.h"
 #include "icliententitylist.h"
@@ -37,6 +38,7 @@
 #include "ibsppack.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
+#include "client_load_profile.h"
 #include "tier0/memdbgon.h"
 
 void Linefile_Read_f(void);
@@ -235,8 +237,8 @@ void R_LevelInit( void )
 	r_framecount = 1; 
 	R_ResetLightStyles();
 	R_DecalInit();
-	R_LoadSkys();
-	R_InitStudio();
+	{ CClientLoadTimer timer("sky", cl.m_szLevelBaseName); R_LoadSkys(); }
+	{ CClientLoadTimer timer("studio", cl.m_szLevelBaseName); R_InitStudio(); }
 
 	// FIXME: Is this the best place to initialize the kd tree when we're client-only?
 	if ( !sv.IsActive() )
@@ -244,12 +246,12 @@ void R_LevelInit( void )
 		g_pShadowMgr->LevelShutdown();
 		StaticPropMgr()->LevelShutdown();
 		SpatialPartition()->Init( host_state.worldmodel->mins, host_state.worldmodel->maxs );
-		StaticPropMgr()->LevelInit();
+		{ CClientLoadTimer timer("static_props", cl.m_szLevelBaseName); StaticPropMgr()->LevelInit(); }
 		g_pShadowMgr->LevelInit( host_state.worldbrush->numsurfaces );
 	}
 
 	// We've fully loaded the new level, unload any models that we don't care about any more
-	modelloader->UnloadUnreferencedModels();
+	{ CClientLoadTimer timer("unload_models", cl.m_szLevelBaseName); modelloader->UnloadUnreferencedModels(); }
 
 	if ( host_state.worldmodel->brush.pShared->numworldlights == 0 )
 	{
@@ -257,7 +259,7 @@ void R_LevelInit( void )
 		mat_fullbright.SetValue( 1 );
 	}
 
-	UpdateMaterialSystemConfig();
+	{ CClientLoadTimer timer("material_config", cl.m_szLevelBaseName); UpdateMaterialSystemConfig(); }
 	
 	// FIXME: E3 2003 HACK
 	if ( IsPC() && mat_levelflush.GetBool() )
@@ -268,16 +270,16 @@ void R_LevelInit( void )
 
 	// precache any textures that are used in this map.
 	// this is a no-op for textures that are already cached from the previous map.
-	materials->CacheUsedMaterials();
+	{ CClientLoadTimer timer("renderer_materials", cl.m_szLevelBaseName); materials->CacheUsedMaterials(); }
 
 	// Loads the world geometry
-	R_LoadWorldGeometry();
+	{ CClientLoadTimer timer("world_geometry", cl.m_szLevelBaseName); R_LoadWorldGeometry(); }
 
 	R_Surface_LevelInit();
 	R_Areaportal_LevelInit();
 	
 	// Build the overlay fragments.
-	OverlayMgr()->CreateFragments();
+	{ CClientLoadTimer timer("overlays", cl.m_szLevelBaseName); OverlayMgr()->CreateFragments(); }
 
 #ifdef _XBOX
 	extern void CompactTextureHeap();
@@ -285,7 +287,7 @@ void R_LevelInit( void )
 #endif
 
 	COM_TimestampedLog( "R_LevelInit: Finish" );
-	FinishDeferredMaterialSystemRestore();
+	{ CClientLoadTimer timer("restore_materials", cl.m_szLevelBaseName); FinishDeferredMaterialSystemRestore(); }
 }
 
 void R_LevelShutdown()

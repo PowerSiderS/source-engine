@@ -6,6 +6,7 @@
 //=============================================================================//
 
 #include "cbase.h"
+#include "cs_weapon_presentation.h"
 #include "cs_inventory.h"
 #include "cs_player.h"
 #include "cs_anticheat.h"
@@ -3517,6 +3518,7 @@ BuyResult_e CCSPlayer::HandleCommand_Buy_Internal( const char* wpnName )
 
 	// translate the new weapon names to the old ones that are actually being used.
 	wpnName = GetTranslatedWeaponAlias(wpnName);
+	if(CSIsUnportedFirearm(AliasToWeaponID(wpnName))) return BUY_NOT_ALLOWED;
 
 	CCSWeaponInfo *pWeaponInfo = GetWeaponInfo( AliasToWeaponID( wpnName ) );
 	if ( pWeaponInfo == NULL )
@@ -6908,6 +6910,8 @@ CBaseEntity	*CCSPlayer::GiveNamedItem( const char *pszName, int iSubType )
 
 	if ( !pszName || !pszName[0] )
 		return  NULL;
+	if(!Q_strnicmp(pszName,"weapon_",7) && CSIsUnportedFirearm(AliasToWeaponID(pszName+7)))
+	{ ClientPrint(this,HUD_PRINTCONSOLE,"This weapon has no current animation model in the installed pack.\n"); return NULL; }
 
 #ifndef CS_SHIELD_ENABLED
 	if ( !Q_stricmp( pszName, "weapon_shield" ) )

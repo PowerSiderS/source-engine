@@ -56,14 +56,24 @@ IMaterialProxy *CMaterialProxyFactory::LookupProxy( const char *proxyName, Creat
 	if( !factory )
 		return NULL;
 
-	// allocate exactly enough memory for the versioned name on the stack.
-	char *proxyVersionedName;
-	int buflen = Q_strlen( proxyName ) + Q_strlen( IMATERIAL_PROXY_INTERFACE_VERSION ) + 1;
-
-	proxyVersionedName = ( char * )_alloca( buflen );
-	Q_strncpy( proxyVersionedName, proxyName, buflen );
-	Q_strncat( proxyVersionedName, IMATERIAL_PROXY_INTERFACE_VERSION, buflen, COPY_ALL_CHARACTERS );
-	return ( IMaterialProxy * )factory( proxyVersionedName, NULL );
+	char proxyVersionedName[256];
+	if(!proxyName || Q_strlen(proxyName)+Q_strlen(IMATERIAL_PROXY_INTERFACE_VERSION)>=sizeof(proxyVersionedName)) return NULL;
+	Q_snprintf(proxyVersionedName,sizeof(proxyVersionedName),"%s%s",proxyName,IMATERIAL_PROXY_INTERFACE_VERSION);
+	IMaterialProxy *proxy=(IMaterialProxy *)factory(proxyVersionedName,NULL);
+	if(proxy) return proxy;
+	// Some ported map VMTs lower-case names. Interface factories are case
+	// sensitive even though material keys are not. Resolve built-in spellings.
+	static const char *names[]={"LinearRamp","TextureTransform","AnimatedTexture","TextureScroll",
+		"Sine","Equals","Add","Subtract","Multiply","Divide","Clamp","Abs","LessOrEqual",
+		"SelectFirstIfNonZero","GaussianNoise","UniformNoise","CurrentTime","PlayerProximity",
+		"EntityRandom","PlayerSpeed","PlayerPosition","EntityOrigin","EntityVelocity","EntityAngles",
+		"WorldDims","TextureToggle","WaterLOD","TeamColor","IronSightAmount"};
+	for(int i=0;i<ARRAYSIZE(names);++i) if(!Q_stricmp(proxyName,names[i]))
+	{
+		Q_snprintf(proxyVersionedName,sizeof(proxyVersionedName),"%s%s",names[i],IMATERIAL_PROXY_INTERFACE_VERSION);
+		return (IMaterialProxy *)factory(proxyVersionedName,NULL);
+	}
+	return NULL;
 }
 
 

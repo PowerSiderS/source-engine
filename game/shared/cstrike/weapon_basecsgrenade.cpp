@@ -75,6 +75,7 @@ CBaseCSGrenade::CBaseCSGrenade()
 void CBaseCSGrenade::Precache()
 {
 	BaseClass::Precache();
+	PrecacheScriptSound("SACS2.Grenade.Throw");
 }
 
 //-----------------------------------------------------------------------------
@@ -374,6 +375,7 @@ void CBaseCSGrenade::ItemPostFrame()
 		Vector vecThrow = vForward * flVel + pPlayer->GetAbsVelocity()*CS_GRENADE_PLAYER_VELOCITY_SCALE;
 
 		EmitGrenade( vecSrc, vec3_angle, vecThrow, AngularImpulse(600,random->RandomInt(-1200,1200),0), pPlayer );
+		pPlayer->EmitSound("SACS2.Grenade.Throw");
 
 		m_bRedraw = true;
 		m_fThrowTime = 0.0f;

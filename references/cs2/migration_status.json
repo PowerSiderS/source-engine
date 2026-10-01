@@ -1,6 +1,6 @@
 {
   "snapshot": "2026-10-01",
-  "production_installed": false,
+  "production_installed": true,
   "policy": "Concluído somente com evidência de build/teste; adaptações não implicam identidade CS2/CSGO2015.",
   "items": [
     {
@@ -20,78 +20,78 @@
     {
       "id": "03",
       "title": "Hitboxes de jogadores",
-      "status": "Em teste",
-      "details": "19 cápsulas × 8 rigs; radii/endpoints CS2 adaptados às poses Source 1; 152 geometrias auditadas.",
-      "evidence": "cs2-hitbox-import/asset-audit.json"
+      "status": "Validado no pacote",
+      "details": "Oito modelos montados conferidos byte a byte; 24 poses e 2.736 raios sem falhas. Malhas/animações Source 1 preservadas; não comprova identidade visual Source 2.",
+      "evidence": "animation-gloves-update/cs2-systems-test/result.json"
     },
     {
       "id": "04",
       "title": "Bones e alinhamento animado",
-      "status": "Em teste",
-      "details": "Esqueleto e animações Source 1 preservados; ainda precisa teste em pé/agachado/rotação/disparo.",
-      "evidence": "cs2-hitbox-import"
+      "status": "Validado no pacote",
+      "details": "Oito modelos montados conferidos byte a byte; 24 poses e 2.736 raios sem falhas. Malhas/animações Source 1 preservadas; não comprova identidade visual Source 2.",
+      "evidence": "animation-gloves-update/cs2-systems-test/result.json"
     },
     {
       "id": "05",
       "title": "Recoil e spray por arma",
-      "status": "Em teste",
-      "details": "34 perfis atuais compilados; sementes/amplitudes/variâncias extraídas. Gerador determinístico Source 1 permanece; equivalência Source 2 não comprovada.",
-      "evidence": "references/cs2/weapon_profiles.json"
+      "status": "Validado no pacote",
+      "details": "34 perfis comparados com a extração independente; 4.352 impulsos finitos e disparos reais. Gerador Source 1 preservado; equivalência do algoritmo Source 2 não comprovada.",
+      "evidence": "animation-gloves-update/cs2-systems-test/result.json"
     },
     {
       "id": "06",
       "title": "Precisão e recuperação",
-      "status": "Em teste",
-      "details": "Valores por modo, postura, movimento, salto e transição de recuperação copiados para os 34 perfis.",
-      "evidence": "references/cs2/weapon_profiles.json"
+      "status": "Validado no pacote",
+      "details": "34 perfis comparados com a extração independente; 4.352 impulsos finitos e disparos reais. Gerador Source 1 preservado; equivalência do algoritmo Source 2 não comprovada.",
+      "evidence": "animation-gloves-update/cs2-systems-test/result.json"
     },
     {
       "id": "07",
       "title": "Economia e preços",
-      "status": "Em teste",
-      "details": "38 entradas, bônus de perda progressivo, recompensas de arma/objetivo, MR12 e munição gratuita; falta validação de transações reais.",
-      "evidence": "game/shared/cstrike/cs_economy.h"
+      "status": "Validado no pacote",
+      "details": "38 preços/recompensas, compras reais, negação, munição gratuita e quatro transições de rodadas com conferência de saldos/níveis. Halftime, objetivos e todas as recompensas de kills ainda exigem cenários próprios.",
+      "evidence": "animation-gloves-update/round-economy-test/result.json"
     },
     {
       "id": "08",
       "title": "HUD clássico CS:GO rosa",
-      "status": "Em teste",
-      "details": "Layout VGUI: radar/dinheiro, relógio/placar/vivos, vida/colete e munição; atlas de ícones limpos.",
-      "evidence": "hud-pink"
+      "status": "Validado no pacote",
+      "details": "HUD rosa inspirado no CS:GO revisado em 800, 1024 e 1920 pixels; desenho nativo VGUI, sem identidade Panorama.",
+      "evidence": "animation-gloves-update/visual-review.json"
     },
     {
       "id": "09",
       "title": "Menu e inventário estilo CS:GO",
-      "status": "Em implementação",
-      "details": "Grade e categorias locais; acesso direto em janela ampla. Não importa serviços Steam/Panorama.",
+      "status": "Integrado",
+      "details": "Janela ampla com 75 cartões, categorias, seleção local e open_inventory. Sem serviços Steam/Panorama; revisão visual final registrada separadamente.",
       "evidence": "gameui/OptionsSubInventory.cpp"
     },
     {
       "id": "10",
       "title": "Animações de armas",
-      "status": "Em teste",
-      "details": "24 modelos Source 1 do pacote fornecido, motion original preservado. Não são uma extração direta/autenticada dos modelos Source 2.",
-      "evidence": "cs2-animation-import"
+      "status": "Validado no pacote",
+      "details": "24 modelos fornecidos: repouso/default/inspeção/disparo/recarga; encerramento normal e troca Mirage/Nuke. Ports Source 1 com animações originais, não extração direta Source 2.",
+      "evidence": "animation-gloves-update/native-test/result.json"
     },
     {
       "id": "11",
       "title": "Luvas CSSO e pulsos",
-      "status": "Em teste",
-      "details": "20 estilos × 3 rigs; quatro malhas sport.smd antes não ocultadas foram corrigidas. Revisão visual restante.",
-      "evidence": "csso-glove-import"
+      "status": "Validado no pacote",
+      "details": "60 combinacoes estruturais; cinco armas em quatro poses e Sporty nos tres rigs revisados. Corrigido braco desanexado apos respawn; sete transicoes com maos visiveis. Nao certifica todos os frames.",
+      "evidence": "animation-gloves-update/arm-lifecycle-test/result.json"
     },
     {
       "id": "12",
       "title": "Áudio CS2",
-      "status": "Em implementação",
-      "details": "Conversão de disparos locais para PCM compatível; mixagem espacial/acústica Source 1 continua.",
-      "evidence": "cs2-audio-reference"
+      "status": "Integrado",
+      "details": "36 sons locais convertidos para PCM e auditados. Mistura espacial Source 1; HRTF/camadas acústicas Source 2 não importadas.",
+      "evidence": "cs2-audio-import/asset-audit.json"
     },
     {
       "id": "13",
       "title": "Dano, headshot e penetração",
       "status": "Parcial",
-      "details": "Dano base, alcance e armor ratio nos perfis; multiplicador por arma, penetração float/materiais ainda exigem integração.",
+      "details": "Dano, alcance, armor ratio e multiplicador de headshot por arma integrados. Penetração float, materiais e cenários de dano ainda exigem revisão.",
       "evidence": "game/shared/cstrike/fx_cs_shared.cpp"
     },
     {
@@ -132,16 +132,16 @@
     {
       "id": "19",
       "title": "Carregamentos e resolução",
-      "status": "Parcial",
-      "details": "Correções de engine existentes; relatório de tempo real dos dez mapas e conexão dedicada ainda incompleto.",
-      "evidence": "native-knife-engine-20260930/map-loading-profile"
+      "status": "Medido; otimizacao parcial",
+      "details": "Dez mapas completados em partida local e dedicated, ate fechar a tela de carregamento. Tempos publicados com cache aquecido; mapas pesados ainda exigem otimizacao. Troca de resolucao validada em tres tamanhos.",
+      "evidence": "loading-profile-cache"
     },
     {
       "id": "20",
       "title": "Mapas do usuário e dedicated",
-      "status": "Em teste",
-      "details": "Usar somente catálogo local permitido; VPK/DLLs comuns e auditoria nativa no servidor.",
-      "evidence": "animation-gloves-update/dedicated-test"
+      "status": "Validado no pacote",
+      "details": "Dedicated: 34 perfis, 38 preços, 456 raios, 1.280 props sem falhas; lista restrita aos dez mapas permitidos. Não é um teste de conexão em todos os mapas.",
+      "evidence": "animation-gloves-update/dedicated-test/result.json"
     },
     {
       "id": "21",
@@ -157,5 +157,6 @@
       "details": "Sistema existente; não pode importar VAC/serviços privados da Valve como assets. Revisão futura contra falsos positivos.",
       "evidence": "game/server/cstrike/cs_anticheat.cpp"
     }
-  ]
+  ],
+  "installation_manifest": "C:\\Users\\SnyX\\Desktop\\Source Advanced V1 - PowerSiderS (PC)\\Source Advanced V1 - @PowerSiderS (PC)\\animation_gloves_manifest.json"
 }

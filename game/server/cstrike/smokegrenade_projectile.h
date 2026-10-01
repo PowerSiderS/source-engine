@@ -47,6 +47,7 @@ public:
 
 	EHANDLE m_hSmokeEffect;
 	bool m_bDidSmokeEffect;
+	float m_flSmokeStartTime;
 	float m_flDetonateDeadline;
 };
 

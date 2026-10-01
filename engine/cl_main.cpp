@@ -77,6 +77,7 @@
 #include "igame.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
+#include "client_load_profile.h"
 #include "tier0/memdbgon.h"
 
 extern IVEngineClient *engineClient;
@@ -1048,7 +1049,7 @@ void CL_FullyConnected( void )
 	// This has to happen here, in phase 3, because it is in this phase
 	// that raycasts against the world is supported (owing to the fact
 	// that the world entity has been created by this point)
-	StaticPropMgr()->LevelInitClient();
+	{ CClientLoadTimer timer("prop_lighting", cl.m_szLevelBaseName); StaticPropMgr()->LevelInitClient(); }
 
 	if ( IsX360() )
 	{
@@ -1057,14 +1058,14 @@ void CL_FullyConnected( void )
 	}
 
 	// flush client-side dynamic models that have no refcount
-	modelloader->FlushDynamicModels();
+	{ CClientLoadTimer timer("flush_dynamic_models", cl.m_szLevelBaseName); modelloader->FlushDynamicModels(); }
 
 	// loading completed
 	// can NOW safely purge unused models and their data hierarchy (materials, shaders, etc)
-	modelloader->PurgeUnusedModels();
+	{ CClientLoadTimer timer("purge_models", cl.m_szLevelBaseName); modelloader->PurgeUnusedModels(); }
 
 	// Purge the preload stores, oreder is critical
-	g_pMDLCache->ShutdownPreloadData();
+	{ CClientLoadTimer timer("discard_preload", cl.m_szLevelBaseName); g_pMDLCache->ShutdownPreloadData(); }
 
 	// NOTE: purposely disabling for singleplayer, memory spike causing issues, preload's stay in
 	// UNDONE: discard preload for TF to save memory
@@ -1074,7 +1075,7 @@ void CL_FullyConnected( void )
 	// unnecessary reloads of items that wont be used on this map.
 	if ( cl.m_pPendingPureFileReloads )
 	{
-		CL_ReloadFilesInList( cl.m_pPendingPureFileReloads );
+		{ CClientLoadTimer timer("pure_reload", cl.m_szLevelBaseName); CL_ReloadFilesInList( cl.m_pPendingPureFileReloads ); }
 		cl.m_pPendingPureFileReloads->Release();
 		cl.m_pPendingPureFileReloads = NULL;
 	}
@@ -1083,7 +1084,7 @@ void CL_FullyConnected( void )
 	// NO MORE PRELOAD DATA AVAILABLE PAST THIS POINT!!!
 	// ***************************************************************
 
- 	g_ClientDLL->LevelInitPostEntity();
+ 	{ CClientLoadTimer timer("client_entities", cl.m_szLevelBaseName); g_ClientDLL->LevelInitPostEntity(); }
 
 	// communicate to tracker that we're in a game
 	int ip = cl.m_NetChannel->GetRemoteAddress().GetIPNetworkByteOrder();
@@ -1107,7 +1108,7 @@ void CL_FullyConnected( void )
 		CM_DiscardEntityString();
 	}
 
-	g_pMDLCache->EndMapLoad();
+	{ CClientLoadTimer timer("mdl_end_load", cl.m_szLevelBaseName); g_pMDLCache->EndMapLoad(); }
 
 #if defined( _MEMTEST )
 	Cbuf_AddText( "mem_dump\n" );
@@ -1194,7 +1195,7 @@ void CL_FullyConnected( void )
 	cl_clanid.SetValue( 0 );
 	cl_clanid.SetValue( id );
 
-	MemAlloc_CompactHeap();
+	{ CClientLoadTimer timer("compact_heap", cl.m_szLevelBaseName); MemAlloc_CompactHeap(); }
 
 	extern double g_flAccumulatedModelLoadTime;
 	extern double g_flAccumulatedSoundLoadTime;
@@ -3158,6 +3159,7 @@ void CL_InstallAndInvokeClientStringTableCallbacks()
 		if ( pNewFunction == pOldFunction )
 			continue;
 
+		CClientLoadTimer tableTimer(pTable->GetTableName(), cl.m_szLevelBaseName);
 		for ( int j = 0; j < pTable->GetNumStrings(); ++j )
 		{
 			int userDataSize;

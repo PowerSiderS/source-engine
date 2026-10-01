@@ -427,6 +427,22 @@ public:
 		m_pMotionBlur->AddItem("#gameui_enabled", NULL);
 
 		LoadControlSettings( "resource/OptionsSubVideoAdvancedDlg.res" );
+		// Keep output resolution and world projection as independent options.
+		const int originalTall=GetTall();
+		for(int i=0;i<GetChildCount();++i)
+		{
+			Panel *child=GetChild(i); int x,y; child->GetPos(x,y);
+			if(y>=originalTall-60) child->SetPos(x,y+48);
+		}
+		SetTall(originalTall+48);
+		Label *aspectLabel=new Label(this,"RenderAspectLabel","Proporcao da cena");
+		aspectLabel->SetBounds(24,originalTall-60,190,28);
+		m_pRenderAspect=new ComboBox(this,"RenderAspect",4,false);
+		m_pRenderAspect->SetBounds(220,originalTall-60,MAX(100,GetWide()-244),28);
+		m_pRenderAspect->AddItem("Automatica (resolucao)",NULL);
+		m_pRenderAspect->AddItem("4:3 esticado",NULL);
+		m_pRenderAspect->AddItem("16:10 esticado",NULL);
+		m_pRenderAspect->AddItem("16:9",NULL);
 		MoveToCenterOfScreen();
 		SetSizeable( false );
 
@@ -777,6 +793,7 @@ public:
 		ApplyChangesToConVar( "mat_colorcorrection", m_pColorCorrection->GetActiveItem() );
 
 		ApplyChangesToConVar( "mat_motion_blur_enabled", m_pMotionBlur->GetActiveItem() );
+		ApplyChangesToConVar( "cl_render_aspect", m_pRenderAspect->GetActiveItem() );
 		
 		CCvarSlider *pFOV = (CCvarSlider *)FindChildByName( "FOVSlider" );
 		if ( pFOV ) 
@@ -787,6 +804,8 @@ public:
 
 	virtual void OnResetData()
 	{
+		ConVarRef renderAspect("cl_render_aspect");
+		m_pRenderAspect->ActivateItem(renderAspect.IsValid() ? clamp(renderAspect.GetInt(),0,3) : 0);
 		ConVarRef mat_dxlevel( "mat_dxlevel" );
 		ConVarRef r_rootlod( "r_rootlod" );
 		ConVarRef mat_picmip( "mat_picmip" );
@@ -985,6 +1004,7 @@ private:
 	vgui::ComboBox *m_pShadowDetail, *m_pHDR, *m_pWaterDetail, *m_pVSync, *m_pMulticore, *m_pShaderDetail;
 	vgui::ComboBox *m_pColorCorrection;
 	vgui::ComboBox *m_pMotionBlur;
+	vgui::ComboBox *m_pRenderAspect;
 	vgui::ComboBox *m_pDXLevel;
 
 	int m_nNumAAModes;

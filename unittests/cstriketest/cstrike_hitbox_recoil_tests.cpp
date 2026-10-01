@@ -145,10 +145,61 @@ DEFINE_TESTCASE( RecoilSuppressionAndModeTest, CStrikeHitboxRecoilTestSuite )
 	CSRecoilOffset offsets[64];
 	CSGenerateRecoilPattern(random,223,true,0,0,30,0,4,0.75f,0.55f,offsets,64);
 	Shipping_Assert(Close(offsets[0].fMagnitude,22.5f));
-	Shipping_Assert(Close(offsets[1].fMagnitude,24.375f));
-	Shipping_Assert(Close(offsets[2].fMagnitude,26.25f));
-	Shipping_Assert(Close(offsets[3].fMagnitude,28.125f));
+	Shipping_Assert(Close(offsets[1].fMagnitude,21.6328125f));
+	Shipping_Assert(Close(offsets[2].fMagnitude,22.9554199f));
+	Shipping_Assert(Close(offsets[3].fMagnitude,25.1530678f));
 	Shipping_Assert(Close(offsets[63].fMagnitude,30));
 	CSGenerateRecoilPattern(random,223,false,0,0,30,0,4,0.75f,0.55f,offsets,64);
 	Shipping_Assert(Close(offsets[0].fMagnitude,30));
+	Shipping_Assert(Close(offsets[1].fMagnitude,30));
+}
+
+DEFINE_TESTCASE( CS2AK47RecordedImpulseTest, CStrikeHitboxRecoilTestSuite )
+{
+	// Independent offline CS2 demo, patch 1.41.8.1: recorded base velocities.
+	const float referenceVelocity[30][2] = {
+		{-19.9884243f, -10.3301945f},
+		{-33.3389091f, 0.0371489525f},
+		{-44.0956955f, -2.29641318f},
+		{-53.2594757f, -2.18210745f},
+		{-60.7618408f, 6.06096792f},
+		{-67.3836212f, 8.53518295f},
+		{-71.0697174f, 14.5996895f},
+		{-74.4104919f, 2.85722494f},
+		{-68.9622192f, -18.9556313f},
+		{-71.6650467f, -23.5188713f},
+		{-75.5643463f, -12.3934889f},
+		{-73.9596252f, -23.2328854f},
+		{-69.7514877f, -34.5458298f},
+		{-72.8099747f, -31.8792534f},
+		{-74.682663f, -10.2524338f},
+		{-77.594902f, -5.32429314f},
+		{-79.3531952f, -0.677322388f},
+		{-78.2406006f, 11.2245808f},
+		{-73.3677979f, 25.8310642f},
+		{-75.7364655f, 8.62194633f},
+		{-76.7108459f, 15.1075821f},
+		{-78.9120407f, 9.87204647f},
+		{-80.3141937f, 6.6692934f},
+		{-77.5182343f, 18.6715469f},
+		{-78.7192917f, 18.3869305f},
+		{-79.6890793f, 6.24508333f},
+		{-77.9378815f, -8.83150101f},
+		{-70.3357544f, -27.4021835f},
+		{-72.7478409f, -28.499733f},
+		{-76.1285706f, -14.2500381f},
+	};
+	CUniformRandomStream random;
+	CSRecoilOffset offsets[64];
+	CSGenerateRecoilPattern(random,223,true,0,70,30,0,4,0.75f,0.55f,offsets,64);
+	float pitchVelocity = 0.0f, yawVelocity = 0.0f;
+	const float velocityDecay = expf(-4.5f * 0.1f);
+	for (int shot = 0; shot < 30; ++shot)
+	{
+		const float angle = DEG2RAD(offsets[shot].fAngle);
+		pitchVelocity = pitchVelocity * velocityDecay - cosf(angle) * offsets[shot].fMagnitude;
+		yawVelocity = yawVelocity * velocityDecay - sinf(angle) * offsets[shot].fMagnitude;
+		Shipping_Assert(Close(pitchVelocity, referenceVelocity[shot][0], 0.0001f));
+		Shipping_Assert(Close(yawVelocity, referenceVelocity[shot][1], 0.0001f));
+	}
 }

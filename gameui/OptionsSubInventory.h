@@ -9,6 +9,7 @@ class COptionsSubInventory : public vgui::PropertyPage
 public:
 	COptionsSubInventory( vgui::Panel *parent );
 	virtual void PerformLayout();
+	virtual void PaintBackground() {} // The inventory frame owns its translucent backdrop.
 	virtual void OnCommand( const char *command );
 	MESSAGE_FUNC( OnCategoryChanged, "TextChanged" );
 	MESSAGE_FUNC_INT( OnScroll, "ScrollBarSliderMoved", position );

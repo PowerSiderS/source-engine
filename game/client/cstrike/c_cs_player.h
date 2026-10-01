@@ -189,7 +189,7 @@ public:
 		float flRangeModifier,
 		CBaseEntity *pevAttacker,
 		bool bDoEffects,
-		float xSpread, float ySpread );
+		float xSpread, float ySpread, float penetrationPower = 0 );
 
 	// table-driven aim punch
 	void KickBack( float fAngle, float fMagnitude );

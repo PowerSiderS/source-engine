@@ -30,7 +30,7 @@ CHEGrenadeProjectile* CHEGrenadeProjectile::Create(
 	// Set the timer for 1 second less than requested. We're going to issue a SOUND_DANGER
 	// one second before detonation.
 
-	pGrenade->SetDetonateTimerLength( 1.5 );
+	pGrenade->SetDetonateTimerLength( timer );
 	pGrenade->SetAbsVelocity( velocity );
 	pGrenade->SetupInitialTransmittedGrenadeVelocity( velocity );
 	pGrenade->SetThrower( pOwner ); 

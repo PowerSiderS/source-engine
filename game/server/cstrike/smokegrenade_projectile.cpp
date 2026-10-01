@@ -21,6 +21,7 @@ PRECACHE_WEAPON_REGISTER( smokegrenade_projectile );
 
 BEGIN_DATADESC( CSmokeGrenadeProjectile )
 	DEFINE_FIELD( m_flDetonateDeadline, FIELD_TIME ),
+	DEFINE_FIELD( m_flSmokeStartTime, FIELD_TIME ),
 	DEFINE_THINKFUNC( Think_Detonate ),
 	DEFINE_THINKFUNC( Think_Fade ),
 	DEFINE_THINKFUNC( Think_Remove )
@@ -113,6 +114,7 @@ void CSmokeGrenadeProjectile::Think_Detonate()
 		}
 	}
 
+	m_flSmokeStartTime=gpGlobals->curtime;
 	m_hSmokeEffect = pGren;
 	m_bDidSmokeEffect = true;
 
@@ -127,21 +129,15 @@ void CSmokeGrenadeProjectile::Think_Detonate()
 // Fade the projectile out over time before making it disappear
 void CSmokeGrenadeProjectile::Think_Fade()
 {
-	SetNextThink( gpGlobals->curtime );
-
-	color32 c = GetRenderColor();
-	c.a -= 1;
-	SetRenderColor( c.r, c.b, c.g, c.a );
-
-	if ( !c.a )
-	{
-		TheBots->RemoveGrenade( this );
-
-		SetModelName( NULL_STRING );//invisible
-		SetNextThink( gpGlobals->curtime + 20 );
-		SetThink( &CSmokeGrenadeProjectile::Think_Remove );	// Spit out smoke for 10 seconds.
-		SetSolid( SOLID_NONE );
-	}
+	const float age=gpGlobals->curtime-m_flSmokeStartTime;
+	const int alpha=clamp(int(255.0f*(6.0f-age)),0,255);
+	color32 c=GetRenderColor();SetRenderColor(c.r,c.g,c.b,alpha);
+	if(alpha>0) {SetNextThink(gpGlobals->curtime+0.05f);return;}
+	SetModelName(NULL_STRING);SetSolid(SOLID_NONE);SetMoveType(MOVETYPE_NONE);
+	// Keep the bot's smoke volume until the visual cloud dissipates.
+	TheBots->SetGrenadeRadius(this,SmokeGrenadeRadius);
+	SetThink(&CSmokeGrenadeProjectile::Think_Remove);
+	SetNextThink(m_flSmokeStartTime+20.0f);
 }
 
 
@@ -155,6 +151,7 @@ void CSmokeGrenadeProjectile::Think_Remove()
 	SetModelName( NULL_STRING );//invisible
 	SetSolid( SOLID_NONE );
 	SetMoveType( MOVETYPE_NONE );
+	UTIL_Remove( this );
 }
 
 //Implement this so we never call the base class,
@@ -167,6 +164,7 @@ void CSmokeGrenadeProjectile::Detonate( void )
 
 void CSmokeGrenadeProjectile::Spawn()
 {
+	m_flSmokeStartTime=0.0f;
 	SetModel( GRENADE_MODEL );
 	BaseClass::Spawn();
 }

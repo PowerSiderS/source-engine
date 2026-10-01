@@ -56,7 +56,7 @@ def add_pdb_per_object(self):
 		if task.inputs and task.env.CC_NAME == 'msvc':
 			game=self.bld.srcnode.find_node('game')
 			gameui=self.bld.srcnode.find_node('gameui')
-			if task.inputs[0].is_child_of(game) or task.inputs[0].is_child_of(gameui):
+			if (game and task.inputs[0].is_child_of(game)) or (gameui and task.inputs[0].is_child_of(gameui)):
 				# Invalidate objects produced before localized header scanning worked.
 				for flags in ('CFLAGS','CXXFLAGS'):
 					task.env.append_unique(flags,'/DSA_HEADER_DEPS_VERSION=1')

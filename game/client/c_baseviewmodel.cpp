@@ -41,6 +41,9 @@
 	class CUnifiedViewArms : public C_BaseAnimating
 	{
 	public:
+		CUnifiedViewArms() : m_nDrawCalls(0),m_nLastDrawReturn(0),m_nLastDrawFrame(-1) {}
+		int m_nDrawCalls,m_nLastDrawReturn,m_nLastDrawFrame;
+		bool ReadyToDraw() const { return m_bReadyToDraw; }
 		virtual bool IsViewModel() const { return true; }
 		virtual RenderGroup_t GetRenderGroup() { return RENDER_GROUP_VIEW_MODEL_OPAQUE; }
 		virtual ShadowType_t ShadowCastType() { return SHADOWS_NONE; }
@@ -54,10 +57,23 @@
 			C_BaseViewModel *parent = dynamic_cast<C_BaseViewModel *>( GetMoveParent() );
 			CMatRenderContextPtr context( materials );
 			if ( parent && parent->ShouldFlipViewModel() ) context->CullMode( MATERIAL_CULLMODE_CW );
+			++m_nDrawCalls; m_nLastDrawFrame=gpGlobals->framecount;
 			int result = C_BaseAnimating::InternalDrawModel( flags );
+			m_nLastDrawReturn=result;
 			context->CullMode( MATERIAL_CULLMODE_CCW ); return result;
 		}
 	};
+	CON_COMMAND_F(cl_unified_arms_status,"Read attached arms render state without rebuilding bones.",FCVAR_CHEAT)
+	{
+		C_BasePlayer *player=C_BasePlayer::GetLocalPlayer();
+		C_BaseViewModel *vm=player ? dynamic_cast<C_BaseViewModel *>(player->GetViewModel(0)) : NULL;
+		CUnifiedViewArms *arms=vm ? dynamic_cast<CUnifiedViewArms *>(vm->m_hUnifiedArms.Get()) : NULL;
+		if(!arms) { Msg("[arms-render] none\n"); return; }
+		const Vector &origin=arms->GetAbsOrigin();
+		Msg("[arms-render] model=%s ready=%d should_draw=%d dormant=%d attached=%d group=%d calls=%d ret=%d age=%d origin=%.1f,%.1f,%.1f\n",
+			modelinfo->GetModelName(arms->GetModel()),arms->ReadyToDraw(),arms->ShouldDraw(),arms->IsDormant(),arms->GetMoveParent()==vm,arms->GetRenderGroup(),
+			arms->m_nDrawCalls,arms->m_nLastDrawReturn,gpGlobals->framecount-arms->m_nLastDrawFrame,origin.x,origin.y,origin.z);
+	}
 
 	void C_BaseViewModel::ReleaseUnifiedArms()
 	{
@@ -78,7 +94,10 @@
 		if ( m_hUnifiedArms )
 		{
 			const model_t *current = m_hUnifiedArms->GetModel();
-			ready=arms && current && !Q_stricmp(modelinfo->GetModelName(current),arms);
+			// Prediction can detach client-only children during death/respawn.
+			// A matching model is reusable only while it still follows this weapon.
+			ready=arms && current && m_hUnifiedArms->GetMoveParent()==this &&
+				!Q_stricmp(modelinfo->GetModelName(current),arms);
 			if (!ready) ReleaseUnifiedArms();
 		}
 		if (!ready && arms && modelinfo->GetModelIndex(arms)>0)
