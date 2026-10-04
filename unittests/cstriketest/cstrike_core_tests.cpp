@@ -6,6 +6,7 @@
 #include "cstrike/cs_2015_weapon_profiles.h"
 #include "cstrike/cs_recoil_pattern.h"
 #include <math.h>
+#include <cmath>
 #include <limits>
 #include "cstrike/cs_grenade_rules.h"
 #include "cstrike/cs_anticheat_rules.h"
@@ -118,7 +119,7 @@ DEFINE_TESTCASE(SharedSprayPredictionTest,CStrikeCoreTestSuite)
             CSGenerateRecoilPattern(server,p.seed,p.fullAuto,m.angle,m.angleVariance,m.magnitude,m.magnitudeVariance,4,.75f,.55f,b,64);
             for(int shot=0;shot<64;++shot) {
                 Shipping_Assert(a[shot].fAngle==b[shot].fAngle && a[shot].fMagnitude==b[shot].fMagnitude);
-                Shipping_Assert(isfinite(a[shot].fAngle) && isfinite(a[shot].fMagnitude));
+                Shipping_Assert(std::isfinite(a[shot].fAngle) && std::isfinite(a[shot].fMagnitude));
             }
         }
     }

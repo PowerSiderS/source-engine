@@ -11,6 +11,7 @@
 #endif
 
 #include "cs_weapon_slots.h"
+#include <cmath> // TODO: Android Compile Fix
 #include <math.h>
 
 inline bool CSUsePickupShouldReplaceSlot( int iSlot )
@@ -111,9 +112,9 @@ inline float CSLegacyRecoveryTime( float flRecoilIndex, float flInitial, float f
 inline float CSAccuracyDecay(float current,float target,float recovery,float elapsed)
 {
 	// Zero recovery is a valid immediate reset; never produce 0/0 or NaNs.
-	if(!isfinite(current) || !isfinite(target)) return isfinite(target) ? target : 0.0f;
-	if(current<=target || !isfinite(recovery) || recovery<=0) return target;
-	if(!isfinite(elapsed) || elapsed<=0) return current;
+	if(!std::isfinite(current) || !std::isfinite(target)) return std::isfinite(target) ? target : 0.0f;
+	if(current<=target || !std::isfinite(recovery) || recovery<=0) return target;
+	if(!std::isfinite(elapsed) || elapsed<=0) return current;
 	return target+(current-target)*expf(-logf(10.0f)*elapsed/recovery);
 }
 

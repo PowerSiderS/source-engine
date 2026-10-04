@@ -17,6 +17,7 @@
 #include "cs_capsule_model.h"
 #include "cs_ballistics.h"
 #include "cs_gameplay_audit.h"
+#include <cmath>
 
 #ifdef CLIENT_DLL
 	#include "c_cs_player.h"
@@ -87,7 +88,7 @@ bool CCSPlayer::TestHitboxes( const Ray_t &ray, unsigned int contentsMask, trace
 		{
 			axes[j].Init(matrix[0][j],matrix[1][j],matrix[2][j]);
 			float lengthSqr = axes[j].LengthSqr();
-			if ( !isfinite(lengthSqr) || lengthSqr <= 0.000001f ) { valid = false; break; }
+			if ( !std::isfinite(lengthSqr) || lengthSqr <= 0.000001f ) { valid = false; break; }
 			// Inverse transform for orthogonal bone axes, including model scale.
 			axes[j] /= lengthSqr;
 			localStart[j] = DotProduct(ray.m_Start - origin,axes[j]);
@@ -153,7 +154,7 @@ CON_COMMAND_F(cs_test_bot,"Private QA only: cs_test_bot index x y z yaw health a
     if(!UTIL_IsCommandIssuedByServerAdmin() || args.ArgC()!=9) {Msg("[test-bot] rejected\n");return;}
     CCSPlayer *p=ToCSPlayer(UTIL_PlayerByIndex(V_atoi(args[1])));
     if(!p || !p->IsBot() || !p->IsAlive()) {Msg("[test-bot] invalid fake client\n");return;}
-    float values[7];for(int i=0;i<7;++i) {values[i]=V_atof(args[i+2]);if(!isfinite(values[i]))return;}
+    float values[7];for(int i=0;i<7;++i) {values[i]=V_atof(args[i+2]);if(!std::isfinite(values[i]))return;}
     Vector position(values[0],values[1],values[2]);
     if(fabsf(position.x)>16384 || fabsf(position.y)>16384 || fabsf(position.z)>16384)return;
     QAngle angles(0,AngleNormalize(values[3]),0);Vector velocity(0,0,0);
@@ -551,7 +552,7 @@ void CCSPlayer::FireBullet(
 	float flPenetrationModifier = 1.f;
 
 	GetBulletTypeParameters( iBulletType, flPenetrationPower, flPenetrationDistance );
-	const bool materialPenetration=isfinite(penetrationPower) && penetrationPower>0;
+	const bool materialPenetration=std::isfinite(penetrationPower) && penetrationPower>0;
 	if(materialPenetration) { iPenetration=4; flPenetrationDistance=3000.0f; }
 
 

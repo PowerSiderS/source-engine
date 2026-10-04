@@ -6,6 +6,7 @@
 #include "cstrike/cs_recoil_pattern.h"
 #include "cstrike/cs_legacy_weapon_tuning.h"
 #include "cstrike/cs_sha256.h"
+#include <cmath>
 #include <limits.h>
 
 DEFINE_TESTSUITE( CStrikeHitboxRecoilTestSuite )
@@ -130,7 +131,7 @@ DEFINE_TESTCASE( WeaponProfilesRecoilDeterminismTest, CStrikeHitboxRecoilTestSui
 			for ( int shot = 0; shot < 64; ++shot )
 			{
 				Shipping_Assert(server[shot].fAngle == client[shot].fAngle && server[shot].fMagnitude == client[shot].fMagnitude);
-				Shipping_Assert(isfinite(server[shot].fAngle) && isfinite(server[shot].fMagnitude) && server[shot].fMagnitude >= 0);
+				Shipping_Assert(std::isfinite(server[shot].fAngle) && std::isfinite(server[shot].fMagnitude) && server[shot].fMagnitude >= 0);
 			}
 		}
 	}

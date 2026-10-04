@@ -10,6 +10,7 @@
 #include "tier1/strtools.h"
 #include "tier1/utlbuffer.h"
 #include <ctype.h>
+#include <cmath>
 
 ConVar sm_map_enabled( "sm_map_enabled", "1", FCVAR_GAMEDLL, "Enable or disable in-game chat map switcher commands (!map, !maps, !rtv)." );
 ConVar sm_map_delay( "sm_map_delay", "3.0", FCVAR_GAMEDLL, "Delay in seconds before changing to the new map." );
@@ -167,7 +168,7 @@ void MapManager_ChangeMap( const char *pszMapName, float flDelay, const char *ps
 	}
 
 	Q_strncpy( s_szTargetMap, pszMatched, sizeof( s_szTargetMap ) );
-	flDelay=isfinite(flDelay) ? clamp(flDelay,0.0f,30.0f) : 3.0f;
+	flDelay=std::isfinite(flDelay) ? clamp(flDelay,0.0f,30.0f) : 3.0f;
 	s_bMapChangePending = true;
 	s_flMapChangeTime = gpGlobals->curtime + flDelay;
 	s_nLastCountdownSecond = (int)flDelay;

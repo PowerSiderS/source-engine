@@ -7,6 +7,7 @@
 #include "tier1/KeyValues.h"
 #include "tier1/utlbuffer.h"
 #include "studio.h"
+#include <string.h>
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 #ifdef CLIENT_DLL
 #include "c_cs_player.h"
@@ -232,6 +233,19 @@ static ConVar cl_inventory_loadout( "cl_inventory_loadout", "", FCVAR_ARCHIVE | 
 CON_COMMAND( inspectlook, "Inspect the held weapon; attacks and reload interrupt the animation." )
 { engine->ServerCmd( "inspectlook" ); }
 #endif
+
+#if defined( _WIN32 )
+static char *CSInventoryStrtok( char *string, const char *delimiters, char **context )
+{
+	return strtok_s( string, delimiters, context );
+}
+#else
+static char *CSInventoryStrtok( char *string, const char *delimiters, char **context )
+{
+	return strtok_r( string, delimiters, context );
+}
+#endif
+
 int CInventoryManager::GetPlayerSelection( CBasePlayer *player, CSWeaponID id ) const
 {
 	if ( !player ) return 0;
@@ -242,7 +256,7 @@ int CInventoryManager::GetPlayerSelection( CBasePlayer *player, CSWeaponID id ) 
 #endif
 	char bounded[1024]; Q_strncpy( bounded, choices ? choices : "", sizeof( bounded ) );
 	char *context = NULL;
-	for ( char *token = strtok_s( bounded, ";", &context ); token; token = strtok_s( NULL, ";", &context ) )
+	for ( char *token = CSInventoryStrtok( bounded, ";", &context ); token; token = CSInventoryStrtok( NULL, ";", &context ) )
 	{
 		int weaponId, itemId;
 		if ( sscanf( token, "%d:%d", &weaponId, &itemId ) == 2 && weaponId == id && FindForWeapon( itemId, id ) ) return itemId;

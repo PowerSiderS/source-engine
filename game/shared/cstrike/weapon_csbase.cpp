@@ -17,6 +17,7 @@
 #include "cs_legacy_gameplay.h"
 #include "cs_inventory.h"
 #include "baseviewmodel_shared.h"
+#include <cmath>
 
 #define ALLOW_WEAPON_SPREAD_DISPLAY	0
 
@@ -2530,7 +2531,7 @@ void CWeaponCSBase::OnJump( float fImpulse )
 	// landing inaccuracy per unit of impact velocity). Newer profiles have a
 	// distinct jump-initial term evaluated in GetInaccuracy instead.
 	const CCSWeaponInfo &info=GetCSWpnData();
-	if(info.m_fInaccuracyJumpInitial[m_weaponMode]==0 && isfinite(fImpulse))
+	if(info.m_fInaccuracyJumpInitial[m_weaponMode]==0 && std::isfinite(fImpulse))
 		m_fAccuracyPenalty+=info.m_fInaccuracyJump[m_weaponMode]*MAX(0.0f,fImpulse)*weapon_air_spread_scale.GetFloat();
 }
 

@@ -1,6 +1,7 @@
 #ifndef CS_BALLISTICS_H
 #define CS_BALLISTICS_H
 #include <math.h>
+#include <cmath>
 
 // Material and thickness based loss, shared by predicted and authoritative traces.
 // Surface codes are Source's physics material codes, independent of cosmetic VMTs.
@@ -18,7 +19,7 @@ inline float CSMaterialPenetration(int material)
 }
 inline float CSPenetrationDamageLoss(float damage,float thickness,float power,int entry,int exit,bool grate)
 {
-	if(!isfinite(damage) || !isfinite(thickness) || !isfinite(power) || damage<=0 || thickness<0 || power<=0) return damage>0 ? damage : 0;
+	if(!std::isfinite(damage) || !std::isfinite(thickness) || !std::isfinite(power) || damage<=0 || thickness<0 || power<=0) return damage>0 ? damage : 0;
 	float modifier=(CSMaterialPenetration(entry)+CSMaterialPenetration(exit))*0.5f;
 	float fraction=0.16f;
 	if(grate || entry=='G' || entry=='Y') { modifier=3.0f; fraction=0.05f; }

@@ -2,6 +2,7 @@
 #define CS_CAPSULE_GEOMETRY_H
 #include "mathlib/vector.h"
 #include <math.h>
+#include <cmath>
 #include <float.h>
 
 // Bone-local segment with one circular radius. Zero-length segments are spheres.
@@ -12,8 +13,8 @@ struct CSCapsuleHitbox
     bool IsValid() const
     {
         for (int i=0;i<3;++i)
-            if(!isfinite(start[i]) || !isfinite(end[i])) return false;
-        return isfinite(radius) && radius>0.0f;
+        if(!std::isfinite(start[i]) || !std::isfinite(end[i])) return false;
+        return std::isfinite(radius) && radius>0.0f;
     }
 };
 // Compatibility adapter for existing MDLs: keep the original longitudinal
@@ -22,7 +23,7 @@ struct CSCapsuleHitbox
 inline bool CSCapsuleFromAuthoredBox(const Vector &mins,const Vector &maxs,CSCapsuleHitbox &shape)
 {
     Vector extent=(maxs-mins)*.5f,center=(maxs+mins)*.5f;
-    for(int i=0;i<3;++i) if(!isfinite(extent[i]) || !isfinite(center[i]) || extent[i]<=.0001f) return false;
+    for(int i=0;i<3;++i) if(!std::isfinite(extent[i]) || !std::isfinite(center[i]) || extent[i]<=.0001f) return false;
     int axis=extent.y>extent.x ? 1 : 0;if(extent.z>extent[axis]) axis=2;
     shape.radius=fminf(extent[(axis+1)%3],extent[(axis+2)%3]);
     shape.start=shape.end=center;
@@ -85,7 +86,7 @@ inline bool CSIntersectCapsule(const CSCapsuleHitbox &shape,const Vector &raySta
     const Vector &rayDelta,CSCapsuleIntersection &hit)
 {
     if(!shape.IsValid()) return false;
-    for(int i=0;i<3;++i) if(!isfinite(rayStart[i]) || !isfinite(rayDelta[i])) return false;
+    for(int i=0;i<3;++i) if(!std::isfinite(rayStart[i]) || !std::isfinite(rayDelta[i])) return false;
     if(!CSCapsuleBoundsOverlapRay(shape,rayStart,rayDelta)) return false;
     Vector segment=shape.end-shape.start;
     double length=sqrt(CSCapsuleDot(segment,segment));

@@ -7,6 +7,7 @@
 #include "cbase.h"
 #include "cs_gameplay_audit.h"
 #include "basecsgrenade_projectile.h"
+#include <cmath>
 
 float GetCurrentGravity( void );
 
@@ -154,7 +155,7 @@ END_NETWORK_TABLE()
 	//Sets the time at which the grenade will explode
 	void CBaseCSGrenadeProjectile::SetDetonateTimerLength( float timer )
 	{
-		m_flDetonateTime = gpGlobals->curtime + ( isfinite(timer) ? MAX(0.0f, timer) : 1.5f );
+		m_flDetonateTime = gpGlobals->curtime + ( std::isfinite(timer) ? MAX(0.0f, timer) : 1.5f );
 		if (sv_gameplay_audit.GetInt() & CS_AUDIT_GRENADES)
 			CSGameplayAuditPrint("[grenade-audit] event=fuse entity=%d type=%s time=%.6f deadline=%.6f\n",entindex(),GetClassname(),gpGlobals->curtime,m_flDetonateTime);
 	}

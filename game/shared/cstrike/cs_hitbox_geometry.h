@@ -2,6 +2,7 @@
 #define CS_HITBOX_GEOMETRY_H
 #include "mathlib/vector.h"
 #include <math.h>
+#include <cmath>
 #include <float.h>
 
 // A bone-local capsule with an elliptical cross section, contained in the
@@ -19,7 +20,7 @@ struct CSRoundedHitbox
 		axis = radii.y > radii.x ? 1 : 0;
 		if ( radii.z > radii[axis] ) axis = 2;
 		for ( int i = 0; i < 3; ++i )
-			if ( !isfinite( center[i] ) || !isfinite( radii[i] ) || radii[i] <= 0.0001f ) return false;
+		if ( !std::isfinite( center[i] ) || !std::isfinite( radii[i] ) || radii[i] <= 0.0001f ) return false;
 		const float cap = fminf( radii[(axis+1)%3], radii[(axis+2)%3] );
 		halfSegment = ( radii[axis] - cap ) / cap;
 		radii[axis] = cap;
